@@ -5,12 +5,8 @@
  * @format
  */
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { StatusBar, StyleSheet, useColorScheme } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import RootNavigator from './src/navigation/RootNavigator';
 
@@ -26,14 +22,10 @@ function App() {
 }
 
 function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
   return (
-    <View style={styles.container}>
-      <NavigationContainer>
-        <RootNavigator />
-      </NavigationContainer>
-    </View>
+    <NavigationContainer>
+      <RootNavigator />
+    </NavigationContainer>
   );
 }
 

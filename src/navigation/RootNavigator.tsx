@@ -1,7 +1,7 @@
-import AdminTabs from "./admin/AdminTabs";
+import AdminStack from "./admin/AdminStack";
+import InstructorStack from "./instructor/InstructorStack";
+import StudentStack from "./student/StudentStack";
 import AuthStack from "./AuthStack";
-import InstructorTabs from "./instructor/InstructorTabs";
-import StudentTabs from "./student/StudentTabs";
 
 const ROLES = {
     STUDENT: "student",
@@ -10,17 +10,17 @@ const ROLES = {
 }
 
 const RootNavigator = () => {
-    const userRole = ROLES.INSTRUCTOR;
+    const USER_ROLE = ROLES.STUDENT;
 
-    switch (userRole) {
+    switch (USER_ROLE) {
         case ROLES.ADMIN:
-            return <AdminTabs />
+            return <AdminStack />
 
         case ROLES.INSTRUCTOR:
-            return <InstructorTabs />
+            return <InstructorStack />
 
         case ROLES.STUDENT:
-            return <StudentTabs />
+            return <StudentStack />
 
         default:
             return <AuthStack />

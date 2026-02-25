@@ -6,12 +6,11 @@ import AuthStack from "./AuthStack";
 const ROLES = {
     STUDENT: "student",
     INSTRUCTOR: "instructor",
-    ADMIN: "admin",
-    OTHER: "other"
+    ADMIN: "admin"
 }
 
 const RootNavigator = () => {
-    const USER_ROLE = ROLES.STUDENT;
+    const USER_ROLE = ROLES.ADMIN;
 
     switch (USER_ROLE) {
         case ROLES.ADMIN:

@@ -17,6 +17,13 @@ import { useTheme } from '../../theme'
 import Button from '../../components/Button'
 
 type SignupScreenProps = NativeStackScreenProps<AuthStackParamList, 'Register'>
+type SignupRole = 'admin' | 'instructor' | 'student'
+
+const ROLE_OPTIONS: Array<{ label: string; value: SignupRole }> = [
+    { label: 'Admin', value: 'admin' },
+    { label: 'Instructor', value: 'instructor' },
+    { label: 'Student', value: 'student' },
+]
 
 const SignupScreen = ({ navigation }: SignupScreenProps) => {
     const { theme } = useTheme()
@@ -24,6 +31,7 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
+    const [role, setRole] = useState<SignupRole | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const styles = useMemo(() => createStyles(theme), [theme])
 
@@ -32,26 +40,28 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
         const hasValidEmail = /\S+@\S+\.\S+/.test(email.trim())
         const hasStrongPassword = password.trim().length >= 6
         const passwordsMatch = password === confirmPassword && confirmPassword.length > 0
+        const hasRole = !!role
 
         return {
             hasName,
             hasValidEmail,
             hasStrongPassword,
             passwordsMatch,
-            isValid: hasName && hasValidEmail && hasStrongPassword && passwordsMatch,
+            hasRole,
+            isValid: hasName && hasValidEmail && hasStrongPassword && passwordsMatch && hasRole,
         }
-    }, [fullName, email, password, confirmPassword])
+    }, [fullName, email, password, confirmPassword, role])
 
     const handleSignup = () => {
         if (!formState.isValid) {
-            Alert.alert('Incomplete form', 'Please complete all fields and make sure passwords match.')
+            Alert.alert('Incomplete form', 'Please complete all fields, select a role, and make sure passwords match.')
             return
         }
 
         setIsSubmitting(true)
         setTimeout(() => {
             setIsSubmitting(false)
-            Alert.alert('Sign up request', 'Connect this action to your registration API.')
+            Alert.alert('Sign up request', `Connect this action to your registration API. Selected role: ${role}.`)
         }, 450)
     }
 
@@ -126,6 +136,37 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
                             />
                         </View>
 
+                        <View style={styles.formGroup}>
+                            <Text style={styles.label}>Sign up as</Text>
+                            <View style={styles.roleOptions}>
+                                {ROLE_OPTIONS.map(option => {
+                                    const isSelected = role === option.value
+                                    return (
+                                        <Pressable
+                                            key={option.value}
+                                            style={[
+                                                styles.roleOption,
+                                                {
+                                                    borderColor: isSelected ? theme.colors.primary : theme.colors.border,
+                                                    backgroundColor: isSelected ? theme.colors.primaryLight : theme.colors.surface,
+                                                },
+                                            ]}
+                                            onPress={() => setRole(option.value)}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.roleOptionText,
+                                                    { color: isSelected ? theme.colors.primary : theme.colors.textPrimary },
+                                                ]}
+                                            >
+                                                {option.label}
+                                            </Text>
+                                        </Pressable>
+                                    )
+                                })}
+                            </View>
+                        </View>
+
                         <Button
                             title={isSubmitting ? 'Creating account...' : 'Sign Up'}
                             onPress={handleSignup}
@@ -183,6 +224,21 @@ const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
         },
         formGroup: {
             marginBottom: theme.spacing.sm + 2,
+        },
+        roleOptions: {
+            flexDirection: 'row',
+            gap: theme.spacing.xs,
+        },
+        roleOption: {
+            flex: 1,
+            borderWidth: 1,
+            borderRadius: theme.borderRadius.md,
+            paddingVertical: theme.spacing.sm,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        roleOptionText: {
+            ...theme.typography.buttonMedium,
         },
         label: {
             marginBottom: theme.spacing.xs,

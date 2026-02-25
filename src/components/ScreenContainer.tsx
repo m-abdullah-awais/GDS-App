@@ -3,6 +3,7 @@ import { StyleProp, StyleSheet, Text, ViewStyle } from 'react-native';
 import { Edge, SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Header, HeaderBackButton } from '@react-navigation/elements';
+import { useTheme } from '../theme';
 
 type ScreenContainerProps = {
     children: ReactNode;
@@ -18,12 +19,14 @@ const ScreenContainer = ({
     children,
     style,
     edges = ['bottom'],
-    backgroundColor = '#FFFFFF',
+    backgroundColor,
     showHeader = false,
     title,
     onBackPress,
 }: ScreenContainerProps) => {
     const navigation = useNavigation();
+    const { theme } = useTheme();
+    const resolvedBackgroundColor = backgroundColor ?? theme.colors.background;
 
     const handleBack = () => {
         if (onBackPress) {
@@ -39,21 +42,21 @@ const ScreenContainer = ({
     const canShowBack = navigation.canGoBack() || !!onBackPress;
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor }, style]} edges={edges}>
+        <SafeAreaView style={[styles.container, { backgroundColor: resolvedBackgroundColor }, style]} edges={edges}>
             {showHeader && (
                 <Header
                     title={title ?? ''}
-                    headerTintColor="#111827"
-                    headerStyle={{ backgroundColor }}
-                    headerTitleStyle={styles.headerTitle}
+                    headerTintColor={theme.colors.textPrimary}
+                    headerStyle={{ backgroundColor: resolvedBackgroundColor }}
+                    headerTitleStyle={[styles.headerTitle, { color: theme.colors.textPrimary }]}
                     headerLeft={
                         canShowBack
                             ? props => (
                                 <HeaderBackButton
                                     {...props}
-                                    tintColor="#111827"
+                                    tintColor={theme.colors.textPrimary}
                                     backImage={({ tintColor }) => (
-                                        <Text style={[styles.customBackIcon, { color: tintColor ?? '#111827' }]}>‹</Text>
+                                        <Text style={[styles.customBackIcon, { color: tintColor ?? theme.colors.textPrimary }]}>‹</Text>
                                     )}
                                     onPress={handleBack}
                                 />
@@ -72,7 +75,6 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     headerTitle: {
-        color: '#111827',
         fontSize: 17,
         fontWeight: '600',
     },

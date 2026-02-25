@@ -3,11 +3,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { StudentStackParamList } from '../../navigation/student/StudentStack'
+import { useTheme } from '../../theme'
 
 type StudentDashboardNavigationProp = NativeStackNavigationProp<StudentStackParamList>
 
 const StudentDashboardScreen = () => {
   const navigation = useNavigation<StudentDashboardNavigationProp>()
+  const { theme } = useTheme()
+  const styles = createStyles(theme)
 
   return (
     <View style={styles.container}>
@@ -20,31 +23,32 @@ const StudentDashboardScreen = () => {
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 20,
-    color: '#111827',
-  },
-  button: {
-    backgroundColor: '#2563EB',
-    borderRadius: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-})
+const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+      backgroundColor: theme.colors.background,
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: '700',
+      marginBottom: 20,
+      color: theme.colors.textPrimary,
+    },
+    button: {
+      backgroundColor: theme.colors.primary,
+      borderRadius: 10,
+      paddingHorizontal: 18,
+      paddingVertical: 12,
+    },
+    buttonText: {
+      color: theme.colors.textInverse,
+      fontWeight: '600',
+      fontSize: 14,
+    },
+  })
 
 export default StudentDashboardScreen

@@ -4,12 +4,26 @@ import InstructorMyPackagesScreen from "../../screens/instructor/InstructorMyPac
 import InstructorMyStudentsScreen from "../../screens/instructor/InstructorMyStudentsScreen";
 import InstructorMessagesScreen from "../../screens/instructor/InstructorMessagesScreen";
 import InstructorProfileScreen from "../../screens/instructor/InstructorProfileScreen";
+import { useTheme } from "../../theme";
 
 const Drawer = createDrawerNavigator();
 
 const InstructorTabs = () => {
+    const { theme } = useTheme();
+
     return (
-        <Drawer.Navigator>
+        <Drawer.Navigator
+            screenOptions={{
+                headerStyle: { backgroundColor: theme.colors.surface },
+                headerTintColor: theme.colors.textPrimary,
+                headerTitleStyle: { color: theme.colors.textPrimary },
+                drawerStyle: { backgroundColor: theme.colors.background },
+                drawerActiveTintColor: theme.colors.primary,
+                drawerInactiveTintColor: theme.colors.textSecondary,
+                drawerActiveBackgroundColor: theme.colors.primaryLight,
+                sceneStyle: { backgroundColor: theme.colors.background },
+            }}
+        >
             <Drawer.Screen name="Dashboard" component={InstructorDashboardScreen} />
             <Drawer.Screen name="My Packages" component={InstructorMyPackagesScreen} />
             <Drawer.Screen name="My Students" component={InstructorMyStudentsScreen} />

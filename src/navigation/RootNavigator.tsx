@@ -6,7 +6,8 @@ import AuthStack from "./AuthStack";
 const ROLES = {
     STUDENT: "student",
     INSTRUCTOR: "instructor",
-    ADMIN: "admin"
+    ADMIN: "admin",
+    OTHER: "other"
 }
 
 const RootNavigator = () => {

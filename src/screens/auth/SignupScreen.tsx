@@ -5,7 +5,6 @@ import {
     Platform,
     Pressable,
     ScrollView,
-    StatusBar,
     StyleSheet,
     Text,
     TextInput,
@@ -14,15 +13,19 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { AuthStackParamList } from '../../navigation/AuthStack'
+import { useTheme } from '../../theme'
+import Button from '../../components/Button'
 
 type SignupScreenProps = NativeStackScreenProps<AuthStackParamList, 'Register'>
 
 const SignupScreen = ({ navigation }: SignupScreenProps) => {
+    const { theme } = useTheme()
     const [fullName, setFullName] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const styles = useMemo(() => createStyles(theme), [theme])
 
     const formState = useMemo(() => {
         const hasName = fullName.trim().length >= 2
@@ -54,7 +57,6 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
 
     return (
         <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-            <StatusBar barStyle="dark-content" />
             <KeyboardAvoidingView
                 style={styles.flex}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -74,6 +76,7 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
                                 value={fullName}
                                 onChangeText={setFullName}
                                 placeholder="John Doe"
+                                placeholderTextColor={theme.colors.placeholder}
                                 autoCapitalize="words"
                                 textContentType="name"
                                 style={styles.input}
@@ -86,6 +89,7 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
                                 value={email}
                                 onChangeText={setEmail}
                                 placeholder="you@example.com"
+                                placeholderTextColor={theme.colors.placeholder}
                                 keyboardType="email-address"
                                 autoCapitalize="none"
                                 autoCorrect={false}
@@ -100,6 +104,7 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
                                 value={password}
                                 onChangeText={setPassword}
                                 placeholder="At least 6 characters"
+                                placeholderTextColor={theme.colors.placeholder}
                                 secureTextEntry
                                 autoCapitalize="none"
                                 textContentType="newPassword"
@@ -113,6 +118,7 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
                                 value={confirmPassword}
                                 onChangeText={setConfirmPassword}
                                 placeholder="Re-enter your password"
+                                placeholderTextColor={theme.colors.placeholder}
                                 secureTextEntry
                                 autoCapitalize="none"
                                 textContentType="password"
@@ -120,13 +126,15 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
                             />
                         </View>
 
-                        <Pressable
+                        <Button
+                            title={isSubmitting ? 'Creating account...' : 'Sign Up'}
                             onPress={handleSignup}
                             disabled={!formState.isValid || isSubmitting}
-                            style={[styles.primaryButton, (!formState.isValid || isSubmitting) && styles.primaryButtonDisabled]}
-                        >
-                            <Text style={styles.primaryButtonText}>{isSubmitting ? 'Creating account...' : 'Sign Up'}</Text>
-                        </Pressable>
+                            loading={isSubmitting}
+                            size="lg"
+                            fullWidth
+                            style={styles.primaryButton}
+                        />
 
                         <View style={styles.footerRow}>
                             <Text style={styles.footerText}>Already have an account?</Text>
@@ -141,86 +149,73 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
     )
 }
 
-const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#F7F8FA',
-    },
-    flex: {
-        flex: 1,
-    },
-    contentContainer: {
-        flexGrow: 1,
-        justifyContent: 'center',
-        padding: 20,
-    },
-    card: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 14,
-        padding: 20,
-        borderWidth: 1,
-        borderColor: '#E7E8EC',
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#101828',
-    },
-    subtitle: {
-        marginTop: 6,
-        marginBottom: 20,
-        color: '#475467',
-        fontSize: 14,
-    },
-    formGroup: {
-        marginBottom: 14,
-    },
-    label: {
-        marginBottom: 8,
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#344054',
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: '#D0D5DD',
-        borderRadius: 10,
-        paddingHorizontal: 14,
-        paddingVertical: Platform.OS === 'ios' ? 13 : 11,
-        fontSize: 15,
-        color: '#101828',
-        backgroundColor: '#FFFFFF',
-    },
-    primaryButton: {
-        marginTop: 8,
-        borderRadius: 10,
-        paddingVertical: 13,
-        alignItems: 'center',
-        backgroundColor: '#2563EB',
-    },
-    primaryButtonDisabled: {
-        backgroundColor: '#9BB5F5',
-    },
-    primaryButtonText: {
-        color: '#FFFFFF',
-        fontWeight: '700',
-        fontSize: 15,
-    },
-    footerRow: {
-        marginTop: 16,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    footerText: {
-        color: '#475467',
-        fontSize: 14,
-    },
-    footerLink: {
-        color: '#1D4ED8',
-        fontSize: 14,
-        fontWeight: '700',
-    },
-})
+const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
+    StyleSheet.create({
+        safeArea: {
+            flex: 1,
+            backgroundColor: theme.colors.background,
+        },
+        flex: {
+            flex: 1,
+        },
+        contentContainer: {
+            flexGrow: 1,
+            justifyContent: 'center',
+            padding: theme.spacing.lg,
+        },
+        card: {
+            backgroundColor: theme.colors.surface,
+            borderRadius: theme.borderRadius.lg,
+            padding: theme.spacing.lg,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            ...theme.shadows.md,
+        },
+        title: {
+            ...theme.typography.h1,
+            color: theme.colors.textPrimary,
+        },
+        subtitle: {
+            marginTop: theme.spacing.xs - 2,
+            marginBottom: theme.spacing.lg,
+            ...theme.typography.bodyMedium,
+            color: theme.colors.textSecondary,
+        },
+        formGroup: {
+            marginBottom: theme.spacing.sm + 2,
+        },
+        label: {
+            marginBottom: theme.spacing.xs,
+            ...theme.typography.label,
+            color: theme.colors.textSecondary,
+        },
+        input: {
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            borderRadius: theme.borderRadius.md,
+            paddingHorizontal: theme.spacing.sm + 2,
+            paddingVertical: Platform.OS === 'ios' ? 13 : 11,
+            ...theme.typography.input,
+            color: theme.colors.textPrimary,
+            backgroundColor: theme.colors.surface,
+        },
+        primaryButton: {
+            marginTop: theme.spacing.xs,
+        },
+        footerRow: {
+            marginTop: theme.spacing.md,
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        footerText: {
+            ...theme.typography.bodyMedium,
+            color: theme.colors.textSecondary,
+        },
+        footerLink: {
+            ...theme.typography.buttonMedium,
+            color: theme.colors.primary,
+        },
+    })
 
 export default SignupScreen

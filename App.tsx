@@ -30,9 +30,9 @@ function AppContent() {
 
   return (
     <View style={styles.container}>
-     <NavigationContainer>
-      <RootNavigator />
-    </NavigationContainer>
+      <NavigationContainer>
+        <RootNavigator />
+      </NavigationContainer>
     </View>
   );
 }

@@ -8,7 +8,8 @@
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",
-    "clean-android": "cd android && gradlew.bat clean"
+    "clean-android": "cd android && gradlew.bat clean",
+    "postinstall": "node scripts/fix-drawer-assets.js"
   },
   "dependencies": {
     "@react-native/new-app-screen": "0.82.0",

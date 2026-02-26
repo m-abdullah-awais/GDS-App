@@ -10,7 +10,7 @@ const ROLES = {
 }
 
 const RootNavigator = () => {
-    const USER_ROLE = ROLES.STUDENT;
+    const USER_ROLE = ROLES.INSTRUCTOR;
 
     switch (USER_ROLE) {
         case ROLES.ADMIN:

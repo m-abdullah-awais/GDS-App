@@ -527,3 +527,107 @@ export const studentRequests: StudentRequest[] = [
       'Thank you for your interest, Alex. Unfortunately I\'m fully booked at the moment. Please try again in a few weeks!',
   },
 ];
+
+// ─── Booking Flow Data ────────────────────────────────────────────────────────
+
+export interface BookingPackage {
+  id: string;
+  title: string;
+  lessonCount: number;
+  durationPerLesson: string;
+  price: number;
+  popular?: boolean;
+  customDuration?: boolean;
+}
+
+export interface BookingDate {
+  date: Date;
+  dayName: string;
+  dayNumber: number;
+  monthShort: string;
+  available: boolean;
+}
+
+export interface TimeSlot {
+  id: string;
+  startTime: string;
+  duration: string;
+  available: boolean;
+}
+
+/** Pre-built packages for the booking flow */
+export const bookingPackages: BookingPackage[] = [
+  {
+    id: 'BPKG-001',
+    title: 'Single Lesson',
+    lessonCount: 1,
+    durationPerLesson: '1 hour',
+    price: 38,
+    customDuration: true,
+  },
+  {
+    id: 'BPKG-002',
+    title: 'Starter Pack',
+    lessonCount: 5,
+    durationPerLesson: '1 hour',
+    price: 170,
+    popular: true,
+  },
+  {
+    id: 'BPKG-003',
+    title: 'Confidence Builder',
+    lessonCount: 10,
+    durationPerLesson: '1.5 hours',
+    price: 310,
+  },
+  {
+    id: 'BPKG-004',
+    title: 'Test Ready',
+    lessonCount: 20,
+    durationPerLesson: '2 hours',
+    price: 560,
+    popular: true,
+  },
+  {
+    id: 'BPKG-005',
+    title: 'Premium Complete',
+    lessonCount: 30,
+    durationPerLesson: '2 hours',
+    price: 750,
+  },
+];
+
+/** Generate upcoming 14 days from today */
+export function generateAvailableDates(): BookingDate[] {
+  const days: BookingDate[] = [];
+  const today = new Date();
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  for (let i = 1; i <= 14; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    days.push({
+      date: d,
+      dayName: dayNames[d.getDay()],
+      dayNumber: d.getDate(),
+      monthShort: monthNames[d.getMonth()],
+      available: d.getDay() !== 0, // Sundays unavailable
+    });
+  }
+  return days;
+}
+
+/** Available time slots */
+export const timeSlots: TimeSlot[] = [
+  { id: 'TS-001', startTime: '9:00 AM', duration: '1 hr', available: true },
+  { id: 'TS-002', startTime: '10:30 AM', duration: '1 hr', available: true },
+  { id: 'TS-003', startTime: '11:00 AM', duration: '1.5 hr', available: false },
+  { id: 'TS-004', startTime: '12:30 PM', duration: '1 hr', available: false },
+  { id: 'TS-005', startTime: '2:00 PM', duration: '1.5 hr', available: true },
+  { id: 'TS-006', startTime: '3:30 PM', duration: '1 hr', available: true },
+  { id: 'TS-007', startTime: '4:00 PM', duration: '2 hr', available: true },
+  { id: 'TS-008', startTime: '6:00 PM', duration: '1 hr', available: true },
+];

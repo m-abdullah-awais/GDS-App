@@ -62,6 +62,7 @@ const StudentTabs = () => {
                 name="Book Lessons"
                 component={StudentBookLessonsScreen}
                 options={{
+                    headerShown: false,
                     drawerIcon: ({ color, size }) => (
                         <Ionicons name="add-circle-outline" size={size} color={color} style={{ marginRight: 6 }} />
                     ),

@@ -6,7 +6,7 @@
  * Each lesson card shows instructor, date, time, duration, status badge.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -196,35 +196,36 @@ const MyLessonsScreen = () => {
 
   return (
     <ScreenContainer showHeader title="My Lessons">
-      {/* ── Tabs ───────────────────────────────────────────── */}
+      {/* ── Filter Tabs ──────────────────────────────────── */}
       <View style={s.tabBar}>
-        {TABS.map(tab => {
-          const isActive = activeTab === tab.key;
-          const count = lessons.filter(l => l.status === tab.key).length;
-          return (
-            <Pressable
-              key={tab.key}
-              style={[s.tab, isActive && s.tabActive]}
-              onPress={() => setActiveTab(tab.key)}>
-              <Text style={[s.tabText, isActive && s.tabTextActive]}>
-                {tab.label}
-              </Text>
-              <View
-                style={[
-                  s.tabBadge,
-                  { backgroundColor: isActive ? theme.colors.primary : theme.colors.neutral300 },
-                ]}>
-                <Text
-                  style={[
-                    s.tabBadgeText,
-                    { color: isActive ? theme.colors.textInverse : theme.colors.textTertiary },
-                  ]}>
-                  {count}
+        <FlatList
+          data={TABS}
+          keyExtractor={item => item.key}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.tabBarContent}
+          renderItem={({ item: tab }) => {
+            const isActive = tab.key === activeTab;
+            const count = lessons.filter(l => l.status === tab.key).length;
+            return (
+              <Pressable
+                key={tab.key}
+                style={[s.tab, isActive && s.tabActive]}
+                onPress={() => setActiveTab(tab.key)}>
+                <Text style={[s.tabText, isActive && s.tabTextActive]}>
+                  {tab.label}
                 </Text>
-              </View>
-            </Pressable>
-          );
-        })}
+                {count > 0 && (
+                  <View style={[s.tabBadge, isActive && s.tabBadgeActive]}>
+                    <Text style={[s.tabBadgeText, isActive && s.tabBadgeTextActive]}>
+                      {count}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            );
+          }}
+        />
       </View>
 
       {/* ── Lesson List ────────────────────────────────────── */}
@@ -271,50 +272,54 @@ const MyLessonsScreen = () => {
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    // Tab Bar
+    // Tabs
     tabBar: {
-      flexDirection: 'row',
-      marginHorizontal: theme.spacing.md,
-      marginTop: theme.spacing.sm,
-      marginBottom: theme.spacing.sm,
-      backgroundColor: theme.colors.surfaceSecondary,
-      borderRadius: theme.borderRadius.md,
-      padding: theme.spacing.xxs,
+      paddingVertical: theme.spacing.sm,
+    },
+    tabBarContent: {
+      paddingHorizontal: theme.spacing.md,
+      gap: theme.spacing.xs,
     },
     tab: {
-      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: theme.spacing.sm,
-      borderRadius: theme.borderRadius.sm,
-      gap: theme.spacing.xxs,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.borderRadius.full,
+      backgroundColor: theme.colors.surfaceSecondary,
+      gap: 6,
     },
     tabActive: {
-      backgroundColor: theme.colors.surface,
-      ...theme.shadows.sm,
+      backgroundColor: theme.colors.primary,
     },
     tabText: {
       ...theme.typography.bodySmall,
-      color: theme.colors.textTertiary,
-      fontWeight: '500',
-    },
-    tabTextActive: {
-      color: theme.colors.textPrimary,
+      color: theme.colors.textSecondary,
       fontWeight: '600',
     },
+    tabTextActive: {
+      color: theme.colors.textInverse,
+    },
     tabBadge: {
+      backgroundColor: theme.colors.neutral300,
       minWidth: 20,
       height: 20,
       borderRadius: 10,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 6,
+      paddingHorizontal: 4,
+    },
+    tabBadgeActive: {
+      backgroundColor: 'rgba(255,255,255,0.3)',
     },
     tabBadgeText: {
       ...theme.typography.caption,
-      fontSize: 10,
+      color: theme.colors.textSecondary,
       fontWeight: '700',
+      fontSize: 11,
+    },
+    tabBadgeTextActive: {
+      color: theme.colors.textInverse,
     },
 
     // List

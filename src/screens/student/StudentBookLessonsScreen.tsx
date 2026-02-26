@@ -945,6 +945,8 @@ const createStyles = (theme: AppTheme) =>
       borderRadius: theme.borderRadius.lg,
       padding: theme.spacing.md,
       marginRight: theme.spacing.sm,
+      marginTop: theme.spacing.xxs,
+      marginBottom: theme.spacing.xxs,
       borderWidth: 1.5,
       borderColor: theme.colors.border,
       ...theme.shadows.sm,

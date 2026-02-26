@@ -8,6 +8,7 @@ import StudentProgressScreen from "../../screens/student/StudentProgressScreen";
 import StudentMessagesScreen from "../../screens/student/StudentMessagesScreen";
 import InstructorDiscoveryScreen from "../../screens/student/InstructorDiscoveryScreen";
 import { useTheme } from "../../theme";
+import Ionicons from "react-native-vector-icons/Ionicons";
 
 const Drawer = createDrawerNavigator();
 
@@ -25,16 +26,85 @@ const StudentTabs = () => {
                 drawerInactiveTintColor: theme.colors.textSecondary,
                 drawerActiveBackgroundColor: theme.colors.primaryLight,
                 sceneStyle: { backgroundColor: theme.colors.background },
+                drawerLabelStyle: { marginLeft: -10, fontSize: 15, fontWeight: '500' },
             }}
         >
-            <Drawer.Screen name="Dashboard" component={StudentDashboardScreen} />
-            <Drawer.Screen name="My Lessons" component={MyLessonsScreen} options={{ headerShown: false }} />
-            <Drawer.Screen name="Find Instructors" component={InstructorDiscoveryScreen} options={{ headerShown: false }} />
-            <Drawer.Screen name="Book Lessons" component={StudentBookLessonsScreen} />
-            <Drawer.Screen name="My Requests" component={StudentMyRequestsScreen} options={{ headerShown: false }} />
-            <Drawer.Screen name="Messages" component={StudentMessagesScreen} options={{ headerShown: false }} />
-            <Drawer.Screen name="Progress" component={StudentProgressScreen} />
-            <Drawer.Screen name="Profile" component={StudentProfileScreen} />
+            <Drawer.Screen
+                name="Dashboard"
+                component={StudentDashboardScreen}
+                options={{
+                    drawerIcon: ({ color, size }) => (
+                        <Ionicons name="home-outline" size={size} color={color} style={{ marginRight: 6 }} />
+                    ),
+                }}
+            />
+            <Drawer.Screen
+                name="My Lessons"
+                component={MyLessonsScreen}
+                options={{
+                    headerShown: false,
+                    drawerIcon: ({ color, size }) => (
+                        <Ionicons name="calendar-outline" size={size} color={color} style={{ marginRight: 6 }} />
+                    ),
+                }}
+            />
+            <Drawer.Screen
+                name="Find Instructors"
+                component={InstructorDiscoveryScreen}
+                options={{
+                    headerShown: false,
+                    drawerIcon: ({ color, size }) => (
+                        <Ionicons name="search-outline" size={size} color={color} style={{ marginRight: 6 }} />
+                    ),
+                }}
+            />
+            <Drawer.Screen
+                name="Book Lessons"
+                component={StudentBookLessonsScreen}
+                options={{
+                    drawerIcon: ({ color, size }) => (
+                        <Ionicons name="add-circle-outline" size={size} color={color} style={{ marginRight: 6 }} />
+                    ),
+                }}
+            />
+            <Drawer.Screen
+                name="My Requests"
+                component={StudentMyRequestsScreen}
+                options={{
+                    headerShown: false,
+                    drawerIcon: ({ color, size }) => (
+                        <Ionicons name="document-text-outline" size={size} color={color} style={{ marginRight: 6 }} />
+                    ),
+                }}
+            />
+            <Drawer.Screen
+                name="Messages"
+                component={StudentMessagesScreen}
+                options={{
+                    headerShown: false,
+                    drawerIcon: ({ color, size }) => (
+                        <Ionicons name="chatbubble-outline" size={size} color={color} style={{ marginRight: 6 }} />
+                    ),
+                }}
+            />
+            <Drawer.Screen
+                name="Progress"
+                component={StudentProgressScreen}
+                options={{
+                    drawerIcon: ({ color, size }) => (
+                        <Ionicons name="bar-chart-outline" size={size} color={color} style={{ marginRight: 6 }} />
+                    ),
+                }}
+            />
+            <Drawer.Screen
+                name="Profile"
+                component={StudentProfileScreen}
+                options={{
+                    drawerIcon: ({ color, size }) => (
+                        <Ionicons name="person-outline" size={size} color={color} style={{ marginRight: 6 }} />
+                    ),
+                }}
+            />
         </Drawer.Navigator>
     )
 }

@@ -25,6 +25,7 @@ import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
 import { Button } from '../../components/Button';
 import { instructors, type Instructor } from '../../modules/student/mockData';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 type Nav = NativeStackNavigationProp<StudentStackParamList>;
 
@@ -104,30 +105,29 @@ const InstructorCard = ({
 
       <View style={s.cardDetails}>
         <View style={s.detailChip}>
+          <Ionicons name="cog-outline" size={13} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
           <Text style={s.detailChipText}>
             {instructor.transmissionType === 'Both'
-              ? '⚙️ Manual & Auto'
+              ? 'Manual & Auto'
               : instructor.transmissionType === 'Manual'
-              ? '⚙️ Manual'
-              : '⚙️ Automatic'}
+              ? 'Manual'
+              : 'Automatic'}
           </Text>
         </View>
         <View style={s.detailChip}>
+          <Ionicons name="location-outline" size={13} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
           <Text style={s.detailChipText}>
-            📍 {instructor.coveredPostcodes.join(', ')}
+            {instructor.coveredPostcodes.join(', ')}
           </Text>
         </View>
       </View>
 
       <View style={s.cardFooter}>
         <View style={s.statsRow}>
-          <Text style={s.statText}>
-            🎯 {instructor.passRate}% pass rate
-          </Text>
+          <Ionicons name="trophy-outline" size={12} color={theme.colors.textTertiary} style={{ marginRight: 3 }} />
+          <Text style={s.statText}>{instructor.passRate}% pass rate</Text>
           <Text style={s.statDot}>·</Text>
-          <Text style={s.statText}>
-            {instructor.yearsExperience} yrs exp
-          </Text>
+          <Text style={s.statText}>{instructor.yearsExperience} yrs exp</Text>
         </View>
         <Button
           title="View Profile"
@@ -194,6 +194,8 @@ const cardStyles = (theme: AppTheme) =>
       marginTop: theme.spacing.sm,
     },
     detailChip: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
       backgroundColor: theme.colors.surfaceSecondary,
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xxs + 2,
@@ -302,7 +304,7 @@ const InstructorDiscoveryScreen = () => {
       {/* ── Search Bar + Filter Button ─────────────── */}
       <View style={s.searchRow}>
         <View style={s.searchBar}>
-          <Text style={s.searchIcon}>🔍</Text>
+          <Ionicons name="search-outline" size={18} color={theme.colors.placeholder} style={s.searchIcon} />
           <TextInput
             style={s.searchInput}
             placeholder="Search instructors..."
@@ -320,7 +322,7 @@ const InstructorDiscoveryScreen = () => {
         <Pressable
           style={[s.filterButton, hasActiveFilters && s.filterButtonActive]}
           onPress={openFilters}>
-          <Text style={s.filterButtonIcon}>⚙️</Text>
+          <Ionicons name="options-outline" size={20} color={hasActiveFilters ? theme.colors.primary : theme.colors.textSecondary} />
           {activeFilterCount > 0 && (
             <View style={s.filterCountBadge}>
               <Text style={s.filterCountText}>{activeFilterCount}</Text>
@@ -471,7 +473,7 @@ const InstructorDiscoveryScreen = () => {
         )}
         ListEmptyComponent={
           <View style={s.emptyState}>
-            <Text style={s.emptyIcon}>🔍</Text>
+            <Ionicons name="search-outline" size={52} color={theme.colors.textTertiary} style={s.emptyIcon} />
             <Text style={s.emptyTitle}>No instructors found</Text>
             <Text style={s.emptySubtitle}>
               Try adjusting your search or filters
@@ -513,7 +515,6 @@ const createStyles = (theme: AppTheme) =>
       borderColor: theme.colors.border,
     },
     searchIcon: {
-      fontSize: 16,
       marginRight: theme.spacing.xs,
     },
     searchInput: {
@@ -543,9 +544,7 @@ const createStyles = (theme: AppTheme) =>
       borderColor: theme.colors.primary,
       backgroundColor: theme.colors.primaryLight,
     },
-    filterButtonIcon: {
-      fontSize: 18,
-    },
+
     filterCountBadge: {
       position: 'absolute',
       top: -6,
@@ -708,7 +707,6 @@ const createStyles = (theme: AppTheme) =>
       padding: theme.spacing['3xl'],
     },
     emptyIcon: {
-      fontSize: 48,
       marginBottom: theme.spacing.md,
     },
     emptyTitle: {

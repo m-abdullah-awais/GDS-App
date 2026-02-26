@@ -23,6 +23,7 @@ import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
 import { studentProfile, lessons, instructors } from '../../modules/student/mockData';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 type Nav = NativeStackNavigationProp<StudentStackParamList>;
 
@@ -199,7 +200,7 @@ const StudentDashboardScreen = () => {
           />
         ) : (
           <View style={s.emptyState}>
-            <Text style={s.emptyIcon}>📅</Text>
+            <Ionicons name="calendar-outline" size={40} color={theme.colors.textTertiary} style={s.emptyIcon} />
             <Text style={s.emptyText}>No upcoming lessons</Text>
             <Text style={s.emptySubtext}>
               Book a lesson to get started
@@ -217,7 +218,7 @@ const StudentDashboardScreen = () => {
             onPress={() => navigation.navigate('InstructorDiscovery')}>
             <View
               style={[s.actionIcon, { backgroundColor: theme.colors.primaryLight }]}>
-              <Text style={s.actionEmoji}>🔍</Text>
+              <Ionicons name="search-outline" size={24} color={theme.colors.primary} />
             </View>
             <Text style={s.actionLabel}>Find{'\n'}Instructor</Text>
           </Pressable>
@@ -229,7 +230,7 @@ const StudentDashboardScreen = () => {
                 s.actionIcon,
                 { backgroundColor: theme.colors.successLight },
               ]}>
-              <Text style={s.actionEmoji}>📋</Text>
+              <Ionicons name="calendar-outline" size={24} color={theme.colors.success} />
             </View>
             <Text style={s.actionLabel}>View My{'\n'}Lessons</Text>
           </Pressable>
@@ -241,7 +242,7 @@ const StudentDashboardScreen = () => {
                 s.actionIcon,
                 { backgroundColor: theme.colors.warningLight },
               ]}>
-              <Text style={s.actionEmoji}>💬</Text>
+              <Ionicons name="chatbubble-outline" size={24} color={theme.colors.warning} />
             </View>
             <Text style={s.actionLabel}>Messages</Text>
           </Pressable>
@@ -426,6 +427,8 @@ const createStyles = (theme: AppTheme) =>
       backgroundColor: theme.colors.surface,
       borderRadius: theme.borderRadius.lg,
       padding: theme.spacing.md,
+      marginTop: theme.spacing.xs,
+      marginBottom: theme.spacing.xs,
       width: 150,
       ...theme.shadows.sm,
     },
@@ -485,9 +488,7 @@ const createStyles = (theme: AppTheme) =>
       justifyContent: 'center',
       marginBottom: theme.spacing.xs,
     },
-    actionEmoji: {
-      fontSize: 22,
-    },
+
     actionLabel: {
       ...theme.typography.caption,
       color: theme.colors.textPrimary,
@@ -505,7 +506,6 @@ const createStyles = (theme: AppTheme) =>
       ...theme.shadows.sm,
     },
     emptyIcon: {
-      fontSize: 36,
       marginBottom: theme.spacing.sm,
     },
     emptyText: {

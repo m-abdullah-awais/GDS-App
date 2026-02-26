@@ -22,6 +22,7 @@ import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
 import { Button } from '../../components/Button';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
   studentRequests,
   type StudentRequest,
@@ -166,7 +167,7 @@ const RequestCard = ({
 
       {request.status === 'pending' && (
         <View style={s.pendingRow}>
-          <Text style={s.pendingIcon}>📨</Text>
+          <Ionicons name="mail-outline" size={16} color={theme.colors.warning} />
           <Text style={s.pendingText}>
             Awaiting instructor response…
           </Text>
@@ -288,9 +289,7 @@ const cardStyles = (theme: AppTheme) =>
       paddingHorizontal: theme.spacing.md,
       gap: theme.spacing.xs,
     },
-    pendingIcon: {
-      fontSize: 16,
-    },
+    pendingIcon: {},
     pendingText: {
       ...theme.typography.bodySmall,
       color: theme.colors.warning,
@@ -367,7 +366,7 @@ const StudentMyRequestsScreen = () => {
         )}
         ListEmptyComponent={
           <View style={s.emptyState}>
-            <Text style={s.emptyIcon}>📋</Text>
+            <Ionicons name="document-text-outline" size={56} color={theme.colors.textTertiary} style={s.emptyIcon} />
             <Text style={s.emptyTitle}>No Requests</Text>
             <Text style={s.emptySubtitle}>
               {activeTab === 'all'
@@ -458,7 +457,6 @@ const createStyles = (theme: AppTheme) =>
       paddingHorizontal: theme.spacing.xl,
     },
     emptyIcon: {
-      fontSize: 56,
       marginBottom: theme.spacing.md,
     },
     emptyTitle: {

@@ -18,6 +18,7 @@ import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
 import { lessons, type Lesson, type LessonStatus } from '../../modules/student/mockData';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 type TabKey = 'upcoming' | 'completed' | 'cancelled';
 
@@ -102,17 +103,20 @@ const LessonCard = ({
       <View style={s.cardCenter}>
         <Text style={s.instructorName}>{lesson.instructorName}</Text>
         <View style={s.metaRow}>
-          <Text style={s.metaText}>📅 {lesson.date}</Text>
+          <Ionicons name="calendar-outline" size={13} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
+          <Text style={s.metaText}>{lesson.date}</Text>
         </View>
         <View style={s.metaRow}>
-          <Text style={s.metaText}>🕐 {lesson.time}</Text>
+          <Ionicons name="time-outline" size={13} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
+          <Text style={s.metaText}>{lesson.time}</Text>
           <Text style={s.metaDot}>·</Text>
           <Text style={s.metaText}>{lesson.duration}</Text>
         </View>
         {lesson.location && (
-          <Text style={s.locationText} numberOfLines={1}>
-            📍 {lesson.location}
-          </Text>
+          <View style={s.metaRow}>
+            <Ionicons name="location-outline" size={13} color={theme.colors.textTertiary} style={{ marginRight: 4 }} />
+            <Text style={s.locationText} numberOfLines={1}>{lesson.location}</Text>
+          </View>
         )}
       </View>
       <View style={[s.statusBadge, { backgroundColor: status.bg }]}>
@@ -234,13 +238,18 @@ const MyLessonsScreen = () => {
         )}
         ListEmptyComponent={
           <View style={s.emptyState}>
-            <Text style={s.emptyIcon}>
-              {activeTab === 'upcoming'
-                ? '📅'
-                : activeTab === 'completed'
-                ? '✅'
-                : '❌'}
-            </Text>
+            <Ionicons
+              name={
+                activeTab === 'upcoming'
+                  ? 'calendar-outline'
+                  : activeTab === 'completed'
+                  ? 'checkmark-circle-outline'
+                  : 'close-circle-outline'
+              }
+              size={48}
+              color={theme.colors.textTertiary}
+              style={s.emptyIcon}
+            />
             <Text style={s.emptyTitle}>
               No {activeTab} lessons
             </Text>
@@ -320,7 +329,6 @@ const createStyles = (theme: AppTheme) =>
       padding: theme.spacing['3xl'],
     },
     emptyIcon: {
-      fontSize: 48,
       marginBottom: theme.spacing.md,
     },
     emptyTitle: {

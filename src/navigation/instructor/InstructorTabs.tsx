@@ -9,6 +9,7 @@ import InstructorPendingReviewsScreen from "../../screens/instructor/InstructorP
 import InstructorStudentSearchScreen from "../../screens/instructor/InstructorStudentSearchScreen";
 import InstructorMessagesScreen from "../../screens/instructor/InstructorMessagesScreen";
 import InstructorProfileScreen from "../../screens/instructor/InstructorProfileScreen";
+import InstructorPackageScreen from "../../screens/instructor/InstructorPackageScreen";
 import { useTheme } from "../../theme";
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AppTopHeader from '../../components/AppTopHeader';
@@ -17,6 +18,7 @@ export type InstructorTabsParamList = {
     Dashboard: undefined;
     Schedule: undefined;
     Availability: undefined;
+    Packages: undefined;
     Earnings: undefined;
     Requests: undefined;
     'Pending Reviews': undefined;
@@ -77,6 +79,16 @@ const InstructorTabs = () => {
                     headerShown: false,
                     drawerIcon: ({ color, size }) => (
                         <Ionicons name="time-outline" size={size} color={color} style={{ marginRight: 6 }} />
+                    ),
+                }}
+            />
+            <Drawer.Screen
+                name="Packages"
+                component={InstructorPackageScreen}
+                options={{
+                    headerShown: false,
+                    drawerIcon: ({ color, size }) => (
+                        <Ionicons name="cube-outline" size={size} color={color} style={{ marginRight: 6 }} />
                     ),
                 }}
             />

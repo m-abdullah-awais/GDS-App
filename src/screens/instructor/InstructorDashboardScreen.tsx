@@ -42,8 +42,7 @@ interface QuickAction {
   iconBg: string;
   iconColor: string;
   cardBg: string;
-  screen: string;
-  target: 'drawer' | 'stack';
+  screen: keyof InstructorStackParamList;
 }
 
 const InstructorDashboardScreen = ({ navigation }: Props) => {
@@ -56,20 +55,16 @@ const InstructorDashboardScreen = ({ navigation }: Props) => {
   const activeStudents = instructorStudents.length;
 
   const QUICK_ACTIONS: QuickAction[] = [
-    { id: '1', label: 'Configure\nAreas', icon: 'location-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#2F6BFF', screen: 'Areas', target: 'stack' },
-    { id: '2', label: 'Create\nPackages', icon: 'cube-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#7141F4', screen: 'CreatePackage', target: 'stack' },
-    { id: '3', label: 'Set\nAvailability', icon: 'time-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#1FBF5B', screen: 'Availability', target: 'drawer' },
-    { id: '4', label: 'View\nSchedule', icon: 'calendar-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#EF4444', screen: 'Schedule', target: 'drawer' },
-    { id: '5', label: 'Student\nRequests', icon: 'people-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#0EA5E9', screen: 'Requests', target: 'drawer' },
-    { id: '6', label: 'Earnings', icon: 'cash-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#D946EF', screen: 'Earnings', target: 'drawer' },
+    { id: '1', label: 'Configure\nAreas', icon: 'location-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#2F6BFF', screen: 'Areas' },
+    { id: '2', label: 'Manage\nPackages', icon: 'cube-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#7141F4', screen: 'CreatePackage' },
+    { id: '3', label: 'Set\nAvailability', icon: 'time-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#1FBF5B', screen: 'Availability' },
+    { id: '4', label: 'View\nSchedule', icon: 'calendar-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#EF4444', screen: 'Schedule' },
+    { id: '5', label: 'Student\nRequests', icon: 'people-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#0EA5E9', screen: 'Requests' },
+    { id: '6', label: 'Earnings', icon: 'cash-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#D946EF', screen: 'Earnings' },
   ];
 
   const handleQuickAction = (action: QuickAction) => {
-    if (action.target === 'drawer') {
-      navigation.navigate(action.screen as keyof InstructorTabsParamList);
-    } else {
-      navigation.getParent()?.navigate(action.screen);
-    }
+    navigation.getParent()?.navigate(action.screen);
   };
 
   return (

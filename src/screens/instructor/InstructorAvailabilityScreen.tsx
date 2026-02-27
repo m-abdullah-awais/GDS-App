@@ -10,12 +10,16 @@ import React, { useMemo, useState, useCallback } from 'react';
 import {
   Alert,
   FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useTheme } from '../../theme';
 import Button from '../../components/Button';
@@ -60,6 +64,9 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [slotDrawerVisible, setSlotDrawerVisible] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null);
+  const [pickerValue, setPickerValue] = useState<Date>(new Date());
 
   const filteredSlots = useMemo(
     () => slots.filter((s) => s.day === selectedDay),
@@ -137,6 +144,47 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
     setSlots((prev) => [...prev, newSlot]);
     setStartTime('');
     setEndTime('');
+    setSlotDrawerVisible(false);
+  };
+
+  const openTimePicker = (target: 'start' | 'end') => {
+    const source = target === 'start' ? startTime : endTime;
+    const parsed = source ? parseTime(source) : null;
+    const date = new Date();
+
+    if (parsed !== null) {
+      date.setHours(Math.floor(parsed / 60), parsed % 60, 0, 0);
+    } else if (target === 'start') {
+      date.setHours(9, 0, 0, 0);
+    } else {
+      date.setHours(10, 0, 0, 0);
+    }
+
+    setPickerValue(date);
+    setPickerTarget(target);
+  };
+
+  const onChangeTime = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (event.type === 'dismissed') {
+      setPickerTarget(null);
+      return;
+    }
+
+    if (!selectedDate) return;
+
+    const formatted = formatTime(selectedDate.getHours() * 60 + selectedDate.getMinutes());
+
+    if (pickerTarget === 'start') {
+      setStartTime(formatted);
+    } else if (pickerTarget === 'end') {
+      setEndTime(formatted);
+    }
+
+    setValidationError(null);
+
+    if (Platform.OS === 'android') {
+      setPickerTarget(null);
+    }
   };
 
   /** Auto Generate: Mon-Fri, 9:00-17:00, 1hr lessons, 30min gaps */
@@ -186,9 +234,7 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
   };
 
   const handleSave = () => {
-    Alert.alert('Success', 'Availability saved successfully!', [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+    Alert.alert('Success', 'Availability saved successfully!');
   };
 
   const renderSlotItem = ({ item }: { item: AvailabilitySlot }) => (
@@ -217,7 +263,6 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
     <ScreenContainer
       showHeader
       title="Set Availability"
-      onBackPress={() => navigation.goBack()}
     >
       <View style={styles.container}>
         {/* Auto Generate */}
@@ -293,58 +338,25 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
           </View>
         )}
 
-        {/* Add Slot */}
+        {/* Add Slot Trigger */}
         <View style={styles.addSlotSection}>
-          <Text style={styles.sectionLabel}>Add Time Slot</Text>
-          <View style={styles.timeRow}>
-            <View style={styles.timeInput}>
-              <Text style={styles.timeLabel}>Start</Text>
-              <TextInput
-                value={startTime}
-                onChangeText={(t) => {
-                  setStartTime(t);
-                  setValidationError(null);
-                }}
-                placeholder="09:00"
-                placeholderTextColor={theme.colors.placeholder}
-                style={[styles.input, validationError ? styles.inputError : null]}
-                editable={!isWeekend}
-              />
-            </View>
-            <Text style={styles.timeSeparator}>to</Text>
-            <View style={styles.timeInput}>
-              <Text style={styles.timeLabel}>End</Text>
-              <TextInput
-                value={endTime}
-                onChangeText={(t) => {
-                  setEndTime(t);
-                  setValidationError(null);
-                }}
-                placeholder="10:00"
-                placeholderTextColor={theme.colors.placeholder}
-                style={[styles.input, validationError ? styles.inputError : null]}
-                editable={!isWeekend}
-              />
-            </View>
+          <View style={styles.addSlotHeaderRow}>
+            <Text style={styles.sectionLabel}>Add Time Slot</Text>
+            <Button
+              title="Add"
+              onPress={() => {
+                setValidationError(null);
+                setSlotDrawerVisible(true);
+              }}
+              variant="outline"
+              size="sm"
+              disabled={isWeekend}
+              leftIcon={<Ionicons name="add" size={16} color={theme.colors.primary} />}
+            />
           </View>
-
-          {/* Validation Error */}
-          {validationError && (
-            <View style={styles.errorRow}>
-              <Ionicons name="alert-circle" size={16} color={theme.colors.error} />
-              <Text style={styles.errorText}>{validationError}</Text>
-            </View>
-          )}
-
-          <Button
-            title="Add Slot"
-            onPress={handleAddSlot}
-            variant="outline"
-            size="md"
-            fullWidth
-            disabled={isWeekend}
-            style={styles.addButton}
-          />
+          <Text style={styles.addSlotHint}>
+            Open drawer to enter start/end time and save slot.
+          </Text>
         </View>
 
         {/* Slots List */}
@@ -379,6 +391,92 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
             fullWidth
           />
         </View>
+
+        {/* Bottom Drawer: Add Slot */}
+        <Modal
+          visible={slotDrawerVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setSlotDrawerVisible(false)}>
+          <KeyboardAvoidingView
+            style={styles.drawerOverlay}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <View style={styles.drawerSheet}>
+              <View style={styles.drawerHeader}>
+                <Text style={styles.drawerTitle}>Add Slot — {selectedDay}</Text>
+                <Pressable
+                  style={styles.drawerCloseBtn}
+                  onPress={() => setSlotDrawerVisible(false)}>
+                  <Ionicons name="close" size={20} color={theme.colors.textPrimary} />
+                </Pressable>
+              </View>
+
+              <View style={styles.timeRow}>
+                <View style={styles.timeInput}>
+                  <Text style={styles.timeLabel}>Start</Text>
+                  <Pressable
+                    onPress={() => !isWeekend && openTimePicker('start')}
+                    style={[styles.input, styles.pickerInput, validationError ? styles.inputError : null, isWeekend && styles.inputDisabled]}>
+                    <Text style={[styles.pickerValueText, !startTime && styles.pickerPlaceholder]}>
+                      {startTime || 'Select start time'}
+                    </Text>
+                    <Ionicons name="time-outline" size={18} color={theme.colors.primary} />
+                  </Pressable>
+                </View>
+                <Text style={styles.timeSeparator}>to</Text>
+                <View style={styles.timeInput}>
+                  <Text style={styles.timeLabel}>End</Text>
+                  <Pressable
+                    onPress={() => !isWeekend && openTimePicker('end')}
+                    style={[styles.input, styles.pickerInput, validationError ? styles.inputError : null, isWeekend && styles.inputDisabled]}>
+                    <Text style={[styles.pickerValueText, !endTime && styles.pickerPlaceholder]}>
+                      {endTime || 'Select end time'}
+                    </Text>
+                    <Ionicons name="time-outline" size={18} color={theme.colors.primary} />
+                  </Pressable>
+                </View>
+              </View>
+
+              {pickerTarget && (
+                <View style={styles.inlinePickerWrap}>
+                  <DateTimePicker
+                    value={pickerValue}
+                    mode="time"
+                    is24Hour
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onChangeTime}
+                  />
+                  {Platform.OS === 'ios' && (
+                    <Button
+                      title="Done"
+                      size="sm"
+                      variant="outline"
+                      onPress={() => setPickerTarget(null)}
+                      style={styles.pickerDoneBtn}
+                    />
+                  )}
+                </View>
+              )}
+
+              {validationError && (
+                <View style={styles.errorRow}>
+                  <Ionicons name="alert-circle" size={16} color={theme.colors.error} />
+                  <Text style={styles.errorText}>{validationError}</Text>
+                </View>
+              )}
+
+              <Button
+                title="Add Slot"
+                onPress={handleAddSlot}
+                variant="primary"
+                size="md"
+                fullWidth
+                disabled={isWeekend}
+                style={styles.addButton}
+              />
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
       </View>
     </ScreenContainer>
   );
@@ -447,6 +545,17 @@ const createStyles = (theme: AppTheme) =>
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.divider,
     },
+    addSlotHeaderRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+    },
+    addSlotHint: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textTertiary,
+      marginTop: theme.spacing.xs,
+    },
     sectionLabel: {
       ...theme.typography.h4,
       color: theme.colors.textPrimary,
@@ -479,6 +588,34 @@ const createStyles = (theme: AppTheme) =>
       ...theme.typography.input,
       color: theme.colors.textPrimary,
       backgroundColor: theme.colors.surface,
+    },
+    pickerInput: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    pickerValueText: {
+      ...theme.typography.input,
+      color: theme.colors.textPrimary,
+      flex: 1,
+    },
+    pickerPlaceholder: {
+      color: theme.colors.placeholder,
+    },
+    inputDisabled: {
+      opacity: 0.6,
+    },
+    inlinePickerWrap: {
+      marginTop: theme.spacing.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.md,
+      overflow: 'hidden',
+      backgroundColor: theme.colors.surfaceSecondary,
+    },
+    pickerDoneBtn: {
+      margin: theme.spacing.sm,
+      alignSelf: 'flex-end',
     },
     inputError: {
       borderColor: theme.colors.error,
@@ -551,6 +688,38 @@ const createStyles = (theme: AppTheme) =>
       borderTopWidth: 1,
       borderTopColor: theme.colors.divider,
       backgroundColor: theme.colors.background,
+    },
+    drawerOverlay: {
+      flex: 1,
+      justifyContent: 'flex-end',
+      backgroundColor: theme.colors.overlay,
+    },
+    drawerSheet: {
+      backgroundColor: theme.colors.surface,
+      borderTopLeftRadius: theme.borderRadius.xl,
+      borderTopRightRadius: theme.borderRadius.xl,
+      padding: theme.spacing.lg,
+      paddingBottom: theme.spacing.xl,
+      ...theme.shadows.lg,
+    },
+    drawerHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: theme.spacing.md,
+    },
+    drawerTitle: {
+      ...theme.typography.h3,
+      color: theme.colors.textPrimary,
+      flex: 1,
+    },
+    drawerCloseBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: theme.borderRadius.full,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.colors.surfaceSecondary,
     },
   });
 

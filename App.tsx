@@ -1,6 +1,5 @@
 /**
- * Sample React Native App
- * https://github.com/facebook/react-native
+ * GDS Driving School — App Root
  *
  * @format
  */
@@ -8,16 +7,23 @@
 import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import { Provider } from 'react-redux';
+import store from './src/store';
+import { ToastProvider } from './src/components/admin/ToastContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import { ThemeProvider, useTheme } from './src/theme';
 
 function App() {
   return (
-    <ThemeProvider initialScheme="system">
-      <SafeAreaProvider>
-        <AppContent />
-      </SafeAreaProvider>
-    </ThemeProvider>
+    <Provider store={store}>
+      <ThemeProvider initialScheme="system">
+        <SafeAreaProvider>
+          <ToastProvider>
+            <AppContent />
+          </ToastProvider>
+        </SafeAreaProvider>
+      </ThemeProvider>
+    </Provider>
   );
 }
 

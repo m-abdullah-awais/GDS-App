@@ -75,6 +75,16 @@ export const palette = {
   slate900: '#0F172A',
   slate950: '#020617',
 
+  // Violet (highlight family)
+  violet50: '#F5F3FF',
+  violet100: '#EDE9FE',
+  violet200: '#DDD6FE',
+  violet300: '#C4B5FD',
+  violet400: '#A78BFA',
+  violet500: '#8B5CF6',
+  violet600: '#7C3AED',
+  violet700: '#6D28D9',
+
   // Semantic
   emerald600: '#059669',
   emerald700: '#047857',
@@ -110,6 +120,8 @@ export const lightColors = {
   errorLight: '#FEF2F2',            // tinted bg
   info: palette.sky600,              // #0284C7
   infoLight: '#F0F9FF',             // tinted bg
+  highlight: palette.violet600,      // #7C3AED – highlight metrics
+  highlightLight: '#F5F3FF',         // tinted bg
 
   // Neutral scale
   neutral50: palette.slate50,
@@ -172,6 +184,8 @@ export const darkColors = {
   errorLight: 'rgba(220,38,38,0.15)',
   info: '#38BDF8',                   // brighter sky for dark
   infoLight: 'rgba(2,132,199,0.15)',
+  highlight: palette.violet400,       // #A78BFA – brighter violet for dark
+  highlightLight: 'rgba(139,92,246,0.15)',
 
   // Neutral scale (inverted perception)
   neutral50: palette.slate950,

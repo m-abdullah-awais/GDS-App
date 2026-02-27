@@ -40,6 +40,7 @@ const InstructorTabs = () => {
                         avatarText="Instructor"
                         leftAction="menu"
                         onLeftPress={() => navigation.toggleDrawer()}
+                        onAvatarPress={() => navigation.navigate('Profile')}
                     />
                 ),
                 drawerStyle: { backgroundColor: theme.colors.background },

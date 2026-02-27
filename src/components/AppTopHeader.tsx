@@ -13,6 +13,7 @@ interface AppTopHeaderProps {
   avatarText?: string;
   leftAction?: LeftAction;
   onLeftPress?: () => void;
+  onAvatarPress?: () => void;
 }
 
 const getInitials = (value: string) =>
@@ -29,6 +30,7 @@ const AppTopHeader: React.FC<AppTopHeaderProps> = ({
   avatarText,
   leftAction = 'menu',
   onLeftPress,
+  onAvatarPress,
 }) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -61,9 +63,12 @@ const AppTopHeader: React.FC<AppTopHeaderProps> = ({
         </View>
 
         <View style={styles.rightBlock}>
-          <View style={styles.avatar}>
+          <Pressable
+            style={({ pressed }) => [styles.avatar, pressed && styles.avatarPressed]}
+            onPress={onAvatarPress}
+            disabled={!onAvatarPress}>
             <Text style={styles.avatarText}>{getInitials(avatarText || title)}</Text>
-          </View>
+          </Pressable>
         </View>
       </View>
     </View>
@@ -120,6 +125,9 @@ const createStyles = (theme: AppTheme) =>
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.colors.primary,
+    },
+    avatarPressed: {
+      opacity: 0.85,
     },
     avatarText: {
       ...theme.typography.caption,

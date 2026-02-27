@@ -14,6 +14,7 @@ import AdminPaymentsScreen from '../../screens/admin/AdminPaymentsScreen';
 import AdminReportsScreen from '../../screens/admin/AdminReportsScreen';
 import AdminSettingsScreen from '../../screens/admin/AdminSettingsScreen';
 import AdminInstructorMessagesScreen from '../../screens/admin/AdminInstructorMessagesScreen';
+import AdminProfileScreen from '../../screens/admin/AdminProfileScreen';
 
 export type AdminTabsParamList = {
   Dashboard: undefined;
@@ -26,6 +27,7 @@ export type AdminTabsParamList = {
   Payments: undefined;
   Reports: undefined;
   Settings: undefined;
+  Profile: undefined;
 };
 
 const Drawer = createDrawerNavigator<AdminTabsParamList>();
@@ -43,6 +45,7 @@ const AdminTabs = () => {
             avatarText="Admin"
             leftAction="menu"
             onLeftPress={() => navigation.toggleDrawer()}
+            onAvatarPress={() => navigation.navigate('Profile')}
           />
         ),
         drawerStyle: { backgroundColor: theme.colors.background },
@@ -131,6 +134,16 @@ const AdminTabs = () => {
         options={{
           drawerIcon: ({ color, size }) => (
             <Ionicons name="settings-outline" size={size} color={color} style={{ marginRight: 6 }} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="Profile"
+        component={AdminProfileScreen}
+        options={{
+          headerShown: false,
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="person-circle-outline" size={size} color={color} style={{ marginRight: 6 }} />
           ),
         }}
       />

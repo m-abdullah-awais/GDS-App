@@ -26,6 +26,7 @@ const StudentTabs = () => {
                         avatarText="Student"
                         leftAction="menu"
                         onLeftPress={() => navigation.toggleDrawer()}
+                        onAvatarPress={() => navigation.navigate('Profile')}
                     />
                 ),
                 drawerStyle: { backgroundColor: theme.colors.background },
@@ -108,6 +109,7 @@ const StudentTabs = () => {
                 name="Profile"
                 component={StudentProfileScreen}
                 options={{
+                    headerShown: false,
                     drawerIcon: ({ color, size }) => (
                         <Ionicons name="person-outline" size={size} color={color} style={{ marginRight: 6 }} />
                     ),

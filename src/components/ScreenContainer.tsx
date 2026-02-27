@@ -1,9 +1,9 @@
 import React, { ReactNode } from 'react';
-import { StyleProp, StyleSheet, Text, ViewStyle } from 'react-native';
+import { StyleProp, StyleSheet, ViewStyle } from 'react-native';
 import { Edge, SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { Header, HeaderBackButton } from '@react-navigation/elements';
 import { useTheme } from '../theme';
+import AppTopHeader from './AppTopHeader';
 
 type ScreenContainerProps = {
     children: ReactNode;
@@ -40,29 +40,21 @@ const ScreenContainer = ({
     };
 
     const canShowBack = navigation.canGoBack() || !!onBackPress;
+    const parentNav = navigation.getParent();
+    const canOpenDrawer = typeof (parentNav as any)?.openDrawer === 'function';
+
+    const handleMenu = () => {
+        (parentNav as any)?.openDrawer?.();
+    };
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: resolvedBackgroundColor }, style]} edges={edges}>
             {showHeader && (
-                <Header
+                <AppTopHeader
                     title={title ?? ''}
-                    headerTintColor={theme.colors.textPrimary}
-                    headerStyle={{ backgroundColor: resolvedBackgroundColor }}
-                    headerTitleStyle={[styles.headerTitle, { color: theme.colors.textPrimary }]}
-                    headerLeft={
-                        canShowBack
-                            ? props => (
-                                <HeaderBackButton
-                                    {...props}
-                                    tintColor={theme.colors.textPrimary}
-                                    backImage={({ tintColor }) => (
-                                        <Text style={[styles.customBackIcon, { color: tintColor ?? theme.colors.textPrimary }]}>‹</Text>
-                                    )}
-                                    onPress={handleBack}
-                                />
-                            )
-                            : undefined
-                    }
+                    leftAction={canShowBack ? 'back' : canOpenDrawer ? 'menu' : 'none'}
+                    onLeftPress={canShowBack ? handleBack : canOpenDrawer ? handleMenu : undefined}
+                    avatarText={title ?? 'GDS'}
                 />
             )}
             {children}
@@ -73,16 +65,6 @@ const ScreenContainer = ({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    headerTitle: {
-        fontSize: 17,
-        fontWeight: '600',
-    },
-    customBackIcon: {
-        fontSize: 28,
-        lineHeight: 28,
-        marginLeft: 2,
-        marginRight: 8,
     },
 });
 

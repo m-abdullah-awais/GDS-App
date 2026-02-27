@@ -11,6 +11,7 @@ import InstructorMessagesScreen from "../../screens/instructor/InstructorMessage
 import InstructorProfileScreen from "../../screens/instructor/InstructorProfileScreen";
 import { useTheme } from "../../theme";
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import AppTopHeader from '../../components/AppTopHeader';
 
 export type InstructorTabsParamList = {
     Dashboard: undefined;
@@ -32,9 +33,15 @@ const InstructorTabs = () => {
     return (
         <Drawer.Navigator
             screenOptions={{
-                headerStyle: { backgroundColor: theme.colors.surface },
-                headerTintColor: theme.colors.textPrimary,
-                headerTitleStyle: { color: theme.colors.textPrimary },
+                header: ({ navigation, route, options }) => (
+                    <AppTopHeader
+                        title={options.title ?? route.name}
+                        subtitle="Instructor Workspace"
+                        avatarText="Instructor"
+                        leftAction="menu"
+                        onLeftPress={() => navigation.toggleDrawer()}
+                    />
+                ),
                 drawerStyle: { backgroundColor: theme.colors.background },
                 drawerActiveTintColor: theme.colors.primary,
                 drawerInactiveTintColor: theme.colors.textSecondary,

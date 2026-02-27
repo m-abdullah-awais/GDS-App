@@ -2,6 +2,7 @@ import React from 'react';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../theme';
+import AppTopHeader from '../../components/AppTopHeader';
 
 import AdminDashboardScreen from '../../screens/admin/AdminDashboardScreen';
 import AdminStudentApprovalScreen from '../../screens/admin/AdminStudentApprovalScreen';
@@ -35,9 +36,15 @@ const AdminTabs = () => {
   return (
     <Drawer.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.surface },
-        headerTintColor: theme.colors.textPrimary,
-        headerTitleStyle: { color: theme.colors.textPrimary },
+        header: ({ navigation, route, options }) => (
+          <AppTopHeader
+            title={options.title ?? route.name}
+            subtitle="Admin Console"
+            avatarText="Admin"
+            leftAction="menu"
+            onLeftPress={() => navigation.toggleDrawer()}
+          />
+        ),
         drawerStyle: { backgroundColor: theme.colors.background },
         drawerActiveTintColor: theme.colors.primary,
         drawerInactiveTintColor: theme.colors.textSecondary,

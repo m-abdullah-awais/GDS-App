@@ -9,6 +9,7 @@ import StudentMessagesScreen from "../../screens/student/StudentMessagesScreen";
 import InstructorDiscoveryScreen from "../../screens/student/InstructorDiscoveryScreen";
 import { useTheme } from "../../theme";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import AppTopHeader from '../../components/AppTopHeader';
 
 const Drawer = createDrawerNavigator();
 
@@ -18,9 +19,15 @@ const StudentTabs = () => {
     return (
         <Drawer.Navigator
             screenOptions={{
-                headerStyle: { backgroundColor: theme.colors.surface },
-                headerTintColor: theme.colors.textPrimary,
-                headerTitleStyle: { color: theme.colors.textPrimary },
+                header: ({ navigation, route, options }) => (
+                    <AppTopHeader
+                        title={options.title ?? route.name}
+                        subtitle="Student Journey"
+                        avatarText="Student"
+                        leftAction="menu"
+                        onLeftPress={() => navigation.toggleDrawer()}
+                    />
+                ),
                 drawerStyle: { backgroundColor: theme.colors.background },
                 drawerActiveTintColor: theme.colors.primary,
                 drawerInactiveTintColor: theme.colors.textSecondary,

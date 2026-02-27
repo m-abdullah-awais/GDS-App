@@ -73,7 +73,7 @@ const AdminSettingsScreen = () => {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}>
       {/* Pricing */}
-      <SectionHeader title="Pricing" />
+      {/* <SectionHeader title="Pricing" />
       <View style={styles.card}>
         <SettingsNumberRow
           label="Default Lesson Price"
@@ -92,7 +92,7 @@ const AdminSettingsScreen = () => {
           icon="card-outline"
           last
         />
-      </View>
+      </View> */}
 
       {/* Notifications */}
       <SectionHeader title="Notifications" />

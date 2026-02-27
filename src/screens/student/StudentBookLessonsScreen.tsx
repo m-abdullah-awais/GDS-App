@@ -24,6 +24,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
@@ -103,6 +104,7 @@ const SectionHeader = ({
 const StudentBookLessonsScreen = () => {
   const { theme } = useTheme();
   const s = useMemo(() => createStyles(theme), [theme]);
+  const navigation = useNavigation<any>();
 
   // ── State ─────────────────────────────────────────────
   const [selectedInstructor, setSelectedInstructor] = useState<Instructor | null>(null);
@@ -161,6 +163,8 @@ const StudentBookLessonsScreen = () => {
     setSelectedSlot(null);
     setDuration(1);
     setNotes('');
+    // Navigate to My Lessons after purchase
+    navigation.navigate('My Lessons');
   };
 
   // ── Render Helpers ────────────────────────────────────
@@ -588,7 +592,7 @@ const StudentBookLessonsScreen = () => {
           {selectedInstructor && (
             <View style={s.confirmSection}>
               <Button
-                title="Confirm Booking"
+                title="Buy Package"
                 variant="primary"
                 size="lg"
                 fullWidth
@@ -645,28 +649,40 @@ const StudentBookLessonsScreen = () => {
         </View>
       </Modal>
 
-      {/* ═══ Success Modal ═══════════════════════════════════════ */}
+      {/* ═══ Payment Success Modal (Stripe-style) ═══════════════ */}
       <Modal
         visible={showSuccess}
         transparent
         animationType="fade"
         onRequestClose={handleDismiss}>
-        <Pressable style={s.modalOverlay} onPress={Keyboard.dismiss}>
+        <View style={s.modalOverlay}>
           <View style={s.modalCard}>
-            <View style={s.modalIconCircle}>
-              <Ionicons name="checkmark-sharp" size={32} color={theme.colors.success} />
+            {/* Stripe-style animated icon */}
+            <View style={s.stripeIconOuter}>
+              <View style={s.stripeIconInner}>
+                <Ionicons name="checkmark" size={36} color={theme.colors.textInverse} />
+              </View>
             </View>
-            <Text style={s.modalTitle}>Lesson Booked!</Text>
+
+            <Text style={s.modalTitle}>Payment Successful!</Text>
             <Text style={s.modalBody}>
-              Your lesson with {selectedInstructor?.name ?? 'your instructor'} has been confirmed.
-              {'\n'}We'll send a reminder before your session.
+              Your package has been purchased successfully.{' '}
+              Your instructor will be notified shortly.
             </Text>
 
-            <View style={s.modalSummary}>
+            {/* Receipt card */}
+            <View style={s.receiptCard}>
+              <View style={s.receiptHeader}>
+                <Ionicons name="receipt-outline" size={14} color={theme.colors.textSecondary} />
+                <Text style={s.receiptLabel}>Payment Receipt</Text>
+              </View>
+              <View style={s.receiptDivider} />
+              <ModalRow label="Instructor" value={selectedInstructor?.name ?? '—'} theme={theme} />
               <ModalRow label="Package" value={selectedPackage?.title ?? '—'} theme={theme} />
               <ModalRow label="Date" value={formattedDate} theme={theme} />
               <ModalRow label="Time" value={selectedSlot?.startTime ?? '—'} theme={theme} />
-              <ModalRow label="Total" value={totalPrice} theme={theme} bold />
+              <View style={s.receiptDivider} />
+              <ModalRow label="Amount Paid" value={totalPrice} theme={theme} bold />
             </View>
 
             <Button
@@ -677,7 +693,7 @@ const StudentBookLessonsScreen = () => {
               onPress={handleDismiss}
             />
           </View>
-        </Pressable>
+        </View>
       </Modal>
     </ScreenContainer>
   );
@@ -1224,7 +1240,7 @@ const createStyles = (theme: AppTheme) =>
       marginTop: theme.spacing.xs,
     },
 
-    // ── Success Modal ────────────────────────────────────
+    // ── Payment Success Modal (Stripe-style) ────────────
     modalOverlay: {
       flex: 1,
       backgroundColor: theme.colors.overlay,
@@ -1241,14 +1257,22 @@ const createStyles = (theme: AppTheme) =>
       alignItems: 'center',
       ...theme.shadows.lg,
     },
-    modalIconCircle: {
-      width: 68,
-      height: 68,
-      borderRadius: 34,
+    stripeIconOuter: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
       backgroundColor: theme.colors.successLight,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: theme.spacing.md,
+    },
+    stripeIconInner: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      backgroundColor: theme.colors.success,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     modalTitle: {
       ...theme.typography.h1,
@@ -1260,16 +1284,34 @@ const createStyles = (theme: AppTheme) =>
       color: theme.colors.textSecondary,
       textAlign: 'center',
       marginTop: theme.spacing.sm,
+      marginBottom: theme.spacing.lg,
       lineHeight: 22,
     },
-    modalSummary: {
+    receiptCard: {
       width: '100%',
       backgroundColor: theme.colors.surfaceSecondary,
-      borderRadius: theme.borderRadius.md,
+      borderRadius: theme.borderRadius.lg,
       padding: theme.spacing.md,
-      marginTop: theme.spacing.lg,
       marginBottom: theme.spacing.lg,
       gap: theme.spacing.xxs,
+    },
+    receiptHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xxs,
+      marginBottom: theme.spacing.xs,
+    },
+    receiptLabel: {
+      ...theme.typography.caption,
+      color: theme.colors.textSecondary,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    receiptDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.colors.border,
+      marginVertical: theme.spacing.xs,
     },
   });
 

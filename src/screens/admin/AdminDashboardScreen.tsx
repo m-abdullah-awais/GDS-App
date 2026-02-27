@@ -81,7 +81,7 @@ const AdminDashboardScreen = () => {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}>
       {/* Welcome Header */}
-      <View style={styles.welcomeSection}>
+      {/* <View style={styles.welcomeSection}>
         <View style={styles.welcomeRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.greeting}>{greeting}</Text>
@@ -90,7 +90,7 @@ const AdminDashboardScreen = () => {
           </View>
           <Avatar initials="AD" size={48} theme={theme} />
         </View>
-      </View>
+      </View> */}
 
       {/* Stats Grid */}
       <SectionHeader title="Overview" />

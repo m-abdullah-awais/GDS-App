@@ -5,11 +5,13 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native'
+import Ionicons from 'react-native-vector-icons/Ionicons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { AuthStackParamList } from '../../navigation/AuthStack'
@@ -45,6 +47,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+      <StatusBar barStyle={theme.colors.statusBar} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -54,38 +57,61 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
           contentContainerStyle={styles.contentContainer}
           keyboardShouldPersistTaps="handled"
         >
+          <View style={styles.heroSection}>
+            <View style={styles.brandPill}>
+              <Ionicons name="school-outline" size={16} color={theme.colors.primary} />
+              <Text style={styles.brandText}>GDS Mobile</Text>
+            </View>
+            <Text style={styles.pageTitle}>Welcome back</Text>
+            <Text style={styles.pageSubtitle}>Sign in to continue your driving lessons and progress</Text>
+          </View>
+
           <View style={styles.card}>
-            <Text style={styles.title}>Welcome back</Text>
-            <Text style={styles.subtitle}>Sign in to continue your learning journey</Text>
+            <Text style={styles.formTitle}>Sign in</Text>
+            <Text style={styles.formSubtitle}>Use your registered account credentials</Text>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Email</Text>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                placeholderTextColor={theme.colors.placeholder}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                textContentType="username"
-                style={styles.input}
-              />
+              <View style={styles.inputWrapper}>
+                <Ionicons name="mail-outline" size={18} color={theme.colors.textTertiary} />
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@example.com"
+                  placeholderTextColor={theme.colors.placeholder}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  textContentType="username"
+                  keyboardAppearance={theme.dark ? 'dark' : 'light'}
+                  selectionColor={theme.colors.primary}
+                  style={styles.input}
+                />
+              </View>
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Password</Text>
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Enter your password"
-                placeholderTextColor={theme.colors.placeholder}
-                secureTextEntry
-                autoCapitalize="none"
-                textContentType="password"
-                style={styles.input}
-              />
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={18} color={theme.colors.textTertiary} />
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Enter your password"
+                  placeholderTextColor={theme.colors.placeholder}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  textContentType="password"
+                  keyboardAppearance={theme.dark ? 'dark' : 'light'}
+                  selectionColor={theme.colors.primary}
+                  style={styles.input}
+                />
+              </View>
             </View>
+
+            <Pressable onPress={() => Alert.alert('Forgot Password', 'Connect this action to your password reset flow.')}>
+              <Text style={styles.forgotPassword}>Forgot password?</Text>
+            </Pressable>
 
             <Button
               title={isSubmitting ? 'Signing in...' : 'Sign In'}
@@ -123,21 +149,51 @@ const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
       flexGrow: 1,
       justifyContent: 'center',
       padding: theme.spacing.lg,
+      gap: theme.spacing.md,
+    },
+    heroSection: {
+      marginHorizontal: theme.spacing.xs,
+      gap: theme.spacing.xs,
+    },
+    brandPill: {
+      alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xs,
+      backgroundColor: theme.colors.primaryLight,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.borderRadius.full,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    brandText: {
+      ...theme.typography.buttonSmall,
+      color: theme.colors.primary,
+    },
+    pageTitle: {
+      ...theme.typography.displayMedium,
+      color: theme.colors.textPrimary,
+      marginTop: theme.spacing.xs,
+    },
+    pageSubtitle: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textSecondary,
     },
     card: {
       backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.lg,
-      padding: theme.spacing.lg,
+      borderRadius: theme.borderRadius.xl,
+      padding: theme.spacing.xl,
       borderWidth: 1,
       borderColor: theme.colors.border,
-      ...theme.shadows.md,
+      ...theme.shadows.lg,
     },
-    title: {
-      ...theme.typography.h1,
+    formTitle: {
+      ...theme.typography.h2,
       color: theme.colors.textPrimary,
     },
-    subtitle: {
-      marginTop: theme.spacing.xs - 2,
+    formSubtitle: {
+      marginTop: theme.spacing.xxs,
       marginBottom: theme.spacing.lg,
       ...theme.typography.bodyMedium,
       color: theme.colors.textSecondary,
@@ -150,15 +206,34 @@ const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
       ...theme.typography.label,
       color: theme.colors.textSecondary,
     },
-    input: {
+    inputWrapper: {
       borderWidth: 1,
       borderColor: theme.colors.border,
       borderRadius: theme.borderRadius.md,
-      paddingHorizontal: theme.spacing.sm + 2,
-      paddingVertical: Platform.OS === 'ios' ? 13 : 11,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: Platform.OS === 'ios' ? 10 : 7,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xs,
+      backgroundColor: Platform.OS === 'ios' ? theme.colors.surface : theme.colors.surfaceSecondary,
+    },
+    input: {
+      flex: 1,
+      paddingVertical: 0,
+      borderWidth: 1,
+      borderColor: 'transparent',
+      borderRadius: theme.borderRadius.sm,
+      paddingHorizontal: 0,
       ...theme.typography.input,
       color: theme.colors.textPrimary,
-      backgroundColor: theme.colors.surface,
+      backgroundColor: 'transparent',
+    },
+    forgotPassword: {
+      alignSelf: 'flex-end',
+      ...theme.typography.buttonSmall,
+      color: theme.colors.textLink,
+      marginTop: theme.spacing.xxs,
+      marginBottom: theme.spacing.sm,
     },
     primaryButton: {
       marginTop: theme.spacing.xs,

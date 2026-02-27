@@ -60,7 +60,7 @@ const InstructorDashboardScreen = ({ navigation }: Props) => {
     { id: '3', label: 'Set\nAvailability', icon: 'time-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#1FBF5B', screen: 'Availability' },
     { id: '4', label: 'View\nSchedule', icon: 'calendar-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#EF4444', screen: 'Schedule' },
     { id: '5', label: 'Student\nRequests', icon: 'people-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#0EA5E9', screen: 'Requests' },
-    { id: '6', label: 'Earnings', icon: 'cash-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#D946EF', screen: 'Earnings' },
+    { id: '6', label: 'Manage\nEarnings', icon: 'cash-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#D946EF', screen: 'Earnings' },
   ];
 
   const handleQuickAction = (action: QuickAction) => {

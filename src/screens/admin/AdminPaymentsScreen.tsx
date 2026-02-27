@@ -101,7 +101,7 @@ const AdminPaymentsScreen = () => {
           icon="trending-up-outline"
           accentColor="#0EA5E9"
           tintColor="#0EA5E9"
-          prefix={'\u00A3'}
+          prefix={'£'}
         />
         <StatsCard
           title="Total Paid"
@@ -109,7 +109,7 @@ const AdminPaymentsScreen = () => {
           icon="checkmark-circle-outline"
           accentColor="#1FBF5B"
           tintColor="#1FBF5B"
-          prefix={'\u00A3'}
+          prefix={'£'}
         />
         <StatsCard
           title="Total Pending"
@@ -117,7 +117,7 @@ const AdminPaymentsScreen = () => {
           icon="time-outline"
           accentColor="#F97316"
           tintColor="#F97316"
-          prefix={'\u00A3'}
+          prefix={'£'}
         />
       </View>
 

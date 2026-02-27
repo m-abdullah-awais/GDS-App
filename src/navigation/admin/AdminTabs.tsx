@@ -9,10 +9,10 @@ import AdminInstructorApprovalScreen from '../../screens/admin/AdminInstructorAp
 import AdminPackageApprovalScreen from '../../screens/admin/AdminPackageApprovalScreen';
 import AdminStudentManagementScreen from '../../screens/admin/AdminStudentManagementScreen';
 import AdminInstructorManagementScreen from '../../screens/admin/AdminInstructorManagementScreen';
-import AdminInstructorMessagesScreen from '../../screens/admin/AdminInstructorMessagesScreen';
 import AdminPaymentsScreen from '../../screens/admin/AdminPaymentsScreen';
 import AdminReportsScreen from '../../screens/admin/AdminReportsScreen';
 import AdminSettingsScreen from '../../screens/admin/AdminSettingsScreen';
+import AdminInstructorMessagesScreen from '../../screens/admin/AdminInstructorMessagesScreen';
 
 export type AdminTabsParamList = {
   Dashboard: undefined;

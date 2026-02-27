@@ -32,6 +32,7 @@ const InstructorEarningsScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
+  const summaryColors = ['#2F6BFF', '#0EA5E9', '#7141F4', '#F97316', '#1FBF5B', '#EF4444'];
 
   const filteredTransactions = useMemo(() => {
     if (activeFilter === 'all') return transactions;
@@ -53,39 +54,39 @@ const InstructorEarningsScreen = ({ navigation }: Props) => {
     <View style={styles.summarySection}>
       <Text style={styles.sectionTitle}>Earnings Overview</Text>
       <View style={styles.summaryGrid}>
-        <View style={[styles.summaryCard, styles.totalCard]}>
-          <Text style={styles.summaryCardLabel}>Total Earnings</Text>
-          <Text style={[styles.summaryCardValue, styles.totalValue]}>
+        <View style={[styles.summaryCard, { backgroundColor: summaryColors[0] }]}>
+          <Text style={styles.summaryCardLabelColored}>Total Earnings</Text>
+          <Text style={[styles.summaryCardValueColored, styles.totalValueColored]}>
             £{earningsSummary.totalEarnings.toLocaleString()}
           </Text>
         </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryCardLabel}>This Month</Text>
-          <Text style={styles.summaryCardValue}>
+        <View style={[styles.summaryCard, { backgroundColor: summaryColors[1] }]}>
+          <Text style={styles.summaryCardLabelColored}>This Month</Text>
+          <Text style={styles.summaryCardValueColored}>
             £{earningsSummary.thisMonth.toLocaleString()}
           </Text>
         </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryCardLabel}>Last Month</Text>
-          <Text style={styles.summaryCardValue}>
+        <View style={[styles.summaryCard, { backgroundColor: summaryColors[2] }]}>
+          <Text style={styles.summaryCardLabelColored}>Last Month</Text>
+          <Text style={styles.summaryCardValueColored}>
             £{earningsSummary.lastMonth.toLocaleString()}
           </Text>
         </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryCardLabel}>Pending</Text>
-          <Text style={[styles.summaryCardValue, { color: theme.colors.warning }]}>
+        <View style={[styles.summaryCard, { backgroundColor: summaryColors[3] }]}>
+          <Text style={styles.summaryCardLabelColored}>Pending</Text>
+          <Text style={styles.summaryCardValueColored}>
             £{earningsSummary.pendingPayout.toLocaleString()}
           </Text>
         </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryCardLabel}>Total Lessons</Text>
-          <Text style={styles.summaryCardValue}>
+        <View style={[styles.summaryCard, { backgroundColor: summaryColors[4] }]}>
+          <Text style={styles.summaryCardLabelColored}>Total Lessons</Text>
+          <Text style={styles.summaryCardValueColored}>
             {earningsSummary.totalLessons}
           </Text>
         </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryCardLabel}>Commission</Text>
-          <Text style={[styles.summaryCardValue, { color: theme.colors.error }]}>
+        <View style={[styles.summaryCard, { backgroundColor: summaryColors[5] }]}>
+          <Text style={styles.summaryCardLabelColored}>Commission</Text>
+          <Text style={styles.summaryCardValueColored}>
             £{earningsSummary.commissionPaid.toLocaleString()}
           </Text>
         </View>
@@ -195,16 +196,9 @@ const createStyles = (theme: AppTheme) =>
     summaryCard: {
       flex: 1,
       minWidth: '45%',
-      backgroundColor: theme.colors.surface,
       borderRadius: theme.borderRadius.lg,
       padding: theme.spacing.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-    },
-    totalCard: {
-      minWidth: '100%',
-      backgroundColor: theme.colors.primaryLight,
-      borderColor: theme.colors.primary,
+      ...theme.shadows.sm,
     },
     summaryCardLabel: {
       ...theme.typography.caption,
@@ -215,9 +209,22 @@ const createStyles = (theme: AppTheme) =>
       ...theme.typography.h3,
       color: theme.colors.textPrimary,
     },
+    summaryCardLabelColored: {
+      ...theme.typography.caption,
+      color: 'rgba(255,255,255,0.88)',
+      marginBottom: theme.spacing.xxs,
+    },
+    summaryCardValueColored: {
+      ...theme.typography.h3,
+      color: theme.colors.textInverse,
+    },
     totalValue: {
       ...theme.typography.h1,
       color: theme.colors.primary,
+    },
+    totalValueColored: {
+      ...theme.typography.h1,
+      color: theme.colors.textInverse,
     },
     transactionsTitle: {
       marginTop: theme.spacing.sm,

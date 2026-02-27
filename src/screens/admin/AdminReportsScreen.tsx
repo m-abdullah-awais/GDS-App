@@ -100,7 +100,7 @@ const AdminReportsScreen = () => {
           icon="cash-outline"
           accentColor="#0EA5E9"
           tintColor="#0EA5E9"
-          prefix={'\u00A3'}
+          prefix={'£'}
         />
         <StatsCard
           title="Avg Lessons"

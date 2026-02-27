@@ -180,7 +180,7 @@ const AdminInstructorManagementScreen = () => {
             icon="cash-outline"
             accentColor="#0EA5E9"
             tintColor="#0EA5E9"
-            prefix={'\u00A3'}
+            prefix={'£'}
           />
           <StatsCard
             title="Pending"
@@ -188,7 +188,7 @@ const AdminInstructorManagementScreen = () => {
             icon="wallet-outline"
             accentColor="#D946EF"
             tintColor="#D946EF"
-            prefix={'\u00A3'}
+            prefix={'£'}
           />
         </View>
 

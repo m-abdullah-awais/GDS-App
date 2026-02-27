@@ -78,7 +78,7 @@ const AdminSettingsScreen = () => {
         <SettingsNumberRow
           label="Default Lesson Price"
           value={localSettings.lessonPricingDefault}
-          prefix={'\u00A3'}
+            prefix={'£'}
           onChangeValue={v => updateField('lessonPricingDefault', v)}
           theme={theme}
           icon="pricetag-outline"
@@ -86,7 +86,7 @@ const AdminSettingsScreen = () => {
         <SettingsNumberRow
           label="Platform Fees"
           value={localSettings.platformFees}
-          prefix={'\u00A3'}
+            prefix={'£'}
           onChangeValue={v => updateField('platformFees', v)}
           theme={theme}
           icon="card-outline"

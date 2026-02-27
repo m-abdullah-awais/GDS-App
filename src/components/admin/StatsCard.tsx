@@ -4,8 +4,8 @@
  * Stat card with icon, colored left border, gradient-tinted background.
  */
 
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
@@ -31,32 +31,13 @@ const StatsCard: React.FC<StatsCardProps> = ({
 }) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const animatedValue = useRef(new Animated.Value(0)).current;
-  const displayValue = useRef(0);
-  const [display, setDisplay] = React.useState('0');
 
   const formatNumber = (n: number): string => {
     const s = Math.round(n).toString();
     return s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   };
 
-  useEffect(() => {
-    animatedValue.setValue(0);
-    const listener = animatedValue.addListener(({ value: v }) => {
-      displayValue.current = Math.round(v);
-      setDisplay(formatNumber(v));
-    });
-
-    Animated.timing(animatedValue, {
-      toValue: value,
-      duration: 1200,
-      useNativeDriver: false,
-    }).start();
-
-    return () => {
-      animatedValue.removeListener(listener);
-    };
-  }, [value, animatedValue]);
+  const display = useMemo(() => formatNumber(value), [value]);
 
   const isSolidCard = tintColor.toLowerCase() === accentColor.toLowerCase();
   const valueColor = isSolidCard ? theme.colors.textInverse : theme.colors.textPrimary;

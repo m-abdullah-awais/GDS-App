@@ -47,34 +47,7 @@ const ScreenContainer = ({
         (parentNav as any)?.openDrawer?.();
     };
 
-    const handleProfilePress = () => {
-        const nav = navigation as any;
 
-        if (typeof nav?.navigate !== 'function') return;
-
-        try {
-            nav.navigate('Profile');
-            return;
-        } catch {
-        }
-
-        try {
-            nav.navigate('StudentTabs', { screen: 'Profile' });
-            return;
-        } catch {
-        }
-
-        try {
-            nav.navigate('AdminTabs', { screen: 'Profile' });
-            return;
-        } catch {
-        }
-
-        try {
-            nav.navigate('InstructorTabs', { screen: 'Profile' });
-        } catch {
-        }
-    };
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: resolvedBackgroundColor }, style]} edges={edges}>
@@ -84,7 +57,7 @@ const ScreenContainer = ({
                     leftAction={canShowBack ? 'back' : canOpenDrawer ? 'menu' : 'none'}
                     onLeftPress={canShowBack ? handleBack : canOpenDrawer ? handleMenu : undefined}
                     avatarText={title ?? 'GDS'}
-                    onAvatarPress={handleProfilePress}
+
                 />
             )}
             {children}

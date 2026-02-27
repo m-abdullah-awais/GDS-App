@@ -12,6 +12,7 @@ import { useTheme } from "../../theme";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import AppTopHeader from '../../components/AppTopHeader';
 import { clearDevRoleOverride } from '../devAuth';
+import CustomDrawerContent from '../../components/CustomDrawerContent';
 
 const Drawer = createDrawerNavigator();
 
@@ -31,6 +32,14 @@ const StudentTabs = () => {
 
     return (
         <Drawer.Navigator
+            drawerContent={(props) => (
+                <CustomDrawerContent
+                    {...props}
+                    userName="John Smith"
+                    userEmail="john.smith@email.com"
+                    roleLabel="Student"
+                />
+            )}
             screenOptions={{
                 header: ({ navigation, route, options }) => (
                     <AppTopHeader
@@ -39,7 +48,6 @@ const StudentTabs = () => {
                         avatarText="Student"
                         leftAction="menu"
                         onLeftPress={() => navigation.toggleDrawer()}
-                        onAvatarPress={() => navigation.navigate('Profile')}
                         onLogoutPress={handleLogout}
                     />
                 ),
@@ -123,7 +131,7 @@ const StudentTabs = () => {
                 name="Profile"
                 component={StudentProfileScreen}
                 options={{
-                    headerShown: false,
+                    // headerShown: false,
                     drawerIcon: ({ color, size }) => (
                         <Ionicons name="person-outline" size={size} color={color} style={{ marginRight: 6 }} />
                     ),

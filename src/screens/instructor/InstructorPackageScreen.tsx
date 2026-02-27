@@ -348,9 +348,9 @@ const createStyles = (theme: AppTheme) =>
     statsCard: {
       flexBasis: '47%',
       flexGrow: 1,
-      borderRadius: theme.borderRadius.lg,
+      borderRadius: theme.borderRadius.xl,
       padding: theme.spacing.md,
-      ...theme.shadows.sm,
+      ...theme.shadows.md,
     },
     statsValue: {
       ...theme.typography.h2,
@@ -378,11 +378,9 @@ const createStyles = (theme: AppTheme) =>
     },
     packageCard: {
       backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.lg,
-      padding: theme.spacing.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      ...theme.shadows.sm,
+      borderRadius: theme.borderRadius.xl,
+      padding: theme.spacing.lg,
+      ...theme.shadows.md,
     },
     packageTopRow: {
       flexDirection: 'row',
@@ -391,7 +389,7 @@ const createStyles = (theme: AppTheme) =>
       gap: theme.spacing.sm,
     },
     packageTitle: {
-      ...theme.typography.h4,
+      ...theme.typography.h3,
       color: theme.colors.textPrimary,
     },
     packageDate: {
@@ -434,12 +432,10 @@ const createStyles = (theme: AppTheme) =>
     },
     emptyCard: {
       backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.xl,
       padding: theme.spacing['2xl'],
       alignItems: 'center',
-      ...theme.shadows.sm,
+      ...theme.shadows.md,
     },
     emptyTitle: {
       ...theme.typography.h4,

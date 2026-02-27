@@ -2,6 +2,7 @@
  * InstructorEarningsScreen
  * ================================
  * Earnings overview with summary and transaction history.
+ * Pill-style filter tabs + premium card styling (matches student side).
  */
 
 import React, { useMemo, useState } from 'react';
@@ -28,6 +29,14 @@ type Props = DrawerScreenProps<InstructorTabsParamList, 'Earnings'>;
 
 type FilterTab = 'all' | 'completed' | 'pending';
 
+// ─── Filter Tabs ──────────────────────────────────────────────────────────────
+
+const FILTER_TABS: { key: FilterTab; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'completed', label: 'Completed' },
+  { key: 'pending', label: 'Pending' },
+];
+
 const InstructorEarningsScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -39,14 +48,19 @@ const InstructorEarningsScreen = ({ navigation }: Props) => {
     return transactions.filter((t) => t.status === activeFilter);
   }, [activeFilter]);
 
-  const getStatusColor = (status: Transaction['status']) => {
+  const getCounts = (key: FilterTab) => {
+    if (key === 'all') return transactions.length;
+    return transactions.filter((t) => t.status === key).length;
+  };
+
+  const getStatusStyle = (status: Transaction['status']) => {
     switch (status) {
       case 'completed':
-        return theme.colors.success;
+        return { bg: theme.colors.successLight, text: theme.colors.success, label: 'Completed', icon: '✓' };
       case 'pending':
-        return theme.colors.warning;
+        return { bg: theme.colors.warningLight, text: theme.colors.warning, label: 'Pending', icon: '⏳' };
       default:
-        return theme.colors.textTertiary;
+        return { bg: theme.colors.neutral200, text: theme.colors.textTertiary, label: status, icon: '' };
     }
   };
 
@@ -95,56 +109,67 @@ const InstructorEarningsScreen = ({ navigation }: Props) => {
   );
 
   const renderFilters = () => (
-    <View style={styles.filterRow}>
-      {(['all', 'completed', 'pending'] as FilterTab[]).map((tab) => {
-        const isActive = activeFilter === tab;
-        return (
-          <Pressable
-            key={tab}
-            onPress={() => setActiveFilter(tab)}
-            style={[styles.filterChip, isActive && styles.filterChipActive]}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                isActive && styles.filterChipTextActive,
-              ]}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </Text>
-          </Pressable>
-        );
-      })}
+    <View style={styles.filterSection}>
+      <Text style={[styles.sectionTitle, styles.transactionsTitle]}>
+        Transaction History
+      </Text>
+      <View style={styles.tabBar}>
+        <FlatList
+          data={FILTER_TABS}
+          keyExtractor={(item) => item.key}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabBarContent}
+          renderItem={({ item: tab }) => {
+            const isActive = tab.key === activeFilter;
+            const count = getCounts(tab.key);
+            return (
+              <Pressable
+                key={tab.key}
+                style={[styles.tab, isActive && styles.tabActive]}
+                onPress={() => setActiveFilter(tab.key)}>
+                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                  {tab.label}
+                </Text>
+                {count > 0 && (
+                  <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
+                    <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
+                      {count}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            );
+          }}
+        />
+      </View>
     </View>
   );
 
-  const renderTransaction = ({ item }: { item: Transaction }) => (
-    <View style={styles.transactionCard}>
-      <View style={styles.transactionLeft}>
-        <Text style={styles.transactionStudent}>{item.studentName}</Text>
-        <Text style={styles.transactionPackage}>{item.packageName}</Text>
-        <Text style={styles.transactionDate}>{item.date}</Text>
-      </View>
-      <View style={styles.transactionRight}>
-        <Text style={styles.transactionAmount}>£{item.amount}</Text>
-        <View
-          style={[
-            styles.statusBadge,
-            { backgroundColor: getStatusColor(item.status) + '18' },
-          ]}
-        >
-          <Text
-            style={[
-              styles.statusBadgeText,
-              { color: getStatusColor(item.status) },
-            ]}
-          >
-            {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-          </Text>
+  const renderTransaction = ({ item }: { item: Transaction }) => {
+    const statusStyle = getStatusStyle(item.status);
+    return (
+      <View style={styles.transactionCard}>
+        <View style={styles.transactionHeader}>
+          <View style={styles.transactionLeft}>
+            <Text style={styles.transactionStudent}>{item.studentName}</Text>
+            <Text style={styles.transactionPackage}>{item.packageName}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+            <Text style={[styles.statusIcon, { color: statusStyle.text }]}>{statusStyle.icon}</Text>
+            <Text style={[styles.statusText, { color: statusStyle.text }]}>{statusStyle.label}</Text>
+          </View>
+        </View>
+        <View style={styles.transactionFooter}>
+          <View style={styles.transactionMeta}>
+            <Ionicons name="calendar-outline" size={14} color={theme.colors.textTertiary} />
+            <Text style={styles.transactionDate}>{item.date}</Text>
+          </View>
+          <Text style={styles.transactionAmount}>£{item.amount}</Text>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <ScreenContainer showHeader title="Earnings" onBackPress={() => navigation.goBack()}>
@@ -157,16 +182,18 @@ const InstructorEarningsScreen = ({ navigation }: Props) => {
         ListHeaderComponent={
           <>
             {renderSummary()}
-            <Text style={[styles.sectionTitle, styles.transactionsTitle]}>
-              Transaction History
-            </Text>
             {renderFilters()}
           </>
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="cash-outline" size={48} color={theme.colors.textTertiary} />
-            <Text style={styles.emptyText}>No transactions found</Text>
+            <Ionicons name="cash-outline" size={56} color={theme.colors.textTertiary} style={styles.emptyIcon} />
+            <Text style={styles.emptyTitle}>No Transactions</Text>
+            <Text style={styles.emptySubtitle}>
+              {activeFilter === 'all'
+                ? 'No transaction history yet.'
+                : `No ${activeFilter} transactions found.`}
+            </Text>
           </View>
         }
       />
@@ -180,6 +207,8 @@ const createStyles = (theme: AppTheme) =>
       padding: theme.spacing.md,
       paddingBottom: theme.spacing['3xl'],
     },
+
+    // ── Summary ─────────────────────────────────────────
     summarySection: {
       marginBottom: theme.spacing.lg,
     },
@@ -196,18 +225,9 @@ const createStyles = (theme: AppTheme) =>
     summaryCard: {
       flex: 1,
       minWidth: '45%',
-      borderRadius: theme.borderRadius.lg,
+      borderRadius: theme.borderRadius.xl,
       padding: theme.spacing.md,
-      ...theme.shadows.sm,
-    },
-    summaryCardLabel: {
-      ...theme.typography.caption,
-      color: theme.colors.textSecondary,
-      marginBottom: theme.spacing.xxs,
-    },
-    summaryCardValue: {
-      ...theme.typography.h3,
-      color: theme.colors.textPrimary,
+      ...theme.shadows.md,
     },
     summaryCardLabelColored: {
       ...theme.typography.caption,
@@ -218,58 +238,84 @@ const createStyles = (theme: AppTheme) =>
       ...theme.typography.h3,
       color: theme.colors.textInverse,
     },
-    totalValue: {
-      ...theme.typography.h1,
-      color: theme.colors.primary,
-    },
     totalValueColored: {
       ...theme.typography.h1,
       color: theme.colors.textInverse,
     },
     transactionsTitle: {
+      marginBottom: theme.spacing.xs,
+    },
+
+    // ── Pill Filter Tabs ────────────────────────────────
+    filterSection: {
       marginTop: theme.spacing.sm,
     },
-    filterRow: {
-      flexDirection: 'row',
-      gap: theme.spacing.xs,
+    tabBar: {
       marginBottom: theme.spacing.md,
     },
-    filterChip: {
+    tabBarContent: {
+      gap: theme.spacing.xs,
+    },
+    tab: {
+      flexDirection: 'row',
+      alignItems: 'center',
       paddingHorizontal: theme.spacing.md,
       paddingVertical: theme.spacing.xs,
       borderRadius: theme.borderRadius.full,
-      backgroundColor: theme.colors.surface,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surfaceSecondary,
+      gap: 6,
     },
-    filterChipActive: {
+    tabActive: {
       backgroundColor: theme.colors.primary,
-      borderColor: theme.colors.primary,
     },
-    filterChipText: {
+    tabText: {
       ...theme.typography.bodySmall,
       color: theme.colors.textSecondary,
       fontWeight: '600',
     },
-    filterChipTextActive: {
+    tabTextActive: {
       color: theme.colors.textInverse,
     },
-    transactionCard: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
+    tabBadge: {
+      backgroundColor: theme.colors.neutral300,
+      minWidth: 20,
+      height: 20,
+      borderRadius: 10,
       alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 4,
+    },
+    tabBadgeActive: {
+      backgroundColor: 'rgba(255,255,255,0.3)',
+    },
+    tabBadgeText: {
+      ...theme.typography.caption,
+      color: theme.colors.textSecondary,
+      fontWeight: '700',
+      fontSize: 11,
+    },
+    tabBadgeTextActive: {
+      color: theme.colors.textInverse,
+    },
+
+    // ── Transaction Card (matches student card style) ───
+    transactionCard: {
       backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.lg,
-      padding: theme.spacing.md,
-      marginBottom: theme.spacing.sm,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.xl,
+      padding: theme.spacing.lg,
+      marginBottom: theme.spacing.md,
+      ...theme.shadows.md,
+    },
+    transactionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
     },
     transactionLeft: {
       flex: 1,
     },
     transactionStudent: {
-      ...theme.typography.h4,
+      ...theme.typography.h3,
       color: theme.colors.textPrimary,
     },
     transactionPackage: {
@@ -277,39 +323,64 @@ const createStyles = (theme: AppTheme) =>
       color: theme.colors.textSecondary,
       marginTop: 2,
     },
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xxs,
+      borderRadius: theme.borderRadius.full,
+      gap: 4,
+    },
+    statusIcon: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    statusText: {
+      ...theme.typography.caption,
+      fontWeight: '700',
+    },
+    transactionFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: theme.spacing.md,
+      paddingTop: theme.spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.divider,
+    },
+    transactionMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xs,
+    },
     transactionDate: {
       ...theme.typography.caption,
       color: theme.colors.textTertiary,
-      marginTop: 2,
-    },
-    transactionRight: {
-      alignItems: 'flex-end',
-      gap: theme.spacing.xxs,
     },
     transactionAmount: {
-      ...theme.typography.h3,
+      ...theme.typography.h2,
       color: theme.colors.textPrimary,
     },
-    statusBadge: {
-      paddingHorizontal: theme.spacing.xs + 2,
-      paddingVertical: 2,
-      borderRadius: theme.borderRadius.full,
-    },
-    statusBadgeText: {
-      ...theme.typography.caption,
-      fontWeight: '600',
-    },
+
+    // ── Empty State ─────────────────────────────────────
     emptyState: {
       alignItems: 'center',
-      paddingVertical: theme.spacing['4xl'],
+      paddingTop: theme.spacing['5xl'],
+      paddingHorizontal: theme.spacing.xl,
     },
     emptyIcon: {
-      fontSize: 48,
       marginBottom: theme.spacing.md,
     },
-    emptyText: {
-      ...theme.typography.h3,
-      color: theme.colors.textTertiary,
+    emptyTitle: {
+      ...theme.typography.h2,
+      color: theme.colors.textPrimary,
+      marginBottom: theme.spacing.xs,
+    },
+    emptySubtitle: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
     },
   });
 

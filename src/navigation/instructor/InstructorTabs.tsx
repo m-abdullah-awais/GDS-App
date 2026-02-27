@@ -15,6 +15,7 @@ import { useTheme } from "../../theme";
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AppTopHeader from '../../components/AppTopHeader';
 import { clearDevRoleOverride } from '../devAuth';
+import CustomDrawerContent from '../../components/CustomDrawerContent';
 
 export type InstructorTabsParamList = {
     Dashboard: undefined;
@@ -47,6 +48,14 @@ const InstructorTabs = () => {
 
     return (
         <Drawer.Navigator
+            drawerContent={(props) => (
+                <CustomDrawerContent
+                    {...props}
+                    userName="James Wilson"
+                    userEmail="james.wilson@email.com"
+                    roleLabel="Instructor"
+                />
+            )}
             screenOptions={{
                 header: ({ navigation, route, options }) => (
                     <AppTopHeader
@@ -55,7 +64,6 @@ const InstructorTabs = () => {
                         avatarText="Instructor"
                         leftAction="menu"
                         onLeftPress={() => navigation.toggleDrawer()}
-                        onAvatarPress={() => navigation.navigate('Profile')}
                         onLogoutPress={handleLogout}
                     />
                 ),
@@ -160,7 +168,7 @@ const InstructorTabs = () => {
                 name="Profile"
                 component={InstructorProfileScreen}
                 options={{
-                    headerShown: false,
+                    // headerShown: false,
                     drawerIcon: ({ color, size }) => (
                         <Ionicons name="person-outline" size={size} color={color} style={{ marginRight: 6 }} />
                     ),

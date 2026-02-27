@@ -155,34 +155,32 @@ const createStyles = (theme: AppTheme) =>
     },
     studentCard: {
       backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.lg,
-      padding: theme.spacing.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      ...theme.shadows.sm,
+      borderRadius: theme.borderRadius.xl,
+      padding: theme.spacing.lg,
+      ...theme.shadows.md,
     },
     studentHeader: {
       flexDirection: 'row',
       alignItems: 'center',
     },
     avatarCircle: {
-      width: 48,
-      height: 48,
-      borderRadius: theme.borderRadius.full,
-      backgroundColor: theme.colors.primaryLight,
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: theme.colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
     },
     avatarText: {
       ...theme.typography.buttonLarge,
-      color: theme.colors.primary,
+      color: theme.colors.textInverse,
     },
     studentInfo: {
       flex: 1,
       marginLeft: theme.spacing.sm,
     },
     studentName: {
-      ...theme.typography.h4,
+      ...theme.typography.h3,
       color: theme.colors.textPrimary,
     },
     studentPostcode: {

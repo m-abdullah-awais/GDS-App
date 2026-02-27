@@ -2,8 +2,8 @@
  * InstructorScheduleScreen
  * =========================
  * Upcoming, completed and all lessons list.
+ * Pill-style filter tabs + premium card styling (matches student side).
  * Completed tab: tap pending_review lessons to open review bottom sheet.
- * No manual "Mark as Complete" — completion handled elsewhere.
  */
 
 import React, { useMemo, useState, useCallback } from 'react';
@@ -34,11 +34,58 @@ type Props = DrawerScreenProps<InstructorTabsParamList, 'Schedule'>;
 type FilterTab = 'upcoming' | 'completed' | 'all';
 const RATINGS = [1, 2, 3, 4, 5];
 
-const Avatar = ({ initials, theme }: { initials: string; theme: AppTheme }) => (
-  <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
-    <Text style={[theme.typography.buttonMedium, { color: theme.colors.primary }]}>{initials}</Text>
+// ─── Avatar ───────────────────────────────────────────────────────────────────
+
+const Avatar = ({
+  initials,
+  size = 52,
+  theme,
+}: {
+  initials: string;
+  size?: number;
+  theme: AppTheme;
+}) => (
+  <View
+    style={{
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      backgroundColor: theme.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+    <Text
+      style={[
+        theme.typography.buttonSmall,
+        { color: theme.colors.textInverse, fontSize: size * 0.36 },
+      ]}>
+      {initials}
+    </Text>
   </View>
 );
+
+// ─── Status helpers ───────────────────────────────────────────────────────────
+
+const getStatusStyle = (status: LessonStatus, theme: AppTheme) => {
+  switch (status) {
+    case 'upcoming':
+      return { bg: theme.colors.primaryLight, text: theme.colors.primary, label: 'Upcoming', icon: '📅' };
+    case 'completed':
+      return { bg: theme.colors.successLight, text: theme.colors.success, label: 'Completed', icon: '✓' };
+    case 'pending_review':
+      return { bg: theme.colors.warningLight, text: theme.colors.warning, label: 'Pending Review', icon: '⏳' };
+    default:
+      return { bg: theme.colors.neutral200, text: theme.colors.textSecondary, label: status, icon: '' };
+  }
+};
+
+// ─── Filter Tabs ──────────────────────────────────────────────────────────────
+
+const TABS: { key: FilterTab; label: string }[] = [
+  { key: 'upcoming', label: 'Upcoming' },
+  { key: 'completed', label: 'Completed' },
+  { key: 'all', label: 'All' },
+];
 
 const InstructorScheduleScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
@@ -58,26 +105,10 @@ const InstructorScheduleScreen = ({ navigation }: Props) => {
     return lessons.filter(l => l.status === 'completed' || l.status === 'pending_review');
   }, [lessons, activeTab]);
 
-  const getStatusColor = (status: LessonStatus) => {
-    switch (status) {
-      case 'upcoming':
-        return { bg: theme.colors.primaryLight, text: theme.colors.primary };
-      case 'completed':
-        return { bg: theme.colors.successLight, text: theme.colors.success };
-      case 'pending_review':
-        return { bg: theme.colors.warningLight, text: theme.colors.warning };
-      default:
-        return { bg: theme.colors.neutral200, text: theme.colors.textSecondary };
-    }
-  };
-
-  const getStatusLabel = (status: LessonStatus) => {
-    switch (status) {
-      case 'upcoming': return 'Upcoming';
-      case 'completed': return 'Completed';
-      case 'pending_review': return 'Pending Review';
-      default: return status;
-    }
+  const getCounts = (key: FilterTab) => {
+    if (key === 'all') return lessons.length;
+    if (key === 'upcoming') return lessons.filter(l => l.status === 'upcoming').length;
+    return lessons.filter(l => l.status === 'completed' || l.status === 'pending_review').length;
   };
 
   const handleLessonPress = useCallback((lesson: InstructorLesson) => {
@@ -107,26 +138,28 @@ const InstructorScheduleScreen = ({ navigation }: Props) => {
   };
 
   const renderLesson = ({ item }: { item: InstructorLesson }) => {
-    const statusColors = getStatusColor(item.status);
+    const statusStyle = getStatusStyle(item.status, theme);
     const isReviewable = item.status === 'pending_review' && !item.reviewed;
 
     return (
       <Pressable
-        style={styles.lessonCard}
+        style={styles.card}
         onPress={isReviewable ? () => handleLessonPress(item) : undefined}
       >
-        <View style={styles.lessonHeader}>
-          <Avatar initials={item.studentAvatar} theme={theme} />
-          <View style={styles.lessonInfo}>
+        {/* Header row */}
+        <View style={styles.headerRow}>
+          <Avatar initials={item.studentAvatar} size={52} theme={theme} />
+          <View style={styles.headerInfo}>
             <Text style={styles.studentName}>{item.studentName}</Text>
             <Text style={styles.lessonDate}>{item.date} at {item.time}</Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
-            <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
-              {getStatusLabel(item.status)}
-            </Text>
+          <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+            <Text style={[styles.statusIcon, { color: statusStyle.text }]}>{statusStyle.icon}</Text>
+            <Text style={[styles.statusText, { color: statusStyle.text }]}>{statusStyle.label}</Text>
           </View>
         </View>
+
+        {/* Footer details */}
         <View style={styles.lessonFooter}>
           <View style={styles.detailChip}>
             <Ionicons name="time-outline" size={14} color={theme.colors.textTertiary} />
@@ -143,33 +176,41 @@ const InstructorScheduleScreen = ({ navigation }: Props) => {
     );
   };
 
-  const TABS: { key: FilterTab; label: string }[] = [
-    { key: 'upcoming', label: 'Upcoming' },
-    { key: 'completed', label: 'Completed' },
-    { key: 'all', label: 'All' },
-  ];
-
   return (
     <ScreenContainer showHeader title="Schedule" onBackPress={() => navigation.goBack()}>
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        {TABS.map(tab => {
-          const isActive = activeTab === tab.key;
-          return (
-            <Pressable
-              key={tab.key}
-              style={[styles.tab, { borderBottomColor: isActive ? theme.colors.primary : 'transparent' }]}
-              onPress={() => setActiveTab(tab.key)}
-            >
-              <Text style={[styles.tabText, { color: isActive ? theme.colors.primary : theme.colors.textSecondary }]}>
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+      {/* ── Pill Filter Tabs ─────────────────────────────── */}
+      <View style={styles.tabBar}>
+        <FlatList
+          data={TABS}
+          keyExtractor={(item) => item.key}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabBarContent}
+          renderItem={({ item: tab }) => {
+            const isActive = tab.key === activeTab;
+            const count = getCounts(tab.key);
+            return (
+              <Pressable
+                key={tab.key}
+                style={[styles.tab, isActive && styles.tabActive]}
+                onPress={() => setActiveTab(tab.key)}>
+                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                  {tab.label}
+                </Text>
+                {count > 0 && (
+                  <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
+                    <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
+                      {count}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            );
+          }}
+        />
       </View>
 
-      {/* Lessons List */}
+      {/* ── Lessons List ─────────────────────────────────── */}
       <FlatList
         data={filteredLessons}
         renderItem={renderLesson}
@@ -178,13 +219,20 @@ const InstructorScheduleScreen = ({ navigation }: Props) => {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={48} color={theme.colors.textTertiary} />
-            <Text style={styles.emptyText}>No lessons found</Text>
+            <Ionicons name="calendar-outline" size={56} color={theme.colors.textTertiary} style={styles.emptyIcon} />
+            <Text style={styles.emptyTitle}>No Lessons</Text>
+            <Text style={styles.emptySubtitle}>
+              {activeTab === 'upcoming'
+                ? 'No upcoming lessons scheduled.'
+                : activeTab === 'completed'
+                  ? 'No completed lessons yet.'
+                  : 'No lessons found.'}
+            </Text>
           </View>
         }
       />
 
-      {/* Review Bottom Sheet */}
+      {/* ── Review Bottom Sheet ──────────────────────────── */}
       <Modal
         visible={reviewLesson !== null}
         transparent
@@ -193,14 +241,12 @@ const InstructorScheduleScreen = ({ navigation }: Props) => {
       >
         <Pressable style={styles.sheetOverlay} onPress={() => setReviewLesson(null)}>
           <Pressable style={styles.sheetContent} onPress={() => {}}>
-            {/* Handle Bar */}
             <View style={styles.sheetHandle} />
-
             <Text style={styles.sheetTitle}>Review Lesson</Text>
 
             {reviewLesson && (
               <View style={styles.sheetStudentInfo}>
-                <Avatar initials={reviewLesson.studentAvatar} theme={theme} />
+                <Avatar initials={reviewLesson.studentAvatar} size={52} theme={theme} />
                 <View style={styles.sheetStudentDetails}>
                   <Text style={styles.studentName}>{reviewLesson.studentName}</Text>
                   <Text style={styles.lessonDate}>{reviewLesson.date} at {reviewLesson.time}</Text>
@@ -265,53 +311,111 @@ const InstructorScheduleScreen = ({ navigation }: Props) => {
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    tabsContainer: {
-      flexDirection: 'row',
-      backgroundColor: theme.colors.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.divider,
+    // ── Pill Tabs ───────────────────────────────────────
+    tabBar: {
+      paddingVertical: theme.spacing.sm,
+    },
+    tabBarContent: {
+      paddingHorizontal: theme.spacing.md,
+      gap: theme.spacing.xs,
     },
     tab: {
-      flex: 1,
+      flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: theme.spacing.sm,
-      borderBottomWidth: 2,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.borderRadius.full,
+      backgroundColor: theme.colors.surfaceSecondary,
+      gap: 6,
     },
-    tabText: { ...theme.typography.buttonMedium },
+    tabActive: {
+      backgroundColor: theme.colors.primary,
+    },
+    tabText: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textSecondary,
+      fontWeight: '600',
+    },
+    tabTextActive: {
+      color: theme.colors.textInverse,
+    },
+    tabBadge: {
+      backgroundColor: theme.colors.neutral300,
+      minWidth: 20,
+      height: 20,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 4,
+    },
+    tabBadgeActive: {
+      backgroundColor: 'rgba(255,255,255,0.3)',
+    },
+    tabBadgeText: {
+      ...theme.typography.caption,
+      color: theme.colors.textSecondary,
+      fontWeight: '700',
+      fontSize: 11,
+    },
+    tabBadgeTextActive: {
+      color: theme.colors.textInverse,
+    },
+
+    // ── List ────────────────────────────────────────────
     listContent: {
-      padding: theme.spacing.md,
-      gap: theme.spacing.sm,
+      paddingTop: theme.spacing.sm,
       paddingBottom: theme.spacing['3xl'],
     },
-    lessonCard: {
+
+    // ── Card (matches student side) ─────────────────────
+    card: {
       backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.lg,
-      padding: theme.spacing.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      ...theme.shadows.sm,
+      borderRadius: theme.borderRadius.xl,
+      padding: theme.spacing.lg,
+      marginHorizontal: theme.spacing.md,
+      marginBottom: theme.spacing.md,
+      ...theme.shadows.md,
     },
-    lessonHeader: {
+    headerRow: {
       flexDirection: 'row',
       alignItems: 'center',
     },
-    lessonInfo: {
+    headerInfo: {
       flex: 1,
       marginLeft: theme.spacing.sm,
     },
-    studentName: { ...theme.typography.h4, color: theme.colors.textPrimary },
-    lessonDate: { ...theme.typography.bodySmall, color: theme.colors.textSecondary, marginTop: 2 },
+    studentName: {
+      ...theme.typography.h3,
+      color: theme.colors.textPrimary,
+    },
+    lessonDate: {
+      ...theme.typography.caption,
+      color: theme.colors.textTertiary,
+      marginTop: 2,
+    },
     statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xxs,
       borderRadius: theme.borderRadius.full,
+      gap: 4,
     },
-    statusBadgeText: { ...theme.typography.caption },
+    statusIcon: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    statusText: {
+      ...theme.typography.caption,
+      fontWeight: '700',
+    },
+
+    // ── Lesson Footer ───────────────────────────────────
     lessonFooter: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginTop: theme.spacing.sm,
+      marginTop: theme.spacing.md,
       paddingTop: theme.spacing.sm,
       borderTopWidth: 1,
       borderTopColor: theme.colors.divider,
@@ -321,20 +425,43 @@ const createStyles = (theme: AppTheme) =>
       alignItems: 'center',
       gap: theme.spacing.xxs,
     },
-    detailValue: { ...theme.typography.bodySmall, color: theme.colors.textPrimary, fontWeight: '600' },
+    detailValue: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textPrimary,
+      fontWeight: '600',
+    },
     reviewHint: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: theme.spacing.xxs,
     },
-    reviewHintText: { ...theme.typography.caption, color: theme.colors.primary },
+    reviewHintText: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+    },
+
+    // ── Empty State ─────────────────────────────────────
     emptyState: {
       alignItems: 'center',
-      paddingVertical: theme.spacing['4xl'],
-      gap: theme.spacing.sm,
+      paddingTop: theme.spacing['5xl'],
+      paddingHorizontal: theme.spacing.xl,
     },
-    emptyText: { ...theme.typography.bodyLarge, color: theme.colors.textTertiary },
-    // Bottom Sheet
+    emptyIcon: {
+      marginBottom: theme.spacing.md,
+    },
+    emptyTitle: {
+      ...theme.typography.h2,
+      color: theme.colors.textPrimary,
+      marginBottom: theme.spacing.xs,
+    },
+    emptySubtitle: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+
+    // ── Bottom Sheet ────────────────────────────────────
     sheetOverlay: {
       flex: 1,
       backgroundColor: theme.colors.overlay,
@@ -356,7 +483,11 @@ const createStyles = (theme: AppTheme) =>
       alignSelf: 'center',
       marginBottom: theme.spacing.lg,
     },
-    sheetTitle: { ...theme.typography.h2, color: theme.colors.textPrimary, marginBottom: theme.spacing.lg },
+    sheetTitle: {
+      ...theme.typography.h2,
+      color: theme.colors.textPrimary,
+      marginBottom: theme.spacing.lg,
+    },
     sheetStudentInfo: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -364,7 +495,11 @@ const createStyles = (theme: AppTheme) =>
     },
     sheetStudentDetails: { marginLeft: theme.spacing.sm },
     ratingSection: { marginBottom: theme.spacing.lg },
-    ratingLabel: { ...theme.typography.label, color: theme.colors.textSecondary, marginBottom: theme.spacing.xs },
+    ratingLabel: {
+      ...theme.typography.label,
+      color: theme.colors.textSecondary,
+      marginBottom: theme.spacing.xs,
+    },
     starsRow: { flexDirection: 'row', gap: theme.spacing.xs },
     starButton: { padding: theme.spacing.xxs },
     commentSection: { marginBottom: theme.spacing.xl },

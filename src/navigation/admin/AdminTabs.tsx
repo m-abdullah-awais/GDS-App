@@ -5,6 +5,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../theme';
 import AppTopHeader from '../../components/AppTopHeader';
 import { clearDevRoleOverride } from '../devAuth';
+import CustomDrawerContent from '../../components/CustomDrawerContent';
 
 import AdminDashboardScreen from '../../screens/admin/AdminDashboardScreen';
 import AdminStudentApprovalScreen from '../../screens/admin/AdminStudentApprovalScreen';
@@ -50,6 +51,14 @@ const AdminTabs = () => {
 
   return (
     <Drawer.Navigator
+      drawerContent={(props) => (
+        <CustomDrawerContent
+          {...props}
+          userName="Sarah Admin"
+          userEmail="admin@gds-driving.com"
+          roleLabel="Admin"
+        />
+      )}
       screenOptions={{
         header: ({ navigation, route, options }) => (
           <AppTopHeader
@@ -58,7 +67,6 @@ const AdminTabs = () => {
             avatarText="Admin"
             leftAction="menu"
             onLeftPress={() => navigation.toggleDrawer()}
-            onAvatarPress={() => navigation.navigate('Profile')}
             onLogoutPress={handleLogout}
           />
         ),
@@ -155,7 +163,7 @@ const AdminTabs = () => {
         name="Profile"
         component={AdminProfileScreen}
         options={{
-          headerShown: false,
+        //   headerShown: false,
           drawerIcon: ({ color, size }) => (
             <Ionicons name="person-circle-outline" size={size} color={color} style={{ marginRight: 6 }} />
           ),

@@ -2,6 +2,7 @@
  * InstructorRequestsScreen
  * =========================
  * Incoming and outgoing student requests.
+ * Pill-style filter tabs + premium card styling (matches student side).
  */
 
 import React, { useMemo, useState } from 'react';
@@ -29,6 +30,60 @@ type Props = DrawerScreenProps<InstructorTabsParamList, 'Requests'>;
 
 type TabKey = 'incoming' | 'outgoing';
 
+// ─── Avatar ───────────────────────────────────────────────────────────────────
+
+const Avatar = ({
+  initials,
+  size = 52,
+  theme,
+}: {
+  initials: string;
+  size?: number;
+  theme: AppTheme;
+}) => (
+  <View
+    style={{
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      backgroundColor: theme.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+    <Text
+      style={[
+        theme.typography.buttonSmall,
+        { color: theme.colors.textInverse, fontSize: size * 0.36 },
+      ]}>
+      {initials}
+    </Text>
+  </View>
+);
+
+// ─── Status helpers ───────────────────────────────────────────────────────────
+
+const getStatusStyle = (status: string, theme: AppTheme) => {
+  switch (status) {
+    case 'accepted':
+      return { bg: theme.colors.successLight, text: theme.colors.success, label: 'Accepted', icon: '✓' };
+    case 'pending':
+      return { bg: theme.colors.warningLight, text: theme.colors.warning, label: 'Pending', icon: '⏳' };
+    case 'rejected':
+      return { bg: theme.colors.errorLight, text: theme.colors.error, label: 'Rejected', icon: '✗' };
+    default:
+      return { bg: theme.colors.neutral200, text: theme.colors.textSecondary, label: status, icon: '' };
+  }
+};
+
+// ─── Filter Tabs ──────────────────────────────────────────────────────────────
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'incoming', label: 'Incoming' },
+  { key: 'outgoing', label: 'Sent' },
+];
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 const InstructorRequestsScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -39,6 +94,9 @@ const InstructorRequestsScreen = ({ navigation }: Props) => {
     () => requests.filter((r) => r.direction === activeTab),
     [requests, activeTab],
   );
+
+  const getCounts = (key: TabKey) =>
+    requests.filter((r) => r.direction === key).length;
 
   const handleAccept = (requestId: string) => {
     setRequests((prev) =>
@@ -60,45 +118,38 @@ const InstructorRequestsScreen = ({ navigation }: Props) => {
     );
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return { bg: theme.colors.warningLight, text: theme.colors.warning, label: 'Pending' };
-      case 'accepted':
-        return { bg: theme.colors.successLight, text: theme.colors.success, label: 'Accepted' };
-      case 'rejected':
-        return { bg: theme.colors.errorLight, text: theme.colors.error, label: 'Rejected' };
-      default:
-        return { bg: theme.colors.neutral200, text: theme.colors.textSecondary, label: status };
-    }
-  };
-
   const renderRequest = ({ item }: { item: StudentRequest }) => {
-    const badge = getStatusBadge(item.status);
+    const badge = getStatusStyle(item.status, theme);
     return (
-      <View style={styles.requestCard}>
-        <View style={styles.requestHeader}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{item.studentAvatar}</Text>
-          </View>
-          <View style={styles.requestInfo}>
+      <View style={styles.card}>
+        {/* Header row */}
+        <View style={styles.headerRow}>
+          <Avatar initials={item.studentAvatar} size={52} theme={theme} />
+          <View style={styles.headerInfo}>
             <Text style={styles.studentName}>{item.studentName}</Text>
-            <Text style={styles.postcode}>Postcode: {item.postcode}</Text>
+            <Text style={styles.sentDate}>Postcode: {item.postcode}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
-            <Text style={[styles.statusBadgeText, { color: badge.text }]}>
-              {badge.label}
-            </Text>
+            <Text style={[styles.statusIcon, { color: badge.text }]}>{badge.icon}</Text>
+            <Text style={[styles.statusText, { color: badge.text }]}>{badge.label}</Text>
           </View>
         </View>
 
-        <View style={styles.requestMeta}>
-          <Text style={styles.metaText}>Sent: {item.sentDate}</Text>
+        {/* Meta info */}
+        <View style={styles.metaSection}>
+          <View style={styles.metaRow}>
+            <Ionicons name="calendar-outline" size={14} color={theme.colors.textTertiary} />
+            <Text style={styles.metaText}>Sent: {item.sentDate}</Text>
+          </View>
           {item.responseDate && (
-            <Text style={styles.metaText}>Responded: {item.responseDate}</Text>
+            <View style={styles.metaRow}>
+              <Ionicons name="checkmark-circle-outline" size={14} color={theme.colors.textTertiary} />
+              <Text style={styles.metaText}>Responded: {item.responseDate}</Text>
+            </View>
           )}
         </View>
 
+        {/* Actions — pending incoming */}
         {item.status === 'pending' && item.direction === 'incoming' && (
           <View style={styles.actionRow}>
             <Button
@@ -111,57 +162,75 @@ const InstructorRequestsScreen = ({ navigation }: Props) => {
             <Button
               title="Reject"
               onPress={() => handleReject(item.id)}
-              variant="outline"
+              variant="destructive"
               size="sm"
               style={styles.actionButton}
             />
+          </View>
+        )}
+
+        {/* Pending outgoing indicator */}
+        {item.status === 'pending' && item.direction === 'outgoing' && (
+          <View style={styles.pendingRow}>
+            <Ionicons name="mail-outline" size={16} color={theme.colors.warning} />
+            <Text style={styles.pendingText}>Awaiting response…</Text>
+          </View>
+        )}
+
+        {/* Accepted indicator */}
+        {item.status === 'accepted' && (
+          <View style={styles.acceptedRow}>
+            <Ionicons name="checkmark-circle" size={16} color={theme.colors.success} />
+            <Text style={styles.acceptedText}>Request accepted</Text>
+          </View>
+        )}
+
+        {/* Rejected indicator */}
+        {item.status === 'rejected' && (
+          <View style={styles.rejectedRow}>
+            <Ionicons name="close-circle" size={16} color={theme.colors.error} />
+            <Text style={styles.rejectedText}>Request declined</Text>
           </View>
         )}
       </View>
     );
   };
 
-  const TABS: { key: TabKey; label: string }[] = [
-    { key: 'incoming', label: 'Incoming' },
-    { key: 'outgoing', label: 'Sent' },
-  ];
-
   return (
     <ScreenContainer showHeader title="Student Requests" onBackPress={() => navigation.goBack()}>
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.key;
-          return (
-            <Pressable
-              key={tab.key}
-              style={[
-                styles.tab,
-                {
-                  borderBottomColor: isActive
-                    ? theme.colors.primary
-                    : 'transparent',
-                },
-              ]}
-              onPress={() => setActiveTab(tab.key)}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  {
-                    color: isActive
-                      ? theme.colors.primary
-                      : theme.colors.textSecondary,
-                  },
-                ]}
-              >
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+      {/* ── Pill Filter Tabs ─────────────────────────────── */}
+      <View style={styles.tabBar}>
+        <FlatList
+          data={TABS}
+          keyExtractor={(item) => item.key}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabBarContent}
+          renderItem={({ item: tab }) => {
+            const isActive = tab.key === activeTab;
+            const count = getCounts(tab.key);
+            return (
+              <Pressable
+                key={tab.key}
+                style={[styles.tab, isActive && styles.tabActive]}
+                onPress={() => setActiveTab(tab.key)}>
+                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                  {tab.label}
+                </Text>
+                {count > 0 && (
+                  <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
+                    <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
+                      {count}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            );
+          }}
+        />
       </View>
 
+      {/* ── Requests List ────────────────────────────────── */}
       <FlatList
         data={filteredRequests}
         renderItem={renderRequest}
@@ -170,8 +239,13 @@ const InstructorRequestsScreen = ({ navigation }: Props) => {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="mail-outline" size={48} color={theme.colors.textTertiary} />
-            <Text style={styles.emptyText}>No requests found</Text>
+            <Ionicons name="mail-outline" size={56} color={theme.colors.textTertiary} style={styles.emptyIcon} />
+            <Text style={styles.emptyTitle}>No Requests</Text>
+            <Text style={styles.emptySubtitle}>
+              {activeTab === 'incoming'
+                ? 'No incoming student requests at the moment.'
+                : 'You haven\'t sent any requests yet.'}
+            </Text>
           </View>
         }
       />
@@ -181,102 +255,202 @@ const InstructorRequestsScreen = ({ navigation }: Props) => {
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    tabsContainer: {
-      flexDirection: 'row',
-      backgroundColor: theme.colors.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.divider,
+    // ── Pill Tabs ───────────────────────────────────────
+    tabBar: {
+      paddingVertical: theme.spacing.sm,
+    },
+    tabBarContent: {
+      paddingHorizontal: theme.spacing.md,
+      gap: theme.spacing.xs,
     },
     tab: {
-      flex: 1,
+      flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: theme.spacing.sm,
-      borderBottomWidth: 2,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.borderRadius.full,
+      backgroundColor: theme.colors.surfaceSecondary,
+      gap: 6,
+    },
+    tabActive: {
+      backgroundColor: theme.colors.primary,
     },
     tabText: {
-      ...theme.typography.buttonMedium,
+      ...theme.typography.bodySmall,
+      color: theme.colors.textSecondary,
+      fontWeight: '600',
     },
+    tabTextActive: {
+      color: theme.colors.textInverse,
+    },
+    tabBadge: {
+      backgroundColor: theme.colors.neutral300,
+      minWidth: 20,
+      height: 20,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 4,
+    },
+    tabBadgeActive: {
+      backgroundColor: 'rgba(255,255,255,0.3)',
+    },
+    tabBadgeText: {
+      ...theme.typography.caption,
+      color: theme.colors.textSecondary,
+      fontWeight: '700',
+      fontSize: 11,
+    },
+    tabBadgeTextActive: {
+      color: theme.colors.textInverse,
+    },
+
+    // ── List ────────────────────────────────────────────
     listContent: {
-      padding: theme.spacing.md,
-      gap: theme.spacing.sm,
+      paddingTop: theme.spacing.sm,
       paddingBottom: theme.spacing['3xl'],
     },
-    requestCard: {
+
+    // ── Card (matches student side) ─────────────────────
+    card: {
       backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.lg,
-      padding: theme.spacing.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      ...theme.shadows.sm,
+      borderRadius: theme.borderRadius.xl,
+      padding: theme.spacing.lg,
+      marginHorizontal: theme.spacing.md,
+      marginBottom: theme.spacing.md,
+      ...theme.shadows.md,
     },
-    requestHeader: {
+    headerRow: {
       flexDirection: 'row',
       alignItems: 'center',
     },
-    avatarCircle: {
-      width: 44,
-      height: 44,
-      borderRadius: theme.borderRadius.full,
-      backgroundColor: theme.colors.primaryLight,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    avatarText: {
-      ...theme.typography.buttonMedium,
-      color: theme.colors.primary,
-    },
-    requestInfo: {
+    headerInfo: {
       flex: 1,
       marginLeft: theme.spacing.sm,
     },
     studentName: {
-      ...theme.typography.h4,
+      ...theme.typography.h3,
       color: theme.colors.textPrimary,
     },
-    postcode: {
-      ...theme.typography.bodySmall,
-      color: theme.colors.textSecondary,
+    sentDate: {
+      ...theme.typography.caption,
+      color: theme.colors.textTertiary,
       marginTop: 2,
     },
     statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xxs,
       borderRadius: theme.borderRadius.full,
+      gap: 4,
     },
-    statusBadgeText: {
+    statusIcon: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    statusText: {
       ...theme.typography.caption,
+      fontWeight: '700',
     },
-    requestMeta: {
+
+    // ── Meta Section ────────────────────────────────────
+    metaSection: {
+      marginTop: theme.spacing.md,
+      backgroundColor: theme.colors.surfaceSecondary,
+      borderRadius: theme.borderRadius.md,
+      padding: theme.spacing.md,
+      gap: theme.spacing.xs,
+    },
+    metaRow: {
       flexDirection: 'row',
-      gap: theme.spacing.md,
-      marginTop: theme.spacing.sm,
-      paddingTop: theme.spacing.sm,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.divider,
+      alignItems: 'center',
+      gap: theme.spacing.xs,
     },
     metaText: {
       ...theme.typography.caption,
       color: theme.colors.textTertiary,
     },
+
+    // ── Actions ─────────────────────────────────────────
     actionRow: {
       flexDirection: 'row',
       gap: theme.spacing.sm,
-      marginTop: theme.spacing.sm,
+      marginTop: theme.spacing.md,
     },
     actionButton: {
       flex: 1,
     },
+
+    // ── Status Indicators ───────────────────────────────
+    pendingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: theme.spacing.md,
+      backgroundColor: theme.colors.warningLight,
+      borderRadius: theme.borderRadius.md,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
+      gap: theme.spacing.xs,
+    },
+    pendingText: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.warning,
+      fontWeight: '600',
+    },
+    acceptedRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: theme.spacing.md,
+      backgroundColor: theme.colors.successLight,
+      borderRadius: theme.borderRadius.md,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
+      gap: theme.spacing.xs,
+    },
+    acceptedText: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.success,
+      fontWeight: '600',
+    },
+    rejectedRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: theme.spacing.md,
+      backgroundColor: theme.colors.errorLight,
+      borderRadius: theme.borderRadius.md,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
+      gap: theme.spacing.xs,
+    },
+    rejectedText: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.error,
+      fontWeight: '600',
+    },
+
+    // ── Empty State ─────────────────────────────────────
     emptyState: {
       alignItems: 'center',
-      paddingVertical: theme.spacing['4xl'],
+      paddingTop: theme.spacing['5xl'],
+      paddingHorizontal: theme.spacing.xl,
     },
     emptyIcon: {
-      fontSize: 48,
       marginBottom: theme.spacing.md,
     },
-    emptyText: {
-      ...theme.typography.bodyLarge,
-      color: theme.colors.textTertiary,
+    emptyTitle: {
+      ...theme.typography.h2,
+      color: theme.colors.textPrimary,
+      marginBottom: theme.spacing.xs,
+    },
+    emptySubtitle: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
     },
   });
 

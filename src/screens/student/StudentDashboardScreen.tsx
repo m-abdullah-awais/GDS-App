@@ -70,6 +70,7 @@ const StudentDashboardScreen = () => {
   );
   const hoursUsed = studentProfile.totalHours - studentProfile.remainingHours;
   const progress = hoursUsed / studentProfile.totalHours;
+  const QUICK_ACTION_COLORS = ['#2F6BFF', '#1FBF5B', '#F97316'];
 
   return (
     <ScreenContainer>
@@ -214,37 +215,37 @@ const StudentDashboardScreen = () => {
         </View>
         <View style={s.actionsRow}>
           <Pressable
-            style={s.actionCard}
+            style={[s.actionCard, { backgroundColor: QUICK_ACTION_COLORS[0] }]}
             onPress={() => navigation.navigate('InstructorDiscovery')}>
             <View
-              style={[s.actionIcon, { backgroundColor: theme.colors.primaryLight }]}>
-              <Ionicons name="search-outline" size={24} color={theme.colors.primary} />
+              style={[s.actionIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+              <Ionicons name="search-outline" size={24} color={theme.colors.textInverse} />
             </View>
-            <Text style={s.actionLabel}>Find{'\n'}Instructor</Text>
+            <Text style={[s.actionLabel, { color: theme.colors.textInverse }]}>Find{'\n'}Instructor</Text>
           </Pressable>
           <Pressable
-            style={s.actionCard}
+            style={[s.actionCard, { backgroundColor: QUICK_ACTION_COLORS[1] }]}
             onPress={() => navigation.navigate('MyLessons')}>
             <View
               style={[
                 s.actionIcon,
-                { backgroundColor: theme.colors.successLight },
+                { backgroundColor: 'rgba(255,255,255,0.2)' },
               ]}>
-              <Ionicons name="calendar-outline" size={24} color={theme.colors.success} />
+              <Ionicons name="calendar-outline" size={24} color={theme.colors.textInverse} />
             </View>
-            <Text style={s.actionLabel}>View My{'\n'}Lessons</Text>
+            <Text style={[s.actionLabel, { color: theme.colors.textInverse }]}>View My{'\n'}Lessons</Text>
           </Pressable>
           <Pressable
-            style={s.actionCard}
+            style={[s.actionCard, { backgroundColor: QUICK_ACTION_COLORS[2] }]}
             onPress={() => navigation.navigate('StudentMessages')}>
             <View
               style={[
                 s.actionIcon,
-                { backgroundColor: theme.colors.warningLight },
+                { backgroundColor: 'rgba(255,255,255,0.2)' },
               ]}>
-              <Ionicons name="chatbubble-outline" size={24} color={theme.colors.warning} />
+              <Ionicons name="chatbubble-outline" size={24} color={theme.colors.textInverse} />
             </View>
-            <Text style={s.actionLabel}>Messages</Text>
+            <Text style={[s.actionLabel, { color: theme.colors.textInverse }]}>Messages</Text>
           </Pressable>
         </View>
 

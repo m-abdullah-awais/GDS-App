@@ -1,127 +1,80 @@
 /**
- * GDS Driving School — Color System
- * ====================================
- *
- * Design rationale:
- *
- * PRIMARY (#1A56DB → Deep Confident Blue)
- *   Chosen for trust, authority, and reliability — the three pillars of
- *   education and transport industries. This shade sits between royal blue
- *   and navy, avoiding the generic Material Design blue (#2196F3). It's
- *   inspired by the color language of Stripe, Revolut, and Linear —
- *   premium apps that pair deep blues with neutral surfaces.
- *
- * SECONDARY (#0F172A → Rich Slate-900)
- *   A near-black with a blue undertone. Used for headlines, navigation
- *   chrome, and high-emphasis surfaces. Gives the "dark mode premium feel"
- *   even in light mode sections. Sourced from Tailwind's Slate scale.
- *
- * ACCENT (#6366F1 → Modern Indigo)
- *   A vibrant-but-controlled indigo for interactive highlights, badges,
- *   and CTAs that need to stand apart from the primary blue. Linear and
- *   Stripe use this family for secondary call-to-actions.
- *
- * NEUTRAL SCALE (Slate 50–900)
- *   Cool-gray, slightly blue-tinted neutrals from the Tailwind Slate
- *   palette. Cool grays feel more modern and "tech" than warm or pure
- *   grays. Every premium SaaS toolkit (Radix, shadcn/ui) defaults to
- *   this scale.
- *
- * SEMANTIC COLORS
- *   Success (#059669) — muted emerald, not flashy.
- *   Warning (#D97706) — warm amber, legible on both themes.
- *   Error   (#DC2626) — clear red with strong contrast.
- *   Info    (#0284C7) — sky-blue, distinct from primary.
- *
- * All colors pass WCAG AA contrast against their intended background
- * (white surface in light mode, slate-900 surface in dark mode).
+ * GDS Driving School — Bright Color System
+ * ==========================================
+ * Updated to a more vibrant, high-visibility palette with elegant contrast.
  */
 
-// ─── Primitive Color Tokens ───────────────────────────────────────────────────
-
 export const palette = {
-  // Blues (primary family)
-  blue50: '#EFF6FF',
-  blue100: '#DBEAFE',
-  blue200: '#BFDBFE',
-  blue300: '#93C5FD',
-  blue400: '#60A5FA',
-  blue500: '#3B82F6',
-  blue600: '#1A56DB',   // ← Primary
-  blue700: '#1440A9',   // ← Primary Dark
-  blue800: '#1E3A5F',
-  blue900: '#0C2340',
+  // Brand / utility families
+  blue50: '#EAF1FF',
+  blue100: '#D8E5FF',
+  blue200: '#B6CCFF',
+  blue300: '#8EB0FF',
+  blue400: '#6595FF',
+  blue500: '#3F7EFF',
+  blue600: '#2F6BFF',
+  blue700: '#1F4FCC',
+  blue800: '#163B99',
+  blue900: '#102B73',
 
-  // Indigos (accent family)
-  indigo50: '#EEF2FF',
-  indigo100: '#E0E7FF',
-  indigo200: '#C7D2FE',
-  indigo300: '#A5B4FC',
-  indigo400: '#818CF8',
-  indigo500: '#6366F1',  // ← Accent
-  indigo600: '#4F46E5',
-  indigo700: '#4338CA',
+  violet50: '#F2EEFF',
+  violet100: '#E7DFFF',
+  violet200: '#D4C2FF',
+  violet300: '#BA9BFF',
+  violet400: '#9D74FF',
+  violet500: '#8658FF',
+  violet600: '#7141F4',
+  violet700: '#5E31D3',
 
-  // Slate (neutral family — cool-gray with blue undertone)
-  slate50: '#F8FAFC',
-  slate100: '#F1F5F9',
-  slate200: '#E2E8F0',
-  slate300: '#CBD5E1',
-  slate400: '#94A3B8',
-  slate500: '#64748B',
-  slate600: '#475569',
-  slate700: '#334155',
-  slate800: '#1E293B',
-  slate900: '#0F172A',
-  slate950: '#020617',
+  fuchsia500: '#D946EF',
+  fuchsia600: '#C026D3',
 
-  // Violet (highlight family)
-  violet50: '#F5F3FF',
-  violet100: '#EDE9FE',
-  violet200: '#DDD6FE',
-  violet300: '#C4B5FD',
-  violet400: '#A78BFA',
-  violet500: '#8B5CF6',
-  violet600: '#7C3AED',
-  violet700: '#6D28D9',
-
-  // Semantic
-  emerald600: '#059669',
-  emerald700: '#047857',
+  emerald500: '#22C55E',
+  emerald600: '#16A34A',
+  amber500: '#F59E0B',
   amber600: '#D97706',
-  amber700: '#B45309',
+  red500: '#EF4444',
   red600: '#DC2626',
-  red700: '#B91C1C',
+  sky500: '#0EA5E9',
   sky600: '#0284C7',
-  sky700: '#0369A1',
 
-  // Absolute
+  // Cool neutral family
+  slate50: '#F3F6FB',
+  slate100: '#E8EDF6',
+  slate200: '#D6E0EE',
+  slate300: '#BCC9DE',
+  slate400: '#8EA0BE',
+  slate500: '#667A99',
+  slate600: '#4A5E80',
+  slate700: '#334664',
+  slate800: '#202F4D',
+  slate900: '#0F1A33',
+  slate950: '#080F24',
+
   white: '#FFFFFF',
   black: '#000000',
   transparent: 'transparent',
 } as const;
 
-// ─── Semantic Color Tokens – Light Mode ───────────────────────────────────────
-
 export const lightColors = {
   // Brand
-  primary: palette.blue600,          // #1A56DB – buttons, links, active states
-  primaryDark: palette.blue700,      // #1440A9 – pressed/hover states
-  primaryLight: palette.blue100,     // #DBEAFE – tinted backgrounds, chips
-  secondary: palette.slate900,       // #0F172A – headlines, nav bars
-  accent: palette.indigo500,         // #6366F1 – badges, highlights, secondary CTA
+  primary: palette.blue600,
+  primaryDark: palette.blue700,
+  primaryLight: palette.blue100,
+  secondary: palette.slate900,
+  accent: palette.fuchsia500,
 
   // Semantic
-  success: palette.emerald600,       // #059669
-  successLight: '#ECFDF5',           // tinted bg
-  warning: palette.amber600,         // #D97706
-  warningLight: '#FFFBEB',           // tinted bg
-  error: palette.red600,             // #DC2626
-  errorLight: '#FEF2F2',            // tinted bg
-  info: palette.sky600,              // #0284C7
-  infoLight: '#F0F9FF',             // tinted bg
-  highlight: palette.violet600,      // #7C3AED – highlight metrics
-  highlightLight: '#F5F3FF',         // tinted bg
+  success: palette.emerald500,
+  successLight: '#EAFBF1',
+  warning: palette.amber500,
+  warningLight: '#FFF6E6',
+  error: palette.red500,
+  errorLight: '#FFECEC',
+  info: palette.sky500,
+  infoLight: '#EAF7FE',
+  highlight: palette.fuchsia500,
+  highlightLight: '#FDEAFE',
 
   // Neutral scale
   neutral50: palette.slate50,
@@ -136,58 +89,56 @@ export const lightColors = {
   neutral900: palette.slate900,
 
   // Surfaces
-  background: palette.slate50,       // #F8FAFC – full-screen background
-  surface: palette.white,            // #FFFFFF – cards, modals, sheets
-  surfaceSecondary: palette.slate100,// #F1F5F9 – secondary sections
-  overlay: 'rgba(15, 23, 42, 0.5)', // semi-transparent backdrop
+  background: palette.slate50,
+  surface: palette.white,
+  surfaceSecondary: palette.slate100,
+  overlay: 'rgba(15, 26, 51, 0.54)',
 
   // Text
-  textPrimary: palette.slate900,     // #0F172A – headings, primary content
-  textSecondary: palette.slate600,   // #475569 – secondary/supporting text
-  textTertiary: palette.slate400,    // #94A3B8 – placeholders, hints
-  textInverse: palette.white,        // white text on dark backgrounds
-  textLink: palette.blue600,         // #1A56DB – links
+  textPrimary: palette.slate900,
+  textSecondary: palette.slate600,
+  textTertiary: palette.slate400,
+  textInverse: palette.white,
+  textLink: palette.blue600,
 
   // Borders & Dividers
-  border: palette.slate200,          // #E2E8F0 – card borders, input outlines
-  borderFocused: palette.blue600,    // #1A56DB – focused inputs
-  divider: palette.slate200,         // #E2E8F0 – horizontal rules
+  border: palette.slate200,
+  borderFocused: palette.blue600,
+  divider: palette.slate200,
 
   // States
-  disabled: palette.slate300,        // #CBD5E1 – disabled controls
-  disabledText: palette.slate400,    // #94A3B8 – disabled text
-  placeholder: palette.slate400,     // #94A3B8 – input placeholders
-  ripple: 'rgba(26, 86, 219, 0.08)', // subtle blue ripple
-  pressed: 'rgba(26, 86, 219, 0.12)',// pressed overlay
+  disabled: palette.slate300,
+  disabledText: palette.slate400,
+  placeholder: palette.slate400,
+  ripple: 'rgba(47, 107, 255, 0.1)',
+  pressed: 'rgba(47, 107, 255, 0.14)',
 
   // Misc
-  skeleton: palette.slate200,        // shimmer placeholder
+  skeleton: palette.slate200,
   statusBar: 'dark-content' as const,
 } as const;
 
-// ─── Semantic Color Tokens – Dark Mode ────────────────────────────────────────
-
 export const darkColors = {
   // Brand
-  primary: palette.blue400,          // #60A5FA – brighter blue for dark surfaces
-  primaryDark: palette.blue500,      // #3B82F6 – pressed states
-  primaryLight: 'rgba(59,130,246,0.15)', // subtle blue overlay
-  secondary: palette.slate100,       // #F1F5F9 – light text on dark
-  accent: palette.indigo400,         // #818CF8 – brighter indigo for dark
+  primary: palette.blue400,
+  primaryDark: palette.blue500,
+  primaryLight: 'rgba(63,126,255,0.24)',
+  secondary: '#ECF3FF',
+  accent: '#F472F8',
 
   // Semantic
-  success: '#34D399',                // brighter emerald for dark
-  successLight: 'rgba(5,150,105,0.15)',
-  warning: '#FBBF24',               // brighter amber for dark
-  warningLight: 'rgba(217,119,6,0.15)',
-  error: '#F87171',                  // brighter red for dark
-  errorLight: 'rgba(220,38,38,0.15)',
-  info: '#38BDF8',                   // brighter sky for dark
-  infoLight: 'rgba(2,132,199,0.15)',
-  highlight: palette.violet400,       // #A78BFA – brighter violet for dark
-  highlightLight: 'rgba(139,92,246,0.15)',
+  success: '#4ADE80',
+  successLight: 'rgba(34,197,94,0.22)',
+  warning: '#FBBF24',
+  warningLight: 'rgba(245,158,11,0.22)',
+  error: '#F87171',
+  errorLight: 'rgba(239,68,68,0.22)',
+  info: '#38BDF8',
+  infoLight: 'rgba(14,165,233,0.22)',
+  highlight: '#F472F8',
+  highlightLight: 'rgba(217,70,239,0.22)',
 
-  // Neutral scale (inverted perception)
+  // Neutral scale
   neutral50: palette.slate950,
   neutral100: palette.slate900,
   neutral200: palette.slate800,
@@ -197,35 +148,35 @@ export const darkColors = {
   neutral600: palette.slate400,
   neutral700: palette.slate300,
   neutral800: palette.slate200,
-  neutral900: palette.slate100,
+  neutral900: '#F3F6FB',
 
   // Surfaces
-  background: palette.slate950,      // #020617 – deep dark background
-  surface: palette.slate900,         // #0F172A – card / modal surfaces
-  surfaceSecondary: palette.slate800,// #1E293B – secondary sections
-  overlay: 'rgba(0, 0, 0, 0.6)',    // darker overlay
+  background: palette.slate950,
+  surface: '#101C39',
+  surfaceSecondary: '#16264A',
+  overlay: 'rgba(0, 0, 0, 0.64)',
 
   // Text
-  textPrimary: palette.slate50,      // #F8FAFC – headings
-  textSecondary: palette.slate400,   // #94A3B8 – supporting text
-  textTertiary: palette.slate500,    // #64748B – hints
-  textInverse: palette.slate900,     // dark text on light surfaces
-  textLink: palette.blue400,         // #60A5FA – links
+  textPrimary: '#ECF3FF',
+  textSecondary: '#AEC1DF',
+  textTertiary: '#7F95B8',
+  textInverse: '#101C39',
+  textLink: '#7DA5FF',
 
   // Borders & Dividers
-  border: palette.slate700,          // #334155
-  borderFocused: palette.blue400,    // #60A5FA
-  divider: palette.slate800,         // #1E293B
+  border: '#29406A',
+  borderFocused: '#5D8BFF',
+  divider: '#22375F',
 
   // States
-  disabled: palette.slate700,        // #334155
-  disabledText: palette.slate600,    // #475569
-  placeholder: palette.slate500,     // #64748B
-  ripple: 'rgba(96,165,250,0.1)',
-  pressed: 'rgba(96,165,250,0.15)',
+  disabled: '#2B3E66',
+  disabledText: '#6F85AA',
+  placeholder: '#748CB4',
+  ripple: 'rgba(125,165,255,0.16)',
+  pressed: 'rgba(125,165,255,0.22)',
 
   // Misc
-  skeleton: palette.slate800,
+  skeleton: '#233963',
   statusBar: 'light-content' as const,
 } as const;
 

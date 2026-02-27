@@ -41,6 +41,7 @@ interface QuickAction {
   icon: string;
   iconBg: string;
   iconColor: string;
+  cardBg: string;
   screen: string;
   target: 'drawer' | 'stack';
 }
@@ -55,12 +56,12 @@ const InstructorDashboardScreen = ({ navigation }: Props) => {
   const activeStudents = instructorStudents.length;
 
   const QUICK_ACTIONS: QuickAction[] = [
-    { id: '1', label: 'Configure\nAreas', icon: 'location-outline', iconBg: theme.colors.primaryLight, iconColor: theme.colors.primary, screen: 'Areas', target: 'stack' },
-    { id: '2', label: 'Create\nPackages', icon: 'cube-outline', iconBg: theme.colors.successLight, iconColor: theme.colors.success, screen: 'CreatePackage', target: 'stack' },
-    { id: '3', label: 'Set\nAvailability', icon: 'time-outline', iconBg: theme.colors.warningLight, iconColor: theme.colors.warning, screen: 'Availability', target: 'drawer' },
-    { id: '4', label: 'View\nSchedule', icon: 'calendar-outline', iconBg: theme.colors.primaryLight, iconColor: theme.colors.primary, screen: 'Schedule', target: 'drawer' },
-    { id: '5', label: 'Student\nRequests', icon: 'people-outline', iconBg: theme.colors.successLight, iconColor: theme.colors.success, screen: 'Requests', target: 'drawer' },
-    { id: '6', label: 'Earnings', icon: 'cash-outline', iconBg: theme.colors.warningLight, iconColor: theme.colors.warning, screen: 'Earnings', target: 'drawer' },
+    { id: '1', label: 'Configure\nAreas', icon: 'location-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#2F6BFF', screen: 'Areas', target: 'stack' },
+    { id: '2', label: 'Create\nPackages', icon: 'cube-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#7141F4', screen: 'CreatePackage', target: 'stack' },
+    { id: '3', label: 'Set\nAvailability', icon: 'time-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#1FBF5B', screen: 'Availability', target: 'drawer' },
+    { id: '4', label: 'View\nSchedule', icon: 'calendar-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#EF4444', screen: 'Schedule', target: 'drawer' },
+    { id: '5', label: 'Student\nRequests', icon: 'people-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#0EA5E9', screen: 'Requests', target: 'drawer' },
+    { id: '6', label: 'Earnings', icon: 'cash-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#D946EF', screen: 'Earnings', target: 'drawer' },
   ];
 
   const handleQuickAction = (action: QuickAction) => {
@@ -148,21 +149,21 @@ const InstructorDashboardScreen = ({ navigation }: Props) => {
         <View style={s.actionsGrid}>
           <View style={s.actionsRow}>
             {QUICK_ACTIONS.slice(0, 3).map(action => (
-              <Pressable key={action.id} style={s.actionCard} onPress={() => handleQuickAction(action)}>
+              <Pressable key={action.id} style={[s.actionCard, { backgroundColor: action.cardBg }]} onPress={() => handleQuickAction(action)}>
                 <View style={[s.actionIcon, { backgroundColor: action.iconBg }]}>
                   <Ionicons name={action.icon} size={24} color={action.iconColor} />
                 </View>
-                <Text style={s.actionLabel}>{action.label}</Text>
+                <Text style={[s.actionLabel, { color: theme.colors.textInverse }]}>{action.label}</Text>
               </Pressable>
             ))}
           </View>
           <View style={s.actionsRow}>
             {QUICK_ACTIONS.slice(3, 6).map(action => (
-              <Pressable key={action.id} style={s.actionCard} onPress={() => handleQuickAction(action)}>
+              <Pressable key={action.id} style={[s.actionCard, { backgroundColor: action.cardBg }]} onPress={() => handleQuickAction(action)}>
                 <View style={[s.actionIcon, { backgroundColor: action.iconBg }]}>
                   <Ionicons name={action.icon} size={24} color={action.iconColor} />
                 </View>
-                <Text style={s.actionLabel}>{action.label}</Text>
+                <Text style={[s.actionLabel, { color: theme.colors.textInverse }]}>{action.label}</Text>
               </Pressable>
             ))}
           </View>

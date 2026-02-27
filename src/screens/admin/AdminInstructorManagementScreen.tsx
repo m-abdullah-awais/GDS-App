@@ -164,30 +164,30 @@ const AdminInstructorManagementScreen = () => {
             title="Active"
             value={stats.active}
             icon="checkmark-circle-outline"
-            accentColor={theme.colors.success}
-            tintColor={theme.colors.successLight}
+            accentColor="#1FBF5B"
+            tintColor="#1FBF5B"
           />
           <StatsCard
             title="Suspended"
             value={stats.suspended}
             icon="pause-circle-outline"
-            accentColor={theme.colors.warning}
-            tintColor={theme.colors.warningLight}
+            accentColor="#EF4444"
+            tintColor="#EF4444"
           />
           <StatsCard
             title="Earnings"
             value={stats.totalEarnings}
             icon="cash-outline"
-            accentColor={theme.colors.highlight}
-            tintColor={theme.colors.highlightLight}
+            accentColor="#0EA5E9"
+            tintColor="#0EA5E9"
             prefix={'\u00A3'}
           />
           <StatsCard
             title="Pending"
             value={stats.totalPending}
             icon="wallet-outline"
-            accentColor={theme.colors.error}
-            tintColor={theme.colors.errorLight}
+            accentColor="#D946EF"
+            tintColor="#D946EF"
             prefix={'\u00A3'}
           />
         </View>

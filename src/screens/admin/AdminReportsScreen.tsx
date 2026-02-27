@@ -69,45 +69,45 @@ const AdminReportsScreen = () => {
           title="Total Students"
           value={dashboardStats.totalStudents}
           icon="people-outline"
-          accentColor={theme.colors.primary}
-          tintColor={theme.colors.primaryLight}
+          accentColor="#2F6BFF"
+          tintColor="#2F6BFF"
         />
         <StatsCard
           title="Total Instructors"
           value={dashboardStats.totalInstructors}
           icon="car-outline"
-          accentColor={theme.colors.accent}
-          tintColor={theme.colors.accent + '12'}
+          accentColor="#7141F4"
+          tintColor="#7141F4"
         />
         <StatsCard
           title="Approval Rate"
           value={derivedStats.approvalRate}
           icon="checkmark-done-outline"
-          accentColor={theme.colors.success}
-          tintColor={theme.colors.successLight}
+          accentColor="#1FBF5B"
+          tintColor="#1FBF5B"
           suffix="%"
         />
         <StatsCard
           title="Avg Rating"
           value={Number(derivedStats.avgRating)}
           icon="star-outline"
-          accentColor={theme.colors.warning}
-          tintColor={theme.colors.warningLight}
+          accentColor="#F97316"
+          tintColor="#F97316"
         />
         <StatsCard
           title="Total Revenue"
           value={derivedStats.totalRevenue}
           icon="cash-outline"
-          accentColor={theme.colors.highlight}
-          tintColor={theme.colors.highlightLight}
+          accentColor="#0EA5E9"
+          tintColor="#0EA5E9"
           prefix={'\u00A3'}
         />
         <StatsCard
           title="Avg Lessons"
           value={derivedStats.avgLessonsPerStudent}
           icon="book-outline"
-          accentColor={theme.colors.info}
-          tintColor={theme.colors.infoLight}
+          accentColor="#D946EF"
+          tintColor="#D946EF"
           suffix="/student"
         />
       </View>

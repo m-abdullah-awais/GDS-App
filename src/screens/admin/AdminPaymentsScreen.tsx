@@ -99,24 +99,24 @@ const AdminPaymentsScreen = () => {
           title="Monthly Revenue"
           value={dashboardStats.monthlyRevenue}
           icon="trending-up-outline"
-          accentColor={theme.colors.highlight}
-          tintColor={theme.colors.highlightLight}
+          accentColor="#0EA5E9"
+          tintColor="#0EA5E9"
           prefix={'\u00A3'}
         />
         <StatsCard
           title="Total Paid"
           value={stats.totalPaid}
           icon="checkmark-circle-outline"
-          accentColor={theme.colors.success}
-          tintColor={theme.colors.successLight}
+          accentColor="#1FBF5B"
+          tintColor="#1FBF5B"
           prefix={'\u00A3'}
         />
         <StatsCard
           title="Total Pending"
           value={stats.totalPending}
           icon="time-outline"
-          accentColor={theme.colors.warning}
-          tintColor={theme.colors.warningLight}
+          accentColor="#F97316"
+          tintColor="#F97316"
           prefix={'\u00A3'}
         />
       </View>

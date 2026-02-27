@@ -186,29 +186,29 @@ const AdminPackageApprovalScreen = () => {
             title="Pending"
             value={stats.pending}
             icon="time-outline"
-            accentColor={theme.colors.warning}
-            tintColor={theme.colors.warningLight}
+            accentColor="#F97316"
+            tintColor="#F97316"
           />
           <StatsCard
             title="Approved"
             value={stats.approved}
             icon="checkmark-circle-outline"
-            accentColor={theme.colors.success}
-            tintColor={theme.colors.successLight}
+            accentColor="#1FBF5B"
+            tintColor="#1FBF5B"
           />
           <StatsCard
             title="Rejected"
             value={stats.rejected}
             icon="close-circle-outline"
-            accentColor={theme.colors.error}
-            tintColor={theme.colors.errorLight}
+            accentColor="#EF4444"
+            tintColor="#EF4444"
           />
           <StatsCard
             title="Avg Commission"
             value={stats.avgCommission}
             icon="calculator-outline"
-            accentColor={theme.colors.highlight}
-            tintColor={theme.colors.highlightLight}
+            accentColor="#2F6BFF"
+            tintColor="#2F6BFF"
             suffix="%"
           />
         </View>

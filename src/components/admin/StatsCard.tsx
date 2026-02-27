@@ -58,17 +58,31 @@ const StatsCard: React.FC<StatsCardProps> = ({
     };
   }, [value, animatedValue]);
 
+  const isSolidCard = tintColor.toLowerCase() === accentColor.toLowerCase();
+  const valueColor = isSolidCard ? theme.colors.textInverse : theme.colors.textPrimary;
+  const titleColor = isSolidCard ? 'rgba(255,255,255,0.88)' : theme.colors.textSecondary;
+  const iconBg = isSolidCard ? 'rgba(255,255,255,0.2)' : accentColor + '20';
+  const iconColor = isSolidCard ? theme.colors.textInverse : accentColor;
+
   return (
-    <View style={[styles.card, { borderLeftColor: accentColor, backgroundColor: tintColor }]}>
+    <View
+      style={[
+        styles.card,
+        {
+          borderLeftColor: accentColor,
+          backgroundColor: tintColor,
+          borderLeftWidth: isSolidCard ? 0 : 4,
+        },
+      ]}>
       <View style={styles.headerRow}>
-        <View style={[styles.iconContainer, { backgroundColor: accentColor + '20' }]}>
-          <Ionicons name={icon} size={20} color={accentColor} />
+        <View style={[styles.iconContainer, { backgroundColor: iconBg }]}>
+          <Ionicons name={icon} size={20} color={iconColor} />
         </View>
       </View>
-      <Text style={styles.value}>
+      <Text style={[styles.value, { color: valueColor }]}>
         {prefix}{display}{suffix}
       </Text>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={[styles.title, { color: titleColor }]}>{title}</Text>
     </View>
   );
 };

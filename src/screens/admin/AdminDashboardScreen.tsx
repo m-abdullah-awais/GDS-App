@@ -99,44 +99,44 @@ const AdminDashboardScreen = () => {
           title="Total Students"
           value={dashboardStats.totalStudents}
           icon="people-outline"
-          accentColor={theme.colors.primary}
-          tintColor={theme.colors.primaryLight}
+          accentColor="#2F6BFF"
+          tintColor="#2F6BFF"
         />
         <StatsCard
           title="Total Instructors"
           value={dashboardStats.totalInstructors}
           icon="car-outline"
-          accentColor={theme.colors.accent}
-          tintColor={theme.colors.accent + '12'}
+          accentColor="#7141F4"
+          tintColor="#7141F4"
         />
         <StatsCard
           title="Active Lessons"
           value={dashboardStats.activeLessons}
           icon="calendar-outline"
-          accentColor={theme.colors.success}
-          tintColor={theme.colors.successLight}
+          accentColor="#1FBF5B"
+          tintColor="#1FBF5B"
         />
         <StatsCard
           title="Pending Approvals"
           value={dashboardStats.pendingApprovals}
           icon="time-outline"
-          accentColor={theme.colors.warning}
-          tintColor={theme.colors.warningLight}
+          accentColor="#EF4444"
+          tintColor="#EF4444"
         />
         <StatsCard
           title="Monthly Revenue"
           value={dashboardStats.monthlyRevenue}
           icon="cash-outline"
-          accentColor={theme.colors.highlight}
-          tintColor={theme.colors.highlightLight}
+          accentColor="#0EA5E9"
+          tintColor="#0EA5E9"
           prefix="\u00A3"
         />
         <StatsCard
           title="Pending Payouts"
           value={dashboardStats.pendingPayouts}
           icon="wallet-outline"
-          accentColor={theme.colors.error}
-          tintColor={theme.colors.errorLight}
+          accentColor="#D946EF"
+          tintColor="#D946EF"
           prefix="\u00A3"
         />
       </View>

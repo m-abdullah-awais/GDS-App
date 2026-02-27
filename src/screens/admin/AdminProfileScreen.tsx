@@ -18,7 +18,7 @@ const AdminProfileScreen = () => {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <ScreenContainer showHeader title="Profile">
+    <ScreenContainer title="Profile">
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroCard}>
           <View style={styles.avatar}>

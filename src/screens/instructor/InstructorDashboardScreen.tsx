@@ -272,7 +272,7 @@ const createStyles = (theme: AppTheme) =>
       marginBottom: theme.spacing.xs,
     },
     actionLabel: {
-      ...theme.typography.caption,
+      ...theme.typography.label,
       color: theme.colors.textPrimary,
       textAlign: 'center',
       fontWeight: '600',

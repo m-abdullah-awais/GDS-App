@@ -57,6 +57,7 @@ const AdminTabs = () => {
           userName="Sarah Admin"
           userEmail="admin@gds-driving.com"
           roleLabel="Admin"
+          onLogout={handleLogout}
         />
       )}
       screenOptions={{
@@ -67,7 +68,6 @@ const AdminTabs = () => {
             avatarText="Admin"
             leftAction="menu"
             onLeftPress={() => navigation.toggleDrawer()}
-            onLogoutPress={handleLogout}
           />
         ),
         drawerStyle: { backgroundColor: theme.colors.background },

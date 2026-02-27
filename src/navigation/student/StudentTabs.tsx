@@ -1,3 +1,4 @@
+import React from 'react';
 import { Alert } from 'react-native';
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import StudentDashboardScreen from "../../screens/student/StudentDashboardScreen";
@@ -38,6 +39,7 @@ const StudentTabs = () => {
                     userName="John Smith"
                     userEmail="john.smith@email.com"
                     roleLabel="Student"
+                    onLogout={handleLogout}
                 />
             )}
             screenOptions={{
@@ -48,7 +50,6 @@ const StudentTabs = () => {
                         avatarText="Student"
                         leftAction="menu"
                         onLeftPress={() => navigation.toggleDrawer()}
-                        onLogoutPress={handleLogout}
                     />
                 ),
                 drawerStyle: { backgroundColor: theme.colors.background },

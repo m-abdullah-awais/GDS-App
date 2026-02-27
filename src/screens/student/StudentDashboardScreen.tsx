@@ -245,7 +245,7 @@ const StudentDashboardScreen = () => {
               ]}>
               <Ionicons name="chatbubble-outline" size={24} color={theme.colors.textInverse} />
             </View>
-            <Text style={[s.actionLabel, { color: theme.colors.textInverse }]}>Messages</Text>
+            <Text style={[s.actionLabel, { color: theme.colors.textInverse }]}>View Messages</Text>
           </Pressable>
         </View>
 

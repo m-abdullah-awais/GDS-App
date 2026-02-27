@@ -92,12 +92,12 @@ const InfoRow = ({
         borderBottomColor: theme.colors.border,
       },
     ]}>
-    <Text style={{ ...theme.typography.body, color: theme.colors.textSecondary, flex: 1 }}>
+    <Text style={{ ...theme.typography.bodyMedium, color: theme.colors.textSecondary, flex: 1 }}>
       {label}
     </Text>
     <Text
       style={{
-        ...theme.typography.body,
+        ...theme.typography.bodyMedium,
         color: theme.colors.textPrimary,
         flex: 2,
         textAlign: 'right',
@@ -141,13 +141,13 @@ const ActionRow = ({
     ]}>
     <Text
       style={{
-        ...theme.typography.body,
+        ...theme.typography.bodyMedium,
         color: destructive ? theme.colors.error : theme.colors.textPrimary,
       }}>
       {label}
     </Text>
     {!destructive && (
-      <Text style={{ ...theme.typography.body, color: theme.colors.textSecondary }}>›</Text>
+      <Text style={{ ...theme.typography.bodyMedium, color: theme.colors.textSecondary }}>›</Text>
     )}
   </Pressable>
 );
@@ -180,7 +180,7 @@ const ToggleRow = ({
         borderBottomColor: theme.colors.border,
       },
     ]}>
-    <Text style={{ ...theme.typography.body, color: theme.colors.textPrimary }}>
+    <Text style={{ ...theme.typography.bodyMedium, color: theme.colors.textPrimary }}>
       {label}
     </Text>
     <Switch
@@ -472,7 +472,7 @@ const createStyles = (theme: AppTheme) =>
       flex: 1,
     },
     packageInstructor: {
-      ...theme.typography.body,
+      ...theme.typography.bodyMedium,
       color: theme.colors.textPrimary,
       fontWeight: '600',
     },
@@ -529,7 +529,7 @@ const createStyles = (theme: AppTheme) =>
       paddingHorizontal: theme.spacing.md,
     },
     appearanceLabel: {
-      ...theme.typography.body,
+      ...theme.typography.bodyMedium,
       color: theme.colors.textPrimary,
     },
     segmented: {

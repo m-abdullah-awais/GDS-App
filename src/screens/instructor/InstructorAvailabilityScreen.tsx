@@ -1,12 +1,12 @@
 /**
  * InstructorAvailabilityScreen
  * ==============================
- * Set weekly availability with day/time slot selectors.
- * Features: Auto Generate Schedule (Mon-Fri, 9-5, 1hr lessons, 30min gaps)
- * Manual validation: no weekends, 30-min gap enforcement, overlap check.
+ * Set availability by selecting specific dates from a horizontal calendar strip.
+ * Features: Date picker strip (next 60 days), Auto Generate Schedule,
+ * Manual validation: no Sundays, 30-min gap enforcement, overlap check.
  */
 
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useRef } from 'react';
 import {
   Alert,
   FlatList,
@@ -16,7 +16,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -34,9 +33,58 @@ import {
 
 type Props = DrawerScreenProps<InstructorTabsParamList, 'Availability'>;
 
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const WEEKDAY_SET = new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MIN_GAP_MINUTES = 30;
+const CALENDAR_DAYS = 60; // show next 60 days
+
+/** Generate array of date strings for the next N days starting from today */
+const generateDateRange = (days: number): string[] => {
+  const result: string[] = [];
+  const today = new Date();
+  for (let i = 0; i < days; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    result.push(toDateString(d));
+  }
+  return result;
+};
+
+/** Convert Date → "YYYY-MM-DD" */
+const toDateString = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+/** Parse "YYYY-MM-DD" → Date */
+const parseDateString = (s: string): Date => {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
+/** Check if a date string falls on Sunday */
+const isSunday = (dateStr: string): boolean => parseDateString(dateStr).getDay() === 0;
+
+/** Get short day name from date string */
+const getDayName = (dateStr: string): string => DAY_NAMES[parseDateString(dateStr).getDay()];
+
+/** Get full day name from date string */
+const getDayNameFull = (dateStr: string): string => DAY_NAMES_FULL[parseDateString(dateStr).getDay()];
+
+/** Format date for display: "2 Mar" */
+const formatDateShort = (dateStr: string): { day: number; month: string } => {
+  const d = parseDateString(dateStr);
+  return { day: d.getDate(), month: MONTH_NAMES[d.getMonth()] };
+};
+
+/** Format for slot card: "Mon, 2 Mar 2026" */
+const formatDateLong = (dateStr: string): string => {
+  const d = parseDateString(dateStr);
+  return `${DAY_NAMES[d.getDay()]}, ${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+};
 
 /** Parse "HH:MM" → total minutes from midnight */
 const parseTime = (time: string): number | null => {
@@ -55,12 +103,15 @@ const formatTime = (mins: number): string => {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 };
 
+const DATE_RANGE = generateDateRange(CALENDAR_DAYS);
+
 const InstructorAvailabilityScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const dateListRef = useRef<FlatList>(null);
 
   const [slots, setSlots] = useState<AvailabilitySlot[]>([...initialSlots]);
-  const [selectedDay, setSelectedDay] = useState('Mon');
+  const [selectedDate, setSelectedDate] = useState(DATE_RANGE[0]);
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -68,25 +119,33 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
   const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null);
   const [pickerValue, setPickerValue] = useState<Date>(new Date());
 
-  const filteredSlots = useMemo(
-    () => slots.filter((s) => s.day === selectedDay),
-    [slots, selectedDay],
+  const selectedIsSunday = isSunday(selectedDate);
+
+  /** Dates that have at least one slot */
+  const datesWithSlots = useMemo(
+    () => new Set(slots.map((s) => s.date)),
+    [slots],
   );
 
-  /** Check if a new slot overlaps or violates the 30-min gap with existing slots for the same day */
+  const filteredSlots = useMemo(
+    () => slots.filter((s) => s.date === selectedDate),
+    [slots, selectedDate],
+  );
+
+  /** Check if a new slot overlaps or violates the 30-min gap with existing slots for the same date */
   const validateSlot = useCallback(
-    (day: string, startMins: number, endMins: number): string | null => {
-      // Weekend check
-      if (!WEEKDAY_SET.has(day)) {
-        return 'Weekend slots are not allowed. Please select a weekday (Mon–Fri).';
+    (date: string, startMins: number, endMins: number): string | null => {
+      // Sunday check
+      if (isSunday(date)) {
+        return 'Sunday slots are not allowed. Please select another day.';
       }
       // Time order check
       if (startMins >= endMins) {
         return 'End time must be after start time.';
       }
 
-      const daySlots = slots
-        .filter((s) => s.day === day)
+      const dateSlots = slots
+        .filter((s) => s.date === date)
         .map((s) => ({
           start: parseTime(s.startTime)!,
           end: parseTime(s.endTime)!,
@@ -94,17 +153,13 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
         .filter((s) => s.start !== null && s.end !== null)
         .sort((a, b) => a.start - b.start);
 
-      for (const existing of daySlots) {
-        // Overlap check: new slot overlaps if it starts before existing ends AND ends after existing starts
+      for (const existing of dateSlots) {
         if (startMins < existing.end && endMins > existing.start) {
           return `Overlaps with existing slot ${formatTime(existing.start)} – ${formatTime(existing.end)}.`;
         }
-        // Gap check: must have at least 30-min gap
-        // New slot ends before existing starts — gap = existing.start - endMins
         if (endMins <= existing.start && existing.start - endMins < MIN_GAP_MINUTES) {
           return `Must have at least ${MIN_GAP_MINUTES}-minute gap before slot at ${formatTime(existing.start)}.`;
         }
-        // New slot starts after existing ends — gap = startMins - existing.end
         if (startMins >= existing.end && startMins - existing.end < MIN_GAP_MINUTES) {
           return `Must have at least ${MIN_GAP_MINUTES}-minute gap after slot ending at ${formatTime(existing.end)}.`;
         }
@@ -129,7 +184,7 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
       return;
     }
 
-    const error = validateSlot(selectedDay, startMins, endMins);
+    const error = validateSlot(selectedDate, startMins, endMins);
     if (error) {
       setValidationError(error);
       return;
@@ -137,7 +192,7 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
 
     const newSlot: AvailabilitySlot = {
       id: `SLOT-${Date.now()}`,
-      day: selectedDay,
+      date: selectedDate,
       startTime: formatTime(startMins),
       endTime: formatTime(endMins),
     };
@@ -164,15 +219,15 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
     setPickerTarget(target);
   };
 
-  const onChangeTime = (event: DateTimePickerEvent, selectedDate?: Date) => {
+  const onChangeTime = (event: DateTimePickerEvent, selectedDateVal?: Date) => {
     if (event.type === 'dismissed') {
       setPickerTarget(null);
       return;
     }
 
-    if (!selectedDate) return;
+    if (!selectedDateVal) return;
 
-    const formatted = formatTime(selectedDate.getHours() * 60 + selectedDate.getMinutes());
+    const formatted = formatTime(selectedDateVal.getHours() * 60 + selectedDateVal.getMinutes());
 
     if (pickerTarget === 'start') {
       setStartTime(formatted);
@@ -187,9 +242,8 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
     }
   };
 
-  /** Auto Generate: Mon-Fri, 9:00-17:00, 1hr lessons, 30min gaps */
+  /** Auto Generate: next 5 weekdays (excluding Sun), 9:00-17:30, 1hr lessons, 30min gaps */
   const handleAutoGenerate = () => {
-    const AUTO_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
     const AUTO_SLOTS = [
       { start: '09:00', end: '10:00' },
       { start: '10:30', end: '11:30' },
@@ -199,13 +253,27 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
       { start: '16:30', end: '17:30' },
     ];
 
+    // Pick next 5 non-Sunday dates starting from today
+    const autoDates: string[] = [];
+    const today = new Date();
+    let offset = 0;
+    while (autoDates.length < 5) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + offset);
+      const ds = toDateString(d);
+      if (!isSunday(ds)) {
+        autoDates.push(ds);
+      }
+      offset++;
+    }
+
     const generated: AvailabilitySlot[] = [];
     let counter = Date.now();
-    for (const day of AUTO_DAYS) {
+    for (const date of autoDates) {
       for (const slot of AUTO_SLOTS) {
         generated.push({
           id: `AUTO-${counter++}`,
-          day,
+          date,
           startTime: slot.start,
           endTime: slot.end,
         });
@@ -214,14 +282,16 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
 
     Alert.alert(
       'Auto Generate Schedule',
-      'This will replace all existing slots with a standard Mon–Fri schedule (9 AM – 5:30 PM, 1hr lessons, 30-min gaps). Continue?',
+      'This will replace all existing slots with a schedule for the next 5 days (excluding Sundays), 9 AM – 5:30 PM, 1hr lessons, 30-min gaps. Continue?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Generate',
           onPress: () => {
             setSlots(generated);
-            setSelectedDay('Mon');
+            if (autoDates.length > 0) {
+              setSelectedDate(autoDates[0]);
+            }
             setValidationError(null);
           },
         },
@@ -246,7 +316,7 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
             {item.startTime} – {item.endTime}
           </Text>
         </View>
-        <Text style={styles.slotDay}>{item.day}</Text>
+        <Text style={styles.slotDateLabel}>{formatDateLong(item.date)}</Text>
       </View>
       <Pressable
         style={styles.removeButton}
@@ -257,7 +327,84 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
     </View>
   );
 
-  const isWeekend = !WEEKDAY_SET.has(selectedDay);
+  const renderDateItem = ({ item: dateStr }: { item: string }) => {
+    const isSelected = selectedDate === dateStr;
+    const isSun = isSunday(dateStr);
+    const hasSlots = datesWithSlots.has(dateStr);
+    const { day, month } = formatDateShort(dateStr);
+    const dayName = getDayName(dateStr);
+
+    return (
+      <Pressable
+        style={[
+          styles.dateChip,
+          {
+            backgroundColor: isSelected
+              ? theme.colors.primary
+              : isSun
+                ? theme.colors.surfaceSecondary
+                : theme.colors.surface,
+            borderColor: isSelected
+              ? theme.colors.primary
+              : isSun
+                ? theme.colors.neutral300
+                : theme.colors.border,
+          },
+        ]}
+        onPress={() => {
+          setSelectedDate(dateStr);
+          setValidationError(null);
+        }}
+      >
+        <Text
+          style={[
+            styles.dateChipDay,
+            {
+              color: isSelected
+                ? theme.colors.textInverse
+                : isSun
+                  ? theme.colors.textTertiary
+                  : theme.colors.textSecondary,
+            },
+          ]}
+        >
+          {dayName}
+        </Text>
+        <Text
+          style={[
+            styles.dateChipNumber,
+            {
+              color: isSelected
+                ? theme.colors.textInverse
+                : isSun
+                  ? theme.colors.textTertiary
+                  : theme.colors.textPrimary,
+            },
+          ]}
+        >
+          {day}
+        </Text>
+        <Text
+          style={[
+            styles.dateChipMonth,
+            {
+              color: isSelected
+                ? 'rgba(255,255,255,0.7)'
+                : isSun
+                  ? theme.colors.textTertiary
+                  : theme.colors.textSecondary,
+            },
+          ]}
+        >
+          {month}
+        </Text>
+        {hasSlots && !isSelected && <View style={styles.dateDot} />}
+      </Pressable>
+    );
+  };
+
+  const selectedDayName = getDayNameFull(selectedDate);
+  const { day: selectedDayNum, month: selectedMonth } = formatDateShort(selectedDate);
 
   return (
     <ScreenContainer
@@ -275,65 +422,42 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
             fullWidth
           />
           <Text style={styles.autoHint}>
-            Mon–Fri, 9 AM – 5:30 PM, 1hr lessons, 30-min gaps
+            Next 5 days (excl. Sunday), 9 AM – 5:30 PM, 1hr lessons, 30-min gaps
           </Text>
         </View>
 
-        {/* Day Selector */}
-        <View style={styles.daySelector}>
-          {WEEKDAYS.map((day) => {
-            const isSelected = selectedDay === day;
-            const hasSlots = slots.some((s) => s.day === day);
-            const isWE = !WEEKDAY_SET.has(day);
-            return (
-              <Pressable
-                key={day}
-                style={[
-                  styles.dayChip,
-                  {
-                    backgroundColor: isSelected
-                      ? theme.colors.primary
-                      : isWE
-                        ? theme.colors.surfaceSecondary
-                        : theme.colors.surface,
-                    borderColor: isSelected
-                      ? theme.colors.primary
-                      : isWE
-                        ? theme.colors.neutral300
-                        : theme.colors.border,
-                  },
-                ]}
-                onPress={() => {
-                  setSelectedDay(day);
-                  setValidationError(null);
-                }}
-              >
-                <Text
-                  style={[
-                    styles.dayChipText,
-                    {
-                      color: isSelected
-                        ? theme.colors.textInverse
-                        : isWE
-                          ? theme.colors.textTertiary
-                          : theme.colors.textPrimary,
-                    },
-                  ]}
-                >
-                  {day}
-                </Text>
-                {hasSlots && !isSelected && <View style={styles.dayDot} />}
-              </Pressable>
-            );
-          })}
+        {/* Date Selector Strip */}
+        <View style={styles.dateStripContainer}>
+          <FlatList
+            ref={dateListRef}
+            data={DATE_RANGE}
+            renderItem={renderDateItem}
+            keyExtractor={(item) => item}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.dateStripContent}
+          />
         </View>
 
-        {/* Weekend Warning */}
-        {isWeekend && (
-          <View style={styles.weekendWarning}>
+        {/* Selected date info */}
+        <View style={styles.selectedDateInfo}>
+          <Ionicons name="calendar" size={18} color={theme.colors.primary} />
+          <Text style={styles.selectedDateText}>
+            {selectedDayName}, {selectedDayNum} {selectedMonth}
+          </Text>
+          {selectedIsSunday && (
+            <View style={styles.sundayBadge}>
+              <Text style={styles.sundayBadgeText}>Unavailable</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Sunday Warning */}
+        {selectedIsSunday && (
+          <View style={styles.sundayWarning}>
             <Ionicons name="warning-outline" size={16} color={theme.colors.warning} />
-            <Text style={styles.weekendWarningText}>
-              Weekend slots are not allowed
+            <Text style={styles.sundayWarningText}>
+              Sunday slots are not allowed
             </Text>
           </View>
         )}
@@ -350,19 +474,19 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
               }}
               variant="outline"
               size="sm"
-              disabled={isWeekend}
+              disabled={selectedIsSunday}
               leftIcon={<Ionicons name="add" size={16} color={theme.colors.primary} />}
             />
           </View>
           <Text style={styles.addSlotHint}>
-            Open drawer to enter start/end time and save slot.
+            Tap Add to enter start/end time for this date.
           </Text>
         </View>
 
         {/* Slots List */}
         <View style={styles.slotsSection}>
           <Text style={styles.sectionLabel}>
-            {selectedDay} Slots ({filteredSlots.length})
+            {getDayName(selectedDate)} {selectedDayNum} {selectedMonth} — Slots ({filteredSlots.length})
           </Text>
           <FlatList
             data={filteredSlots}
@@ -374,7 +498,9 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
               <View style={styles.emptyState}>
                 <Ionicons name="calendar-outline" size={40} color={theme.colors.textTertiary} />
                 <Text style={styles.emptyText}>
-                  No slots added for {selectedDay}
+                  {selectedIsSunday
+                    ? 'Scheduling is not available on Sundays'
+                    : `No slots added for ${getDayName(selectedDate)}, ${selectedDayNum} ${selectedMonth}`}
                 </Text>
               </View>
             }
@@ -403,7 +529,12 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <View style={styles.drawerSheet}>
               <View style={styles.drawerHeader}>
-                <Text style={styles.drawerTitle}>Add Slot — {selectedDay}</Text>
+                <View style={styles.drawerTitleBlock}>
+                  <Text style={styles.drawerTitle}>Add Slot</Text>
+                  <Text style={styles.drawerSubtitle}>
+                    {getDayNameFull(selectedDate)}, {selectedDayNum} {selectedMonth}
+                  </Text>
+                </View>
                 <Pressable
                   style={styles.drawerCloseBtn}
                   onPress={() => setSlotDrawerVisible(false)}>
@@ -415,8 +546,8 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
                 <View style={styles.timeInput}>
                   <Text style={styles.timeLabel}>Start</Text>
                   <Pressable
-                    onPress={() => !isWeekend && openTimePicker('start')}
-                    style={[styles.input, styles.pickerInput, validationError ? styles.inputError : null, isWeekend && styles.inputDisabled]}>
+                    onPress={() => !selectedIsSunday && openTimePicker('start')}
+                    style={[styles.input, styles.pickerInput, validationError ? styles.inputError : null, selectedIsSunday && styles.inputDisabled]}>
                     <Text style={[styles.pickerValueText, !startTime && styles.pickerPlaceholder]}>
                       {startTime || 'Select start time'}
                     </Text>
@@ -427,8 +558,8 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
                 <View style={styles.timeInput}>
                   <Text style={styles.timeLabel}>End</Text>
                   <Pressable
-                    onPress={() => !isWeekend && openTimePicker('end')}
-                    style={[styles.input, styles.pickerInput, validationError ? styles.inputError : null, isWeekend && styles.inputDisabled]}>
+                    onPress={() => !selectedIsSunday && openTimePicker('end')}
+                    style={[styles.input, styles.pickerInput, validationError ? styles.inputError : null, selectedIsSunday && styles.inputDisabled]}>
                     <Text style={[styles.pickerValueText, !endTime && styles.pickerPlaceholder]}>
                       {endTime || 'Select end time'}
                     </Text>
@@ -471,7 +602,7 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
                 variant="primary"
                 size="md"
                 fullWidth
-                disabled={isWeekend}
+                disabled={selectedIsSunday}
                 style={styles.addButton}
               />
             </View>
@@ -501,32 +632,81 @@ const createStyles = (theme: AppTheme) =>
       marginTop: theme.spacing.xs,
       marginBottom: theme.spacing.xs,
     },
-    daySelector: {
-      flexDirection: 'row',
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.sm,
-      gap: theme.spacing.xxs,
+
+    /* ── Date strip ─────────────────────────── */
+    dateStripContainer: {
       backgroundColor: theme.colors.background,
+      paddingVertical: theme.spacing.sm,
     },
-    dayChip: {
-      flex: 1,
+    dateStripContent: {
+      paddingHorizontal: theme.spacing.md,
+      gap: theme.spacing.xs,
+    },
+    dateChip: {
+      width: 58,
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: theme.spacing.sm,
-      borderRadius: theme.borderRadius.md,
+      borderRadius: theme.borderRadius.lg,
       borderWidth: 1,
     },
-    dayChipText: {
-      ...theme.typography.buttonSmall,
+    dateChipDay: {
+      ...theme.typography.caption,
+      fontWeight: '600',
+      fontSize: 10,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
     },
-    dayDot: {
+    dateChipNumber: {
+      ...theme.typography.h3,
+      fontWeight: '700',
+      marginTop: 2,
+    },
+    dateChipMonth: {
+      ...theme.typography.caption,
+      fontSize: 10,
+      marginTop: 1,
+    },
+    dateDot: {
       width: 5,
       height: 5,
       borderRadius: theme.borderRadius.full,
       backgroundColor: theme.colors.primary,
-      marginTop: 3,
+      marginTop: 4,
     },
-    weekendWarning: {
+
+    /* ── Selected date info ─────────────────── */
+    selectedDateInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      backgroundColor: theme.colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.divider,
+    },
+    selectedDateText: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textPrimary,
+      fontWeight: '600',
+      flex: 1,
+    },
+    sundayBadge: {
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: 3,
+      borderRadius: theme.borderRadius.full,
+      backgroundColor: theme.colors.errorLight,
+    },
+    sundayBadgeText: {
+      ...theme.typography.caption,
+      color: theme.colors.error,
+      fontWeight: '600',
+      fontSize: 11,
+    },
+
+    /* ── Sunday warning ─────────────────────── */
+    sundayWarning: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: theme.spacing.xs,
@@ -534,11 +714,13 @@ const createStyles = (theme: AppTheme) =>
       paddingVertical: theme.spacing.sm,
       backgroundColor: theme.colors.warningLight,
     },
-    weekendWarningText: {
+    sundayWarningText: {
       ...theme.typography.bodySmall,
       color: theme.colors.warning,
       fontWeight: '600',
     },
+
+    /* ── Add slot ───────────────────────────── */
     addSlotSection: {
       padding: theme.spacing.md,
       backgroundColor: theme.colors.surface,
@@ -561,6 +743,8 @@ const createStyles = (theme: AppTheme) =>
       color: theme.colors.textPrimary,
       marginBottom: theme.spacing.sm,
     },
+
+    /* ── Time inputs ────────────────────────── */
     timeRow: {
       flexDirection: 'row',
       alignItems: 'flex-end',
@@ -634,6 +818,8 @@ const createStyles = (theme: AppTheme) =>
     addButton: {
       marginTop: theme.spacing.sm,
     },
+
+    /* ── Slots list ─────────────────────────── */
     slotsSection: {
       flex: 1,
       padding: theme.spacing.md,
@@ -646,11 +832,9 @@ const createStyles = (theme: AppTheme) =>
       alignItems: 'center',
       justifyContent: 'space-between',
       backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.md,
-      padding: theme.spacing.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      ...theme.shadows.sm,
+      borderRadius: theme.borderRadius.xl,
+      padding: theme.spacing.lg,
+      ...theme.shadows.md,
     },
     slotInfo: {
       flex: 1,
@@ -664,7 +848,7 @@ const createStyles = (theme: AppTheme) =>
       ...theme.typography.h4,
       color: theme.colors.textPrimary,
     },
-    slotDay: {
+    slotDateLabel: {
       ...theme.typography.bodySmall,
       color: theme.colors.textSecondary,
       marginTop: 2,
@@ -681,7 +865,11 @@ const createStyles = (theme: AppTheme) =>
     emptyText: {
       ...theme.typography.bodyMedium,
       color: theme.colors.textTertiary,
+      textAlign: 'center',
+      paddingHorizontal: theme.spacing.md,
     },
+
+    /* ── Footer ─────────────────────────────── */
     footer: {
       padding: theme.spacing.md,
       paddingBottom: theme.spacing.xl,
@@ -689,6 +877,8 @@ const createStyles = (theme: AppTheme) =>
       borderTopColor: theme.colors.divider,
       backgroundColor: theme.colors.background,
     },
+
+    /* ── Bottom drawer ──────────────────────── */
     drawerOverlay: {
       flex: 1,
       justifyContent: 'flex-end',
@@ -704,14 +894,21 @@ const createStyles = (theme: AppTheme) =>
     },
     drawerHeader: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
       marginBottom: theme.spacing.md,
+    },
+    drawerTitleBlock: {
+      flex: 1,
     },
     drawerTitle: {
       ...theme.typography.h3,
       color: theme.colors.textPrimary,
-      flex: 1,
+    },
+    drawerSubtitle: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textSecondary,
+      marginTop: 2,
     },
     drawerCloseBtn: {
       width: 32,

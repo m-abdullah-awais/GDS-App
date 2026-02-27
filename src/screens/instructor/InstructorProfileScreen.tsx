@@ -235,7 +235,7 @@ const InstructorProfileScreen = () => {
   const totalStudents = instructorStudents.length;
 
   return (
-    <ScreenContainer showHeader title="Profile">
+    <ScreenContainer title="Profile">
       <ScrollView
         style={s.scroll}
         contentContainerStyle={s.scrollContent}

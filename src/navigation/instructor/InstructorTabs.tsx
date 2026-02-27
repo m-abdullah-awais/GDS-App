@@ -54,6 +54,7 @@ const InstructorTabs = () => {
                     userName="James Wilson"
                     userEmail="james.wilson@email.com"
                     roleLabel="Instructor"
+                    onLogout={handleLogout}
                 />
             )}
             screenOptions={{
@@ -64,7 +65,6 @@ const InstructorTabs = () => {
                         avatarText="Instructor"
                         leftAction="menu"
                         onLeftPress={() => navigation.toggleDrawer()}
-                        onLogoutPress={handleLogout}
                     />
                 ),
                 drawerStyle: { backgroundColor: theme.colors.background },

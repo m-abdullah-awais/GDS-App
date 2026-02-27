@@ -52,7 +52,8 @@ export interface InstructorPackage {
 
 export interface AvailabilitySlot {
   id: string;
-  day: string;
+  /** ISO date string, e.g. "2026-03-02" */
+  date: string;
   startTime: string;
   endTime: string;
 }
@@ -269,17 +270,17 @@ export const instructorPackages: InstructorPackage[] = [
 // ─── Availability Slots ───────────────────────────────────────────────────────
 
 export const availabilitySlots: AvailabilitySlot[] = [
-  { id: 'SLOT-001', day: 'Mon', startTime: '09:00', endTime: '12:00' },
-  { id: 'SLOT-002', day: 'Mon', startTime: '14:00', endTime: '17:00' },
-  { id: 'SLOT-003', day: 'Tue', startTime: '10:00', endTime: '13:00' },
-  { id: 'SLOT-004', day: 'Tue', startTime: '15:00', endTime: '18:00' },
-  { id: 'SLOT-005', day: 'Wed', startTime: '09:00', endTime: '11:00' },
-  { id: 'SLOT-006', day: 'Wed', startTime: '13:00', endTime: '16:00' },
-  { id: 'SLOT-007', day: 'Thu', startTime: '08:00', endTime: '12:00' },
-  { id: 'SLOT-008', day: 'Thu', startTime: '14:00', endTime: '18:00' },
-  { id: 'SLOT-009', day: 'Fri', startTime: '09:00', endTime: '13:00' },
-  { id: 'SLOT-010', day: 'Fri', startTime: '14:00', endTime: '17:00' },
-  { id: 'SLOT-011', day: 'Sat', startTime: '10:00', endTime: '14:00' },
+  { id: 'SLOT-001', date: '2026-03-02', startTime: '09:00', endTime: '12:00' },
+  { id: 'SLOT-002', date: '2026-03-02', startTime: '14:00', endTime: '17:00' },
+  { id: 'SLOT-003', date: '2026-03-03', startTime: '10:00', endTime: '13:00' },
+  { id: 'SLOT-004', date: '2026-03-03', startTime: '15:00', endTime: '18:00' },
+  { id: 'SLOT-005', date: '2026-03-04', startTime: '09:00', endTime: '11:00' },
+  { id: 'SLOT-006', date: '2026-03-04', startTime: '13:00', endTime: '16:00' },
+  { id: 'SLOT-007', date: '2026-03-05', startTime: '08:00', endTime: '12:00' },
+  { id: 'SLOT-008', date: '2026-03-05', startTime: '14:00', endTime: '18:00' },
+  { id: 'SLOT-009', date: '2026-03-06', startTime: '09:00', endTime: '13:00' },
+  { id: 'SLOT-010', date: '2026-03-06', startTime: '14:00', endTime: '17:00' },
+  { id: 'SLOT-011', date: '2026-03-07', startTime: '10:00', endTime: '14:00' },
 ];
 
 // ─── Students ─────────────────────────────────────────────────────────────────

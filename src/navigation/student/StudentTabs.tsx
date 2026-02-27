@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import StudentDashboardScreen from "../../screens/student/StudentDashboardScreen";
 import MyLessonsScreen from "../../screens/student/MyLessonsScreen";
@@ -10,11 +11,23 @@ import InstructorDiscoveryScreen from "../../screens/student/InstructorDiscovery
 import { useTheme } from "../../theme";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import AppTopHeader from '../../components/AppTopHeader';
+import { clearDevRoleOverride } from '../devAuth';
 
 const Drawer = createDrawerNavigator();
 
 const StudentTabs = () => {
     const { theme } = useTheme();
+
+    const handleLogout = () => {
+        Alert.alert('Logout', 'Are you sure you want to logout?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Logout',
+                style: 'destructive',
+                onPress: () => clearDevRoleOverride(),
+            },
+        ]);
+    };
 
     return (
         <Drawer.Navigator
@@ -27,6 +40,7 @@ const StudentTabs = () => {
                         leftAction="menu"
                         onLeftPress={() => navigation.toggleDrawer()}
                         onAvatarPress={() => navigation.navigate('Profile')}
+                        onLogoutPress={handleLogout}
                     />
                 ),
                 drawerStyle: { backgroundColor: theme.colors.background },

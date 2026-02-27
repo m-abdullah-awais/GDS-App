@@ -15,16 +15,24 @@ import Ionicons from 'react-native-vector-icons/Ionicons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { AuthStackParamList } from '../../navigation/AuthStack'
+import { setDevRoleOverride } from '../../navigation/devAuth'
 import { useTheme } from '../../theme'
 import Button from '../../components/Button'
 
 type LoginScreenProps = NativeStackScreenProps<AuthStackParamList, 'Login'>
+
+const DEV_ROLE_BUTTONS = [
+  { label: 'Login as Admin', role: 'admin' as const },
+  { label: 'Login as Instructor', role: 'instructor' as const },
+  { label: 'Login as Student', role: 'student' as const },
+]
 
 const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const { theme } = useTheme()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [devLoadingRole, setDevLoadingRole] = useState<'admin' | 'instructor' | 'student' | null>(null)
   const styles = useMemo(() => createStyles(theme), [theme])
 
   const isFormValid = useMemo(() => {
@@ -43,6 +51,16 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
       setIsSubmitting(false)
       Alert.alert('Login request', 'Connect this action to your authentication API.')
     }, 450)
+  }
+
+  const handleDevLogin = (role: 'admin' | 'instructor' | 'student') => {
+    if (devLoadingRole) return
+
+    setDevLoadingRole(role)
+    setTimeout(() => {
+      setDevRoleOverride(role)
+      setDevLoadingRole(null)
+    }, 350)
   }
 
   return (
@@ -130,6 +148,31 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
               </Pressable>
             </View>
           </View>
+
+          {__DEV__ && (
+            <View style={styles.devCard}>
+              <View style={styles.devHeaderRow}>
+                <Ionicons name="construct-outline" size={16} color={theme.colors.warning} />
+                <Text style={styles.devTitle}>Development Only</Text>
+              </View>
+              <Text style={styles.devSubtitle}>Use these shortcuts only for local testing. Do not use in real scenarios.</Text>
+
+              <View style={styles.devButtonsContainer}>
+                {DEV_ROLE_BUTTONS.map((option) => (
+                  <Button
+                    key={option.role}
+                    title={option.label}
+                    variant="outline"
+                    onPress={() => handleDevLogin(option.role)}
+                    loading={devLoadingRole === option.role}
+                    disabled={!!devLoadingRole}
+                    fullWidth
+                    style={styles.devButton}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -187,6 +230,35 @@ const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
       borderWidth: 1,
       borderColor: theme.colors.border,
       ...theme.shadows.lg,
+    },
+    devCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.warning,
+      ...theme.shadows.md,
+    },
+    devHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xs,
+      marginBottom: theme.spacing.xxs,
+    },
+    devTitle: {
+      ...theme.typography.buttonMedium,
+      color: theme.colors.warning,
+    },
+    devSubtitle: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textSecondary,
+      marginBottom: theme.spacing.md,
+    },
+    devButtonsContainer: {
+      gap: theme.spacing.xs,
+    },
+    devButton: {
+      borderColor: theme.colors.border,
     },
     formTitle: {
       ...theme.typography.h2,

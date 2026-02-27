@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import InstructorDashboardScreen from "../../screens/instructor/InstructorDashboardScreen";
 import InstructorScheduleScreen from "../../screens/instructor/InstructorScheduleScreen";
@@ -13,6 +14,7 @@ import InstructorPackageScreen from "../../screens/instructor/InstructorPackageS
 import { useTheme } from "../../theme";
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AppTopHeader from '../../components/AppTopHeader';
+import { clearDevRoleOverride } from '../devAuth';
 
 export type InstructorTabsParamList = {
     Dashboard: undefined;
@@ -32,6 +34,17 @@ const Drawer = createDrawerNavigator<InstructorTabsParamList>();
 const InstructorTabs = () => {
     const { theme } = useTheme();
 
+    const handleLogout = () => {
+        Alert.alert('Logout', 'Are you sure you want to logout?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Logout',
+                style: 'destructive',
+                onPress: () => clearDevRoleOverride(),
+            },
+        ]);
+    };
+
     return (
         <Drawer.Navigator
             screenOptions={{
@@ -43,6 +56,7 @@ const InstructorTabs = () => {
                         leftAction="menu"
                         onLeftPress={() => navigation.toggleDrawer()}
                         onAvatarPress={() => navigation.navigate('Profile')}
+                        onLogoutPress={handleLogout}
                     />
                 ),
                 drawerStyle: { backgroundColor: theme.colors.background },

@@ -1,8 +1,10 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../theme';
 import AppTopHeader from '../../components/AppTopHeader';
+import { clearDevRoleOverride } from '../devAuth';
 
 import AdminDashboardScreen from '../../screens/admin/AdminDashboardScreen';
 import AdminStudentApprovalScreen from '../../screens/admin/AdminStudentApprovalScreen';
@@ -35,6 +37,17 @@ const Drawer = createDrawerNavigator<AdminTabsParamList>();
 const AdminTabs = () => {
   const { theme } = useTheme();
 
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: () => clearDevRoleOverride(),
+      },
+    ]);
+  };
+
   return (
     <Drawer.Navigator
       screenOptions={{
@@ -46,6 +59,7 @@ const AdminTabs = () => {
             leftAction="menu"
             onLeftPress={() => navigation.toggleDrawer()}
             onAvatarPress={() => navigation.navigate('Profile')}
+            onLogoutPress={handleLogout}
           />
         ),
         drawerStyle: { backgroundColor: theme.colors.background },

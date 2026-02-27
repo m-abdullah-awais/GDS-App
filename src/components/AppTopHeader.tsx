@@ -8,133 +8,156 @@ import type { AppTheme } from '../constants/theme';
 type LeftAction = 'menu' | 'back' | 'none';
 
 interface AppTopHeaderProps {
-  title: string;
-  subtitle?: string;
-  avatarText?: string;
-  leftAction?: LeftAction;
-  onLeftPress?: () => void;
-  onAvatarPress?: () => void;
+    title: string;
+    subtitle?: string;
+    avatarText?: string;
+    leftAction?: LeftAction;
+    onLeftPress?: () => void;
+    onAvatarPress?: () => void;
+    onLogoutPress?: () => void;
 }
 
 const getInitials = (value: string) =>
-  value
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(word => word[0]?.toUpperCase())
-    .join('') || 'GD';
+    value
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(word => word[0]?.toUpperCase())
+        .join('') || 'GD';
 
 const AppTopHeader: React.FC<AppTopHeaderProps> = ({
-  title,
-  subtitle,
-  avatarText,
-  leftAction = 'menu',
-  onLeftPress,
-  onAvatarPress,
+    title,
+    subtitle,
+    avatarText,
+    leftAction = 'menu',
+    onLeftPress,
+    onAvatarPress,
+    onLogoutPress,
 }) => {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
-  const insets = useSafeAreaInsets();
+    const { theme } = useTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
+    const insets = useSafeAreaInsets();
 
-  const resolvedSubtitle = subtitle ?? new Date().toLocaleDateString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  });
+    const resolvedSubtitle = subtitle ?? new Date().toLocaleDateString('en-GB', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+    });
 
-  return (
-    <View style={[styles.wrapper, { paddingTop: Math.max(insets.top, theme.spacing.sm) }]}>
-      <View style={styles.contentRow}>
-        {leftAction !== 'none' ? (
-          <Pressable style={styles.leftButton} onPress={onLeftPress}>
-            <Ionicons
-              name={leftAction === 'menu' ? 'menu-outline' : 'arrow-back-outline'}
-              size={22}
-              color={theme.colors.textPrimary}
-            />
-          </Pressable>
-        ) : (
-          <View style={styles.leftSpacer} />
-        )}
+    return (
+        <View style={[styles.wrapper, { paddingTop: Math.max(insets.top, theme.spacing.sm) }]}>
+            <View style={styles.contentRow}>
+                {leftAction !== 'none' ? (
+                    <Pressable style={styles.leftButton} onPress={onLeftPress}>
+                        <Ionicons
+                            name={leftAction === 'menu' ? 'menu-outline' : 'arrow-back-outline'}
+                            size={22}
+                            color={theme.colors.textPrimary}
+                        />
+                    </Pressable>
+                ) : (
+                    <View style={styles.leftSpacer} />
+                )}
 
-        <View style={styles.titleBlock}>
-          <Text style={styles.title} numberOfLines={1}>{title}</Text>
-          <Text style={styles.subtitle} numberOfLines={1}>{resolvedSubtitle}</Text>
+                <View style={styles.titleBlock}>
+                    <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                    <Text style={styles.subtitle} numberOfLines={1}>{resolvedSubtitle}</Text>
+                </View>
+
+                <View style={styles.rightBlock}>
+                    <Pressable
+                        style={({ pressed }) => [styles.avatar, pressed && styles.avatarPressed]}
+                        onPress={onAvatarPress}
+                        disabled={!onAvatarPress}>
+                        <Text style={styles.avatarText}>{getInitials(avatarText || title)}</Text>
+                    </Pressable>
+
+                    {onLogoutPress ? (
+                        <Pressable style={styles.logoutButton} onPress={onLogoutPress}>
+                            <Ionicons
+                                name="log-out-outline"
+                                size={18}
+                                color={theme.colors.error}
+                            />
+                        </Pressable>
+                    ) : null}
+                </View>
+            </View>
         </View>
-
-        <View style={styles.rightBlock}>
-          <Pressable
-            style={({ pressed }) => [styles.avatar, pressed && styles.avatarPressed]}
-            onPress={onAvatarPress}
-            disabled={!onAvatarPress}>
-            <Text style={styles.avatarText}>{getInitials(avatarText || title)}</Text>
-          </Pressable>
-        </View>
-      </View>
-    </View>
-  );
+    );
 };
 
 const createStyles = (theme: AppTheme) =>
-  StyleSheet.create({
-    wrapper: {
-      backgroundColor: theme.colors.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
-      paddingHorizontal: theme.spacing.md,
-      paddingBottom: theme.spacing.sm,
-      ...theme.shadows.sm,
-    },
-    contentRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: theme.spacing.sm,
-    },
-    leftButton: {
-      width: 38,
-      height: 38,
-      borderRadius: theme.borderRadius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.colors.surfaceSecondary,
-    },
-    leftSpacer: {
-      width: 38,
-      height: 38,
-    },
-    titleBlock: {
-      flex: 1,
-    },
-    title: {
-      ...theme.typography.h2,
-      color: theme.colors.textPrimary,
-    },
-    subtitle: {
-      ...theme.typography.caption,
-      color: theme.colors.textSecondary,
-      marginTop: 2,
-    },
-    rightBlock: {
-      alignItems: 'flex-end',
-      gap: 6,
-    },
-    avatar: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.colors.primary,
-    },
-    avatarPressed: {
-      opacity: 0.85,
-    },
-    avatarText: {
-      ...theme.typography.caption,
-      color: theme.colors.textInverse,
-      fontWeight: '700',
-      fontSize: 12,
-    },
-  });
+    StyleSheet.create({
+        wrapper: {
+            backgroundColor: theme.colors.surface,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border,
+            paddingHorizontal: theme.spacing.md,
+            paddingBottom: theme.spacing.sm,
+            ...theme.shadows.sm,
+        },
+        contentRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: theme.spacing.sm,
+        },
+        leftButton: {
+            width: 38,
+            height: 38,
+            borderRadius: theme.borderRadius.md,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.colors.surfaceSecondary,
+        },
+        leftSpacer: {
+            width: 38,
+            height: 38,
+        },
+        titleBlock: {
+            flex: 1,
+        },
+        title: {
+            ...theme.typography.h2,
+            color: theme.colors.textPrimary,
+        },
+        subtitle: {
+            ...theme.typography.caption,
+            color: theme.colors.textSecondary,
+            marginTop: 2,
+        },
+        rightBlock: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: theme.spacing.xs,
+        },
+        logoutButton: {
+            width: 34,
+            height: 34,
+            borderRadius: theme.borderRadius.md,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.colors.errorLight,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+        },
+        avatar: {
+            width: 38,
+            height: 38,
+            borderRadius: 19,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.colors.primary,
+        },
+        avatarPressed: {
+            opacity: 0.85,
+        },
+        avatarText: {
+            ...theme.typography.caption,
+            color: theme.colors.textInverse,
+            fontWeight: '700',
+            fontSize: 12,
+        },
+    });
 
 export default AppTopHeader;

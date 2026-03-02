@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import StudentDashboardScreen from "../../screens/student/StudentDashboardScreen";
 import MyLessonsScreen from "../../screens/student/MyLessonsScreen";
@@ -14,21 +13,27 @@ import AppTopHeader from '../../components/AppTopHeader';
 import { clearDevRoleOverride } from '../devAuth';
 import CustomDrawerContent from '../../components/CustomDrawerContent';
 import StudentBookLessonsScreen from '../../screens/student/StudentBookLessonsScreen';
+import { useConfirmation } from '../../components/common';
 
 const Drawer = createDrawerNavigator();
 
 const StudentTabs = () => {
     const { theme } = useTheme();
+    const { confirm } = useConfirmation();
 
-    const handleLogout = () => {
-        Alert.alert('Logout', 'Are you sure you want to logout?', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Logout',
-                style: 'destructive',
-                onPress: () => clearDevRoleOverride(),
-            },
-        ]);
+    const handleLogout = async () => {
+        const shouldLogout = await confirm({
+            title: 'Logout',
+            message: 'Are you sure you want to logout?',
+            confirmLabel: 'Logout',
+            cancelLabel: 'Cancel',
+            variant: 'destructive',
+            icon: 'log-out-outline',
+        });
+
+        if (shouldLogout) {
+            clearDevRoleOverride();
+        }
     };
 
     return (

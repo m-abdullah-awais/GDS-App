@@ -6,7 +6,6 @@
 
 import React, { useMemo, useState } from 'react';
 import {
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -25,11 +24,13 @@ import {
   searchableStudents,
   type InstructorStudent,
 } from '../../modules/instructor/mockData';
+import { useToast } from '../../components/admin';
 
 type Props = DrawerScreenProps<InstructorTabsParamList, 'Find Students'>;
 
 const InstructorStudentSearchScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
+  const { showToast } = useToast();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sentRequests, setSentRequests] = useState<Set<string>>(new Set());
@@ -46,7 +47,7 @@ const InstructorStudentSearchScreen = ({ navigation }: Props) => {
 
   const handleSendRequest = (studentId: string) => {
     setSentRequests((prev) => new Set(prev).add(studentId));
-    Alert.alert('Request Sent', 'Your request has been sent to the student.');
+    showToast('success', 'Your request has been sent to the student.');
   };
 
   const renderStudent = ({ item }: { item: InstructorStudent }) => {

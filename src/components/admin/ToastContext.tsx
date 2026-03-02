@@ -56,6 +56,10 @@ const getToastColor = (type: ToastType, theme: AppTheme): string => {
 };
 
 const getToastBg = (type: ToastType, theme: AppTheme): string => {
+  if (theme.dark) {
+    return theme.colors.surfaceSecondary;
+  }
+
   switch (type) {
     case 'success': return theme.colors.successLight;
     case 'error': return theme.colors.errorLight;
@@ -157,6 +161,7 @@ const styles = StyleSheet.create({
   toast: {
     flexDirection: 'row',
     alignItems: 'center',
+    opacity: 1,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 12,

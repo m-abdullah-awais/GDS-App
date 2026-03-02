@@ -6,7 +6,6 @@
 
 import React, { useMemo, useState } from 'react';
 import {
-  Alert,
   FlatList,
   Pressable,
   ScrollView,
@@ -22,11 +21,13 @@ import type { AppTheme } from '../../constants/theme';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { InstructorStackParamList } from '../../navigation/instructor/InstructorStack';
 import { areas as initialAreas, type Area, type Postcode } from '../../modules/instructor/mockData';
+import { useConfirmation } from '../../components/common';
 
 type Props = NativeStackScreenProps<InstructorStackParamList, 'Areas'>;
 
 const InstructorAreasScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
+  const { notify } = useConfirmation();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [areasData, setAreasData] = useState<Area[]>(
@@ -54,10 +55,13 @@ const InstructorAreasScreen = ({ navigation }: Props) => {
     );
   };
 
-  const handleSave = () => {
-    Alert.alert('Success', 'Areas and postcodes saved successfully!', [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+  const handleSave = async () => {
+    await notify({
+      title: 'Success',
+      message: 'Areas and postcodes saved successfully!',
+      variant: 'success',
+    });
+    navigation.goBack();
   };
 
   const renderPostcode = (postcode: Postcode, areaId: string) => (

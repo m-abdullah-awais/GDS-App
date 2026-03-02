@@ -8,7 +8,6 @@
 
 import React, { useMemo, useState, useCallback, useRef } from 'react';
 import {
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -26,6 +25,8 @@ import type { AppTheme } from '../../constants/theme';
 import type { DrawerScreenProps } from '@react-navigation/drawer';
 import type { InstructorTabsParamList } from '../../navigation/instructor/InstructorTabs';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useToast } from '../../components/admin';
+import { useConfirmation } from '../../components/common';
 import {
   availabilitySlots as initialSlots,
   type AvailabilitySlot,
@@ -107,6 +108,8 @@ const DATE_RANGE = generateDateRange(CALENDAR_DAYS);
 
 const InstructorAvailabilityScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
+  const { showToast } = useToast();
+  const { confirm } = useConfirmation();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const dateListRef = useRef<FlatList>(null);
 
@@ -243,7 +246,7 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
   };
 
   /** Auto Generate: next 5 weekdays (excluding Sun), 9:00-17:30, 1hr lessons, 30min gaps */
-  const handleAutoGenerate = () => {
+  const handleAutoGenerate = async () => {
     const AUTO_SLOTS = [
       { start: '09:00', end: '10:00' },
       { start: '10:30', end: '11:30' },
@@ -280,23 +283,23 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
       }
     }
 
-    Alert.alert(
-      'Auto Generate Schedule',
-      'This will replace all existing slots with a schedule for the next 5 days (excluding Sundays), 9 AM – 5:30 PM, 1hr lessons, 30-min gaps. Continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Generate',
-          onPress: () => {
-            setSlots(generated);
-            if (autoDates.length > 0) {
-              setSelectedDate(autoDates[0]);
-            }
-            setValidationError(null);
-          },
-        },
-      ],
-    );
+    const shouldGenerate = await confirm({
+      title: 'Auto Generate Schedule',
+      message: 'This will replace all existing slots with a schedule for the next 5 days (excluding Sundays), 9 AM – 5:30 PM, 1hr lessons, 30-min gaps. Continue?',
+      confirmLabel: 'Generate',
+      cancelLabel: 'Cancel',
+      variant: 'warning',
+      icon: 'sparkles-outline',
+    });
+
+    if (shouldGenerate) {
+      setSlots(generated);
+      if (autoDates.length > 0) {
+        setSelectedDate(autoDates[0]);
+      }
+      setValidationError(null);
+      showToast('success', 'Schedule generated successfully.');
+    }
   };
 
   const handleRemoveSlot = (slotId: string) => {
@@ -304,7 +307,7 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
   };
 
   const handleSave = () => {
-    Alert.alert('Success', 'Availability saved successfully!');
+    showToast('success', 'Availability saved successfully!');
   };
 
   const renderSlotItem = ({ item }: { item: AvailabilitySlot }) => (

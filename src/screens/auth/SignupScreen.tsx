@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react'
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,6 +16,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { AuthStackParamList } from '../../navigation/AuthStack'
 import { useTheme } from '../../theme'
 import Button from '../../components/Button'
+import { useConfirmation } from '../../components/common'
 
 type SignupScreenProps = NativeStackScreenProps<AuthStackParamList, 'Register'>
 type SignupRole = 'admin' | 'instructor' | 'student'
@@ -29,6 +29,7 @@ const ROLE_OPTIONS: Array<{ label: string; value: SignupRole; icon: string }> = 
 
 const SignupScreen = ({ navigation }: SignupScreenProps) => {
   const { theme } = useTheme()
+  const { notify } = useConfirmation()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -56,14 +57,22 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
 
   const handleSignup = () => {
     if (!formState.isValid) {
-      Alert.alert('Incomplete form', 'Please complete all fields, select a role, and make sure passwords match.')
+      void notify({
+        title: 'Incomplete form',
+        message: 'Please complete all fields, select a role, and make sure passwords match.',
+        variant: 'warning',
+      })
       return
     }
 
     setIsSubmitting(true)
     setTimeout(() => {
       setIsSubmitting(false)
-      Alert.alert('Sign up request', `Connect this action to your registration API. Selected role: ${role}.`)
+      void notify({
+        title: 'Sign up request',
+        message: `Connect this action to your registration API. Selected role: ${role}.`,
+        variant: 'info',
+      })
     }, 450)
   }
 

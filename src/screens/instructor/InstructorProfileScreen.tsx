@@ -14,7 +14,6 @@
 
 import React, { useMemo, useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -32,6 +31,8 @@ import {
   instructorStudents,
   earningsSummary,
 } from '../../modules/instructor/mockData';
+import { useToast } from '../../components/admin';
+import { ProfileImageOptionsModal, useConfirmation } from '../../components/common';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -90,6 +91,8 @@ const PROFILE_FIELDS: {
 
 const InstructorProfileScreen = () => {
   const { theme, colorScheme, setColorScheme } = useTheme();
+  const { showToast } = useToast();
+  const { confirm, notify } = useConfirmation();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const initial = toProfileData();
@@ -97,6 +100,7 @@ const InstructorProfileScreen = () => {
   const [draft, setDraft] = useState<ProfileData>(initial);
   const [editing, setEditing] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [imageOptionsVisible, setImageOptionsVisible] = useState(false);
 
   // Notification toggles
   const [notifLessons, setNotifLessons] = useState(true);
@@ -124,35 +128,45 @@ const InstructorProfileScreen = () => {
       areas: draft.areas.trim(),
     };
     if (!trimmed.fullName) {
-      Alert.alert('Validation', 'Name cannot be empty.');
+      void notify({
+        title: 'Validation',
+        message: 'Name cannot be empty.',
+        variant: 'warning',
+      });
       return;
     }
     if (!trimmed.email || !trimmed.email.includes('@')) {
-      Alert.alert('Validation', 'Please enter a valid email address.');
+      void notify({
+        title: 'Validation',
+        message: 'Please enter a valid email address.',
+        variant: 'warning',
+      });
       return;
     }
     setProfile(trimmed);
     setDraft(trimmed);
     setEditing(false);
-    Alert.alert('Saved', 'Your profile has been updated.');
+    showToast('success', 'Your profile has been updated.');
   };
 
   const handlePickImage = () => {
-    Alert.alert('Profile Picture', 'Choose an option', [
-      { text: 'Take Photo', onPress: () => setProfileImage('camera_photo') },
-      { text: 'Choose from Gallery', onPress: () => setProfileImage('gallery_photo') },
-      ...(profileImage
-        ? [{ text: 'Remove Photo', style: 'destructive' as const, onPress: () => setProfileImage(null) }]
-        : []),
-      { text: 'Cancel', style: 'cancel' as const },
-    ]);
+    setImageOptionsVisible(true);
   };
 
-  const handleSignOut = () =>
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => {} },
-    ]);
+  const handleSignOut = async () => {
+    const shouldSignOut = await confirm({
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out?',
+      confirmLabel: 'Sign Out',
+      cancelLabel: 'Cancel',
+      variant: 'destructive',
+      icon: 'log-out-outline',
+    });
+
+    if (shouldSignOut) {
+      showToast('info', 'Signed out successfully.');
+    }
+  };
 
   const displayName = editing ? draft.fullName : profile.fullName;
   const totalStudents = instructorStudents.length;
@@ -474,6 +488,24 @@ const InstructorProfileScreen = () => {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      <ProfileImageOptionsModal
+        visible={imageOptionsVisible}
+        onClose={() => setImageOptionsVisible(false)}
+        onTakePhoto={() => {
+          setProfileImage('camera_photo');
+          setImageOptionsVisible(false);
+        }}
+        onChooseFromGallery={() => {
+          setProfileImage('gallery_photo');
+          setImageOptionsVisible(false);
+        }}
+        onRemovePhoto={profileImage
+          ? () => {
+              setProfileImage(null);
+              setImageOptionsVisible(false);
+            }
+          : undefined}
+      />
     </ScreenContainer>
   );
 };

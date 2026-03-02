@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react'
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,6 +17,7 @@ import { AuthStackParamList } from '../../navigation/AuthStack'
 import { setDevRoleOverride } from '../../navigation/devAuth'
 import { useTheme } from '../../theme'
 import Button from '../../components/Button'
+import { useConfirmation } from '../../components/common'
 
 type LoginScreenProps = NativeStackScreenProps<AuthStackParamList, 'Login'>
 
@@ -29,6 +29,7 @@ const DEV_ROLE_BUTTONS = [
 
 const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const { theme } = useTheme()
+  const { notify } = useConfirmation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -42,14 +43,22 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
 
   const handleLogin = () => {
     if (!isFormValid) {
-      Alert.alert('Incomplete form', 'Enter a valid email and a password with at least 6 characters.')
+      void notify({
+        title: 'Incomplete form',
+        message: 'Enter a valid email and a password with at least 6 characters.',
+        variant: 'warning',
+      })
       return
     }
 
     setIsSubmitting(true)
     setTimeout(() => {
       setIsSubmitting(false)
-      Alert.alert('Login request', 'Connect this action to your authentication API.')
+      void notify({
+        title: 'Login request',
+        message: 'Connect this action to your authentication API.',
+        variant: 'info',
+      })
     }, 450)
   }
 
@@ -127,7 +136,14 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
               </View>
             </View>
 
-            <Pressable onPress={() => Alert.alert('Forgot Password', 'Connect this action to your password reset flow.')}>
+            <Pressable
+              onPress={() =>
+                void notify({
+                  title: 'Forgot Password',
+                  message: 'Connect this action to your password reset flow.',
+                  variant: 'info',
+                })
+              }>
               <Text style={styles.forgotPassword}>Forgot password?</Text>
             </Pressable>
 

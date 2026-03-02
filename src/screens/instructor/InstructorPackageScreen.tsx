@@ -6,7 +6,6 @@
 
 import React, { useMemo, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -28,12 +27,16 @@ import {
   type InstructorPackage,
   type ApprovalStatus,
 } from '../../modules/instructor/mockData';
+import { useToast } from '../../components/admin';
+import { useConfirmation } from '../../components/common';
 
 const COMMISSION_PERCENTAGE = 15;
 
 const InstructorPackageScreen = () => {
   const navigation = useNavigation();
   const { theme } = useTheme();
+  const { showToast } = useToast();
+  const { confirm, notify } = useConfirmation();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [packages, setPackages] = useState<InstructorPackage[]>(
@@ -89,7 +92,11 @@ const InstructorPackageScreen = () => {
 
   const handleSave = () => {
     if (!isFormValid) {
-      Alert.alert('Incomplete', 'Please fill in all fields correctly.');
+      void notify({
+        title: 'Incomplete',
+        message: 'Please fill in all fields correctly.',
+        variant: 'warning',
+      });
       return;
     }
 
@@ -108,7 +115,7 @@ const InstructorPackageScreen = () => {
             : pkg,
         ),
       );
-      Alert.alert('Updated', 'Package updated and sent for re-approval.');
+      showToast('success', 'Package updated and sent for re-approval.');
     } else {
       const newPackage: InstructorPackage = {
         id: `PKG-${String(Date.now()).slice(-6)}`,
@@ -121,26 +128,27 @@ const InstructorPackageScreen = () => {
         createdAt: new Date().toISOString().split('T')[0],
       };
       setPackages(prev => [newPackage, ...prev]);
-      Alert.alert('Created', 'Package created and sent for approval.');
+      showToast('success', 'Package created and sent for approval.');
     }
 
     setModalVisible(false);
     resetForm();
   };
 
-  const handleDelete = (pkg: InstructorPackage) => {
-    Alert.alert(
-      'Delete Package',
-      `Are you sure you want to delete "${pkg.title}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => setPackages(prev => prev.filter(item => item.id !== pkg.id)),
-        },
-      ],
-    );
+  const handleDelete = async (pkg: InstructorPackage) => {
+    const shouldDelete = await confirm({
+      title: 'Delete Package',
+      message: `Are you sure you want to delete "${pkg.title}"?`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      variant: 'destructive',
+      icon: 'trash-outline',
+    });
+
+    if (shouldDelete) {
+      setPackages(prev => prev.filter(item => item.id !== pkg.id));
+      showToast('success', 'Package deleted.');
+    }
   };
 
   const getStatusStyle = (status: ApprovalStatus) => {

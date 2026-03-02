@@ -10,6 +10,7 @@ import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/
 import { Provider } from 'react-redux';
 import store from './src/store';
 import { ToastProvider } from './src/components/admin/ToastContext';
+import { ConfirmationProvider } from './src/components/common';
 import RootNavigator from './src/navigation/RootNavigator';
 import { ThemeProvider, useTheme } from './src/theme';
 
@@ -19,7 +20,9 @@ function App() {
       <ThemeProvider initialScheme="system">
         <SafeAreaProvider>
           <ToastProvider>
-            <AppContent />
+            <ConfirmationProvider>
+              <AppContent />
+            </ConfirmationProvider>
           </ToastProvider>
         </SafeAreaProvider>
       </ThemeProvider>

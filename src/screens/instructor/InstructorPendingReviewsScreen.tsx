@@ -8,7 +8,6 @@
 
 import React, { useMemo, useState } from 'react';
 import {
-  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -26,11 +25,13 @@ import {
   type InstructorLesson,
 } from '../../modules/instructor/mockData';
 import FeedbackModal from '../../components/instructor/FeedbackModal';
+import { useToast } from '../../components/admin';
 
 type Props = DrawerScreenProps<InstructorTabsParamList, 'Pending Reviews'>;
 
 const InstructorPendingReviewsScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
+  const { showToast } = useToast();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [lessons, setLessons] = useState<InstructorLesson[]>(
@@ -45,10 +46,10 @@ const InstructorPendingReviewsScreen = ({ navigation }: Props) => {
   const handleFeedbackSubmit = (data: { action: string }) => {
     if (data.action === 'lesson_cancelled') {
       setLessons((prev) => prev.filter((l) => l.id !== selectedLesson?.id));
-      Alert.alert('Lesson Cancelled', 'The student has been notified and hours refunded.');
+      showToast('warning', 'The student has been notified and hours refunded.');
     } else {
       setLessons((prev) => prev.filter((l) => l.id !== selectedLesson?.id));
-      Alert.alert('Success', 'Feedback submitted successfully!');
+      showToast('success', 'Feedback submitted successfully!');
     }
     setSelectedLesson(null);
   };

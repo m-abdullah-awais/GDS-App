@@ -8,7 +8,6 @@
 
 import React, { useMemo, useState, useCallback } from 'react';
 import {
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -27,6 +26,7 @@ import {
   type LessonStatus,
 } from '../../modules/instructor/mockData';
 import FeedbackModal from '../../components/instructor/FeedbackModal';
+import { useToast } from '../../components/admin';
 
 type Props = DrawerScreenProps<InstructorTabsParamList, 'Schedule'>;
 type FilterTab = 'upcoming' | 'completed' | 'all';
@@ -86,6 +86,7 @@ const TABS: { key: FilterTab; label: string }[] = [
 
 const InstructorScheduleScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
+  const { showToast } = useToast();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [activeTab, setActiveTab] = useState<FilterTab>('upcoming');
   const [lessons, setLessons] = useState<InstructorLesson[]>([...initialLessons]);
@@ -116,17 +117,17 @@ const InstructorScheduleScreen = ({ navigation }: Props) => {
       setLessons(prev =>
         prev.filter(l => l.id !== reviewLesson?.id),
       );
-      Alert.alert('Lesson Cancelled', 'The student has been notified and hours refunded.');
+      showToast('warning', 'The student has been notified and hours refunded.');
     } else {
       setLessons(prev =>
         prev.map(l =>
           l.id === reviewLesson?.id ? { ...l, reviewed: true, status: 'completed' as LessonStatus } : l,
         ),
       );
-      Alert.alert('Review Submitted', 'Your feedback has been saved successfully.');
+      showToast('success', 'Your feedback has been saved successfully.');
     }
     setReviewLesson(null);
-  }, [reviewLesson]);
+  }, [reviewLesson, showToast]);
 
   const renderLesson = ({ item }: { item: InstructorLesson }) => {
     const statusStyle = getStatusStyle(item.status, theme);

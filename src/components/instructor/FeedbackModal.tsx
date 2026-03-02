@@ -13,7 +13,6 @@
 
 import React, { useMemo, useState, useCallback } from 'react';
 import {
-  Alert,
   Dimensions,
   Modal,
   Pressable,
@@ -27,6 +26,7 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
+import { useConfirmation } from '../common';
 import {
   DRIVING_SKILLS,
   SKILL_LEVELS,
@@ -64,6 +64,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
   onSubmit,
 }) => {
   const { theme } = useTheme();
+  const { notify } = useConfirmation();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   // ── State ──────────────────────────────────────────
@@ -113,10 +114,11 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
 
   const handleSubmit = useCallback(() => {
     if (!canSubmit) {
-      Alert.alert(
-        'Incomplete Feedback',
-        'Please select at least one skill and add notes before submitting.',
-      );
+      void notify({
+        title: 'Incomplete Feedback',
+        message: 'Please select at least one skill and add notes before submitting.',
+        variant: 'warning',
+      });
       return;
     }
     setIsSubmitting(true);
@@ -125,7 +127,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
       onSubmit({ action: 'submit', skills: selectedSkills, notes: notes.trim() });
       resetState();
     }, 600);
-  }, [canSubmit, selectedSkills, notes, onSubmit, resetState]);
+  }, [canSubmit, selectedSkills, notes, notify, onSubmit, resetState]);
 
   const handleLessonCancelled = useCallback(() => {
     setShowCancelWarning(true);

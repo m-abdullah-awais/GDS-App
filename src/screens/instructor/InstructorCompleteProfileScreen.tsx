@@ -6,7 +6,6 @@
 
 import React, { useMemo, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -24,6 +23,7 @@ import type { AppTheme } from '../../constants/theme';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { InstructorStackParamList } from '../../navigation/instructor/InstructorStack';
 import type { TransmissionType } from '../../modules/instructor/mockData';
+import { useConfirmation } from '../../components/common';
 
 type Props = NativeStackScreenProps<InstructorStackParamList, 'CompleteProfile'>;
 
@@ -35,6 +35,7 @@ const TRANSMISSION_OPTIONS: { label: string; value: TransmissionType }[] = [
 
 const InstructorCompleteProfileScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
+  const { notify } = useConfirmation();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [fullName, setFullName] = useState('');
@@ -58,7 +59,11 @@ const InstructorCompleteProfileScreen = ({ navigation }: Props) => {
 
   const handleSubmit = () => {
     if (!isFormValid) {
-      Alert.alert('Incomplete', 'Please fill all required fields.');
+      void notify({
+        title: 'Incomplete',
+        message: 'Please fill all required fields.',
+        variant: 'warning',
+      });
       return;
     }
     setIsSubmitting(true);

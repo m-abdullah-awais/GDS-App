@@ -1,197 +1,231 @@
 /**
  * GDS Driving School — Booking Service
  * =======================================
- * Abstraction layer for lesson booking operations.
- * Currently uses mock data; structured for future API replacement.
+ * Firestore operations for bookingRequests & bookings collections.
+ * Replaces the legacy mock-data version.
  */
 
-import { Dispatch } from 'redux';
+import { db } from '../config/firebase';
 import {
-  setAvailableSlots,
-  bookLesson as bookLessonAction,
-  cancelBooking as cancelBookingAction,
-  setLoading,
-} from '../store/student/actions';
-import type {
-  AvailableSlot,
-  BookedLesson,
-  PurchasedPackage,
-} from '../store/student/types';
-import { generateAvailableSlots } from '../modules/student/mockData';
+  Collections,
+  fromQuerySnapshot,
+  fromSnapshot,
+  serverTimestamp,
+  withDualIds,
+} from '../utils/mappers';
+import type { BookingRequest, Booking } from '../types';
 
-// ─── Fetch available slots for instructor (simulated API) ─────────────────────
+// ─── Booking Requests (student → instructor) ─────────────────────────────────
 
-export const fetchAvailableSlots = (
-  instructorId: string,
-  dispatch: Dispatch,
-): Promise<AvailableSlot[]> => {
-  return new Promise((resolve) => {
-    dispatch(setLoading('slotsLoading', true));
-
-    setTimeout(() => {
-      const slots = generateAvailableSlots(instructorId);
-      dispatch(setAvailableSlots(slots));
-      dispatch(setLoading('slotsLoading', false));
-      resolve(slots);
-    }, 500);
+/**
+ * Create a lesson booking request.
+ */
+export const createBookingRequest = async (data: {
+  studentId: string;
+  instructorId: string;
+  packageId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  duration: string;
+  notes?: string;
+}): Promise<string> => {
+  const ref = await db.collection(Collections.BOOKING_REQUESTS).add({
+    ...withDualIds(data.studentId, data.instructorId),
+    packageId: data.packageId,
+    package_id: data.packageId,
+    date: data.date,
+    startTime: data.startTime,
+    endTime: data.endTime,
+    duration: data.duration,
+    notes: data.notes || '',
+    status: 'pending',
+    createdAt: serverTimestamp(),
   });
+  return ref.id;
 };
 
-// ─── Get available slots for a specific date ──────────────────────────────────
+/**
+ * Get booking requests for a student.
+ */
+export const getStudentBookingRequests = async (
+  studentId: string,
+): Promise<BookingRequest[]> => {
+  const snap = await db
+    .collection(Collections.BOOKING_REQUESTS)
+    .where('studentId', '==', studentId)
+    .orderBy('createdAt', 'desc')
+    .get();
+  return fromQuerySnapshot<BookingRequest>(snap);
+};
 
-export const getSlotsForDate = (
-  slots: AvailableSlot[],
+/**
+ * Get booking requests for an instructor.
+ */
+export const getInstructorBookingRequests = async (
   instructorId: string,
-  date: string,
-): AvailableSlot[] => {
-  return slots.filter(
-    s => s.instructorId === instructorId && s.date === date,
-  );
+): Promise<BookingRequest[]> => {
+  const snap = await db
+    .collection(Collections.BOOKING_REQUESTS)
+    .where('instructorId', '==', instructorId)
+    .orderBy('createdAt', 'desc')
+    .get();
+  return fromQuerySnapshot<BookingRequest>(snap);
 };
 
-// ─── Validate booking (30-min buffer, no overlap) ─────────────────────────────
-
-export interface BookingValidation {
-  valid: boolean;
-  error?: string;
-}
-
-const parseTime = (timeStr: string): number => {
-  const [time, period] = timeStr.split(' ');
-  const [hoursStr, minutesStr] = time.split(':');
-  let hours = parseInt(hoursStr, 10);
-  const minutes = parseInt(minutesStr, 10);
-  if (period === 'PM' && hours !== 12) { hours += 12; }
-  if (period === 'AM' && hours === 12) { hours = 0; }
-  return hours * 60 + minutes;
-};
-
-export const validateBooking = (
-  slot: AvailableSlot,
-  existingLessons: BookedLesson[],
-  purchasedPackage: PurchasedPackage,
-): BookingValidation => {
-  // Check slot is not already booked
-  if (slot.booked) {
-    return { valid: false, error: 'This time slot is already booked.' };
-  }
-
-  // Check package has remaining lessons
-  if (purchasedPackage.lessonsUsed >= purchasedPackage.totalLessons) {
-    return { valid: false, error: 'No remaining lessons in this package.' };
-  }
-
-  if (purchasedPackage.status !== 'active') {
-    return { valid: false, error: 'This package is no longer active.' };
-  }
-
-  // Check for overlapping lessons on the same date (30-min buffer)
-  const slotStart = parseTime(slot.startTime);
-  const slotEnd = parseTime(slot.endTime);
-
-  const sameDayLessons = existingLessons.filter(
-    l =>
-      l.date === slot.date &&
-      (l.status === 'confirmed' || l.status === 'pending'),
-  );
-
-  for (const lesson of sameDayLessons) {
-    const lessonStart = parseTime(lesson.time);
-    // Parse duration string like "1.5 hours" or "1 hour"
-    const durationMatch = lesson.duration.match(/([\d.]+)/);
-    const durationHours = durationMatch ? parseFloat(durationMatch[1]) : 1;
-    const lessonEnd = lessonStart + durationHours * 60;
-
-    // Check overlap with 30-min buffer
-    const bufferMinutes = 30;
-    if (
-      slotStart < lessonEnd + bufferMinutes &&
-      slotEnd > lessonStart - bufferMinutes
-    ) {
-      return {
-        valid: false,
-        error: 'This slot conflicts with an existing booking (30-minute buffer required).',
-      };
-    }
-  }
-
-  return { valid: true };
-};
-
-// ─── Book a lesson (simulated API) ────────────────────────────────────────────
-
-export const createBooking = (
+/**
+ * Subscribe to booking requests for an instructor (real-time).
+ */
+export const onInstructorBookingRequests = (
   instructorId: string,
-  instructorName: string,
-  instructorAvatar: string,
-  packageId: string,
-  packageName: string,
-  slot: AvailableSlot,
-  dispatch: Dispatch,
-): Promise<BookedLesson> => {
-  return new Promise((resolve) => {
-    dispatch(setLoading('bookingLoading', true));
-
-    const lesson: BookedLesson = {
-      id: `LES-${Date.now()}`,
-      instructorId,
-      instructorName,
-      instructorAvatar,
-      packageId,
-      packageName,
-      date: slot.date,
-      time: slot.startTime,
-      duration: slot.duration,
-      status: 'pending',
-    };
-
-    // Simulate API call
-    setTimeout(() => {
-      dispatch(bookLessonAction(lesson));
-      dispatch(setLoading('bookingLoading', false));
-      resolve(lesson);
-    }, 1000);
-  });
+  callback: (requests: BookingRequest[]) => void,
+): (() => void) => {
+  return db
+    .collection(Collections.BOOKING_REQUESTS)
+    .where('instructorId', '==', instructorId)
+    .orderBy('createdAt', 'desc')
+    .onSnapshot(
+      (snap) => callback(fromQuerySnapshot<BookingRequest>(snap)),
+    );
 };
 
-// ─── Cancel a booking (simulated API) ─────────────────────────────────────────
+/**
+ * Subscribe to booking requests for a student (real-time).
+ */
+export const onStudentBookingRequests = (
+  studentId: string,
+  callback: (requests: BookingRequest[]) => void,
+): (() => void) => {
+  return db
+    .collection(Collections.BOOKING_REQUESTS)
+    .where('studentId', '==', studentId)
+    .orderBy('createdAt', 'desc')
+    .onSnapshot(
+      (snap) => callback(fromQuerySnapshot<BookingRequest>(snap)),
+    );
+};
 
-export const cancelLessonBooking = (
-  lessonId: string,
-  cancelledBy: 'student' | 'instructor',
-  dispatch: Dispatch,
+/**
+ * Update booking request status (approve / reject).
+ */
+export const updateBookingRequestStatus = async (
+  requestId: string,
+  status: 'approved' | 'rejected' | 'cancelled',
+  extras: Record<string, unknown> = {},
 ): Promise<void> => {
-  return new Promise((resolve) => {
-    dispatch(setLoading('bookingLoading', true));
-
-    setTimeout(() => {
-      dispatch(cancelBookingAction(lessonId, cancelledBy));
-      dispatch(setLoading('bookingLoading', false));
-      resolve();
-    }, 600);
+  await db.collection(Collections.BOOKING_REQUESTS).doc(requestId).update({
+    status,
+    ...extras,
+    updatedAt: serverTimestamp(),
   });
 };
 
-// ─── Filter lessons by status ─────────────────────────────────────────────────
+// ─── Confirmed Bookings ──────────────────────────────────────────────────────
 
-export const filterLessons = (
-  lessons: BookedLesson[],
+/**
+ * Get confirmed bookings for a student.
+ */
+export const getStudentBookings = async (
+  studentId: string,
+): Promise<Booking[]> => {
+  const snap = await db
+    .collection(Collections.BOOKINGS)
+    .where('studentId', '==', studentId)
+    .orderBy('date', 'desc')
+    .get();
+  return fromQuerySnapshot<Booking>(snap);
+};
+
+/**
+ * Get confirmed bookings for an instructor.
+ */
+export const getInstructorBookings = async (
+  instructorId: string,
+): Promise<Booking[]> => {
+  const snap = await db
+    .collection(Collections.BOOKINGS)
+    .where('instructorId', '==', instructorId)
+    .orderBy('date', 'desc')
+    .get();
+  return fromQuerySnapshot<Booking>(snap);
+};
+
+/**
+ * Subscribe to student bookings (real-time).
+ */
+export const onStudentBookings = (
+  studentId: string,
+  callback: (bookings: Booking[]) => void,
+): (() => void) => {
+  return db
+    .collection(Collections.BOOKINGS)
+    .where('studentId', '==', studentId)
+    .orderBy('date', 'desc')
+    .onSnapshot(
+      (snap) => callback(fromQuerySnapshot<Booking>(snap)),
+    );
+};
+
+/**
+ * Subscribe to instructor bookings (real-time).
+ */
+export const onInstructorBookings = (
+  instructorId: string,
+  callback: (bookings: Booking[]) => void,
+): (() => void) => {
+  return db
+    .collection(Collections.BOOKINGS)
+    .where('instructorId', '==', instructorId)
+    .orderBy('date', 'desc')
+    .onSnapshot(
+      (snap) => callback(fromQuerySnapshot<Booking>(snap)),
+    );
+};
+
+/**
+ * Get a single booking by ID.
+ */
+export const getBooking = async (bookingId: string): Promise<Booking | null> => {
+  const snap = await db.collection(Collections.BOOKINGS).doc(bookingId).get();
+  return fromSnapshot<Booking>(snap);
+};
+
+/**
+ * Cancel a booking.
+ */
+export const cancelBooking = async (
+  bookingId: string,
+  cancelledBy: 'student' | 'instructor',
+  reason?: string,
+): Promise<void> => {
+  await db.collection(Collections.BOOKINGS).doc(bookingId).update({
+    status: 'cancelled',
+    cancelledBy,
+    cancellationReason: reason || '',
+    cancelledAt: serverTimestamp(),
+  });
+};
+
+// ─── Utility: filter bookings by status (client-side) ────────────────────────
+
+export const filterBookings = (
+  bookings: Booking[],
   filter: 'upcoming' | 'completed' | 'cancelled',
-): BookedLesson[] => {
+): Booking[] => {
   switch (filter) {
     case 'upcoming':
-      return lessons
-        .filter(l => l.status === 'pending' || l.status === 'confirmed')
+      return bookings
+        .filter(b => b.status === 'pending' || b.status === 'confirmed')
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     case 'completed':
-      return lessons
-        .filter(l => l.status === 'completed')
+      return bookings
+        .filter(b => b.status === 'completed')
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     case 'cancelled':
-      return lessons
-        .filter(l => l.status === 'cancelled')
+      return bookings
+        .filter(b => b.status === 'cancelled')
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     default:
-      return lessons;
+      return bookings;
   }
 };

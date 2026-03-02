@@ -20,11 +20,11 @@ import type { AppTheme } from '../../constants/theme';
 import type { RootState } from '../../store';
 import type { AdminPackage } from '../../store/admin/types';
 import {
-  approvePackage,
-  rejectPackage,
-  updatePackageCommission,
-  deletePackage,
-} from '../../store/admin/actions';
+  approvePackageThunk,
+  rejectPackageThunk,
+  updatePackageCommissionThunk,
+  deletePackageThunk,
+} from '../../store/admin/thunks';
 import {
   SearchBar,
   FilterChips,
@@ -101,26 +101,27 @@ const AdminPackageApprovalScreen = () => {
   const executeAction = useCallback(() => {
     if (!selected || !confirmType) return;
     setConfirmLoading(true);
-    setTimeout(() => {
-      switch (confirmType) {
-        case 'approve':
-          dispatch(approvePackage(selected.id));
-          showToast('success', `"${selected.title}" has been approved`);
-          break;
-        case 'reject':
-          dispatch(rejectPackage(selected.id));
-          showToast('warning', `"${selected.title}" has been rejected`);
-          break;
-        case 'delete':
-          dispatch(deletePackage(selected.id));
-          showToast('error', `"${selected.title}" has been deleted`);
-          break;
-      }
-      setConfirmLoading(false);
-      setConfirmType(null);
-      setSelected(null);
-      setDrawerOpen(false);
-    }, 600);
+    let thunk: any;
+    switch (confirmType) {
+      case 'approve': thunk = approvePackageThunk(selected.id); break;
+      case 'reject': thunk = rejectPackageThunk(selected.id); break;
+      case 'delete': thunk = deletePackageThunk(selected.id); break;
+    }
+    dispatch(thunk as any)
+      .then(() => {
+        switch (confirmType) {
+          case 'approve': showToast('success', `"${selected.title}" has been approved`); break;
+          case 'reject': showToast('warning', `"${selected.title}" has been rejected`); break;
+          case 'delete': showToast('error', `"${selected.title}" has been deleted`); break;
+        }
+      })
+      .catch(() => showToast('error', 'Operation failed. Please try again.'))
+      .finally(() => {
+        setConfirmLoading(false);
+        setConfirmType(null);
+        setSelected(null);
+        setDrawerOpen(false);
+      });
   }, [selected, confirmType, dispatch, showToast]);
 
   const handleCommissionSave = useCallback(
@@ -130,8 +131,9 @@ const AdminPackageApprovalScreen = () => {
         showToast('error', 'Commission must be between 0 and 100');
         return;
       }
-      dispatch(updatePackageCommission(pkg.id, val));
-      showToast('success', `Commission updated to ${val}% for "${pkg.title}"`);
+      dispatch(updatePackageCommissionThunk(pkg.id, val) as any)
+        .then(() => showToast('success', `Commission updated to ${val}% for "${pkg.title}"`))
+        .catch(() => showToast('error', 'Failed to update commission'));
       setEditingId(null);
       setEditCommission('');
     },

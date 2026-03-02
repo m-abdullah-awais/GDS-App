@@ -20,10 +20,10 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { AppTheme } from '../../constants/theme';
 import type { DrawerScreenProps } from '@react-navigation/drawer';
 import type { InstructorTabsParamList } from '../../navigation/instructor/InstructorTabs';
-import {
-  instructorLessons,
-  type InstructorLesson,
-} from '../../modules/instructor/mockData';
+import type { InstructorLesson } from '../../types/instructor-views';
+import { mapBookingToInstructorLesson } from '../../utils/mappers';
+import { useSelector } from 'react-redux';
+import { feedbackService } from '../../services';
 import FeedbackModal from '../../components/instructor/FeedbackModal';
 import { useToast } from '../../components/admin';
 
@@ -34,22 +34,41 @@ const InstructorPendingReviewsScreen = ({ navigation }: Props) => {
   const { showToast } = useToast();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const [lessons, setLessons] = useState<InstructorLesson[]>(
-    instructorLessons.filter((l) => l.status === 'pending_review' && !l.reviewed),
+  const bookings = useSelector((state: any) => state.instructor.bookings) || [];
+  const lessonCompletions = useSelector((state: any) => state.instructor.lessonCompletions) || [];
+
+  // Build lessons needing review: completed bookings without matching lessonCompletion
+  const completedBookingIds = new Set(lessonCompletions.map((lc: any) => lc.bookingId));
+  const pendingReviewLessons: InstructorLesson[] = useMemo(
+    () => bookings
+      .filter((b: any) => b.status === 'completed' && !completedBookingIds.has(b.id))
+      .map((b: any) => mapBookingToInstructorLesson(b)),
+    [bookings, lessonCompletions],
   );
+
+  const [lessons, setLessons] = useState<InstructorLesson[]>(pendingReviewLessons);
   const [selectedLesson, setSelectedLesson] = useState<InstructorLesson | null>(null);
 
   const handleOpenReview = (lesson: InstructorLesson) => {
     setSelectedLesson(lesson);
   };
 
-  const handleFeedbackSubmit = (data: { action: string }) => {
-    if (data.action === 'lesson_cancelled') {
-      setLessons((prev) => prev.filter((l) => l.id !== selectedLesson?.id));
-      showToast('warning', 'The student has been notified and hours refunded.');
-    } else {
-      setLessons((prev) => prev.filter((l) => l.id !== selectedLesson?.id));
-      showToast('success', 'Feedback submitted successfully!');
+  const handleFeedbackSubmit = async (data: { action: string; rating?: number; notes?: string; skills?: any[] }) => {
+    try {
+      if (data.action === 'lesson_cancelled') {
+        setLessons((prev) => prev.filter((l) => l.id !== selectedLesson?.id));
+        showToast('warning', 'The student has been notified and hours refunded.');
+      } else if (selectedLesson) {
+        await feedbackService.submitLessonFeedback(selectedLesson.id, {
+          rating: data.rating || 0,
+          notes: data.notes || '',
+          skills: data.skills || [],
+        });
+        setLessons((prev) => prev.filter((l) => l.id !== selectedLesson?.id));
+        showToast('success', 'Feedback submitted successfully!');
+      }
+    } catch (e) {
+      showToast('error', 'Failed to submit feedback.');
     }
     setSelectedLesson(null);
   };

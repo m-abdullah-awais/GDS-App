@@ -10,8 +10,9 @@
  *   - DVSA test readiness indicator
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,7 +22,9 @@ import {
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
-import { studentProfile, lessons } from '../../modules/student/mockData';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../store';
+import * as progressService from '../../services/progressService';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 // ─── Local Progress Mock Data ─────────────────────────────────────────────────
@@ -179,16 +182,70 @@ const StudentProgressScreen = () => {
   const { theme } = useTheme();
   const s = createStyles(theme);
   const [activeTab, setActiveTab] = useState<SkillTab>('skills');
+  const profile = useSelector((state: RootState) => state.auth.profile);
+  const lessons = useSelector((state: RootState) => state.student.lessons);
+  const purchasedPackages = useSelector((state: RootState) => state.student.purchasedPackages);
+
+  const [progressData, setProgressData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!profile?.uid) return;
+    setLoading(true);
+    progressService.getStudentProgress(profile.uid)
+      .then(data => setProgressData(data))
+      .catch(err => console.error('Failed to load progress:', err))
+      .finally(() => setLoading(false));
+  }, [profile?.uid]);
 
   const completedLessons = lessons.filter(l => l.status === 'completed').length;
   const upcomingLessons = lessons.filter(l => l.status === 'pending' || l.status === 'confirmed').length;
-  const hoursUsed = studentProfile.totalHours - studentProfile.remainingHours;
-  const hoursProgress = hoursUsed / studentProfile.totalHours;
+  const totalHours = purchasedPackages.reduce((sum, p) => sum + (p.totalLessons || 0), 0);
+  const usedHours = purchasedPackages.reduce((sum, p) => sum + (p.completedLessons || 0), 0);
+  const hoursProgress = totalHours > 0 ? usedHours / totalHours : 0;
+
+  // Use progress data from Firestore if available, otherwise use defaults
+  const serverSkills = progressData?.skills || [];
+  const displaySkills = serverSkills.length > 0
+    ? serverSkills.map((sk: any, idx: number) => ({
+        id: sk.id || String(idx),
+        name: sk.name || sk.skillName || '',
+        progress: sk.progress || sk.score || 0,
+        badge: sk.icon || skillAreas[idx]?.badge || 'star-outline',
+      }))
+    : skillAreas;
+
+  const serverMilestones = progressData?.milestones || [];
+  const displayMilestones = serverMilestones.length > 0
+    ? serverMilestones.map((m: any, idx: number) => ({
+        id: m.id || String(idx),
+        title: m.title || '',
+        subtitle: m.subtitle || m.description || '',
+        achieved: m.achieved ?? false,
+        icon: m.icon || milestones[idx]?.icon || 'star-outline',
+      }))
+    : milestones.map(m => ({
+        ...m,
+        achieved: m.id === 'm1' ? completedLessons >= 1
+          : m.id === 'm2' ? completedLessons >= 5
+          : m.id === 'm3' ? usedHours >= 10
+          : false,
+      }));
 
   const avgSkill =
-    skillAreas.reduce((sum, skill) => sum + skill.progress, 0) / skillAreas.length;
+    displaySkills.reduce((sum: number, skill: any) => sum + skill.progress, 0) / (displaySkills.length || 1);
   const testReadiness = Math.round((hoursProgress * 0.5 + avgSkill * 0.5) * 100);
-  const achievedCount = milestones.filter(m => m.achieved).length;
+  const achievedCount = displayMilestones.filter((m: any) => m.achieved).length;
+
+  if (loading) {
+    return (
+      <ScreenContainer>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer>
@@ -203,7 +260,7 @@ const StudentProgressScreen = () => {
             <Text style={s.heroLabel}>Overall Progress</Text>
             <Text style={s.heroPercent}>{Math.round(hoursProgress * 100)}%</Text>
             <Text style={s.heroSub}>
-              {hoursUsed} of {studentProfile.totalHours} hours completed
+              {usedHours} of {totalHours} hours completed
             </Text>
           </View>
           <View style={s.heroRight}>
@@ -219,7 +276,7 @@ const StudentProgressScreen = () => {
         {/* ── Stat Chips ─────────────────────────────────────────── */}
         <View style={s.statsRow}>
           <StatChip
-            value={hoursUsed}
+            value={usedHours}
             label={'Hours\nDone'}
             accent={theme.colors.primary}
             theme={theme}
@@ -245,7 +302,7 @@ const StudentProgressScreen = () => {
           <View style={s.cardHeader}>
             <Text style={s.cardTitle}>Package Hours</Text>
             <Text style={s.cardBadge}>
-              {studentProfile.remainingHours} hrs remaining
+              {totalHours - usedHours} hrs remaining
             </Text>
           </View>
           <ProgressBar
@@ -256,7 +313,7 @@ const StudentProgressScreen = () => {
           />
           <View style={s.barLabels}>
             <Text style={s.barLabel}>0 hrs</Text>
-            <Text style={s.barLabel}>{studentProfile.totalHours} hrs</Text>
+            <Text style={s.barLabel}>{totalHours} hrs</Text>
           </View>
         </View>
 
@@ -317,7 +374,7 @@ const StudentProgressScreen = () => {
             onPress={() => setActiveTab('milestones')}>
             <Text
               style={[s.tabText, activeTab === 'milestones' && s.tabTextActive]}>
-              Milestones {achievedCount}/{milestones.length}
+              Milestones {achievedCount}/{displayMilestones.length}
             </Text>
           </Pressable>
         </View>
@@ -335,12 +392,12 @@ const StudentProgressScreen = () => {
                 {getSkillLabel(avgSkill)} ({Math.round(avgSkill * 100)}%)
               </Text>
             </Text>
-            {skillAreas.map((skill, idx) => (
+            {displaySkills.map((skill: any, idx: number) => (
               <View
                 key={skill.id}
                 style={[
                   s.skillRow,
-                  idx < skillAreas.length - 1 && s.skillRowBorder,
+                  idx < displaySkills.length - 1 && s.skillRowBorder,
                 ]}>
                 <Ionicons
                   name={skill.badge}
@@ -375,12 +432,12 @@ const StudentProgressScreen = () => {
         {/* ── Milestones ─────────────────────────────────────────── */}
         {activeTab === 'milestones' && (
           <View style={s.card}>
-            {milestones.map((milestone, idx) => (
+            {displayMilestones.map((milestone: any, idx: number) => (
               <View
                 key={milestone.id}
                 style={[
                   s.milestoneRow,
-                  idx < milestones.length - 1 && s.milestoneRowBorder,
+                  idx < displayMilestones.length - 1 && s.milestoneRowBorder,
                   !milestone.achieved && s.milestoneRowDim,
                 ]}>
                 <View

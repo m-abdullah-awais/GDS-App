@@ -22,7 +22,23 @@ import {
   REJECT_PACKAGE,
   UPDATE_PACKAGE_COMMISSION,
   DELETE_PACKAGE,
+  SET_STUDENTS,
+  SET_INSTRUCTORS,
+  SET_TRANSACTIONS,
+  SET_CONVERSATIONS,
+  SET_MESSAGES,
+  SET_PACKAGES,
+  SET_SETTINGS,
+  SET_DASHBOARD_STATS,
+  SET_ADMIN_LOADING,
   type AdminSettings,
+  type AdminStudent,
+  type AdminInstructor,
+  type Transaction,
+  type Conversation,
+  type ChatMessage,
+  type AdminPackage,
+  type DashboardStats,
 } from './types';
 
 // ─── Student Actions ──────────────────────────────────────────────────────────
@@ -125,4 +141,51 @@ export const updatePackageCommission = (packageId: string, commissionPercentage:
 export const deletePackage = (packageId: string) => ({
   type: DELETE_PACKAGE as typeof DELETE_PACKAGE,
   payload: { packageId },
+});
+
+// ─── Bulk-load Actions (from Firebase) ────────────────────────────────────────
+
+export const setStudents = (students: AdminStudent[]) => ({
+  type: SET_STUDENTS as typeof SET_STUDENTS,
+  payload: students,
+});
+
+export const setAdminInstructors = (instructors: AdminInstructor[]) => ({
+  type: SET_INSTRUCTORS as typeof SET_INSTRUCTORS,
+  payload: instructors,
+});
+
+export const setTransactions = (transactions: Transaction[]) => ({
+  type: SET_TRANSACTIONS as typeof SET_TRANSACTIONS,
+  payload: transactions,
+});
+
+export const setConversations = (conversations: Conversation[]) => ({
+  type: SET_CONVERSATIONS as typeof SET_CONVERSATIONS,
+  payload: conversations,
+});
+
+export const setMessages = (messages: ChatMessage[]) => ({
+  type: SET_MESSAGES as typeof SET_MESSAGES,
+  payload: messages,
+});
+
+export const setAdminPackages = (packages: AdminPackage[]) => ({
+  type: SET_PACKAGES as typeof SET_PACKAGES,
+  payload: packages,
+});
+
+export const setAdminSettings = (settings: AdminSettings) => ({
+  type: SET_SETTINGS as typeof SET_SETTINGS,
+  payload: settings,
+});
+
+export const setDashboardStats = (stats: DashboardStats) => ({
+  type: SET_DASHBOARD_STATS as typeof SET_DASHBOARD_STATS,
+  payload: stats,
+});
+
+export const setAdminLoading = (loading: boolean) => ({
+  type: SET_ADMIN_LOADING as typeof SET_ADMIN_LOADING,
+  payload: loading,
 });

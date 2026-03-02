@@ -5,7 +5,7 @@
  * Pill-style filter tabs + premium card styling (matches student side).
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   FlatList,
   Pressable,
@@ -20,11 +20,9 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { AppTheme } from '../../constants/theme';
 import type { DrawerScreenProps } from '@react-navigation/drawer';
 import type { InstructorTabsParamList } from '../../navigation/instructor/InstructorTabs';
-import {
-  studentRequests as initialRequests,
-  type StudentRequest,
-  type StudentRequestDirection,
-} from '../../modules/instructor/mockData';
+import { useSelector, useDispatch } from 'react-redux';
+import { useState } from 'react';
+import { acceptStudentRequestThunk, rejectStudentRequestThunk } from '../../store/instructor/thunks';
 
 type Props = DrawerScreenProps<InstructorTabsParamList, 'Requests'>;
 
@@ -88,34 +86,44 @@ const InstructorRequestsScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [activeTab, setActiveTab] = useState<TabKey>('incoming');
-  const [requests, setRequests] = useState<StudentRequest[]>([...initialRequests]);
+  const dispatch = useDispatch<any>();
+  const studentRequests = useSelector((state: any) => state.instructor.studentRequests) || [];
+
+  // Map Firestore requests to view model
+  const requests = useMemo(() => studentRequests.map((r: any) => ({
+    id: r.id,
+    studentId: r.studentId || r.student_id || '',
+    studentName: r.studentName || '',
+    studentAvatar: (r.studentName || '').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'ST',
+    postcode: r.studentPostcode || '',
+    status: r.status === 'confirmed' ? 'accepted' : r.status,
+    direction: r.initiatedBy === 'student' ? 'incoming' : 'outgoing',
+    sentDate: r.createdAt ? new Date(r.createdAt.seconds ? r.createdAt.seconds * 1000 : r.createdAt).toISOString().split('T')[0] : '',
+    responseDate: r.acceptedAt || r.rejectedAt ? new Date((r.acceptedAt || r.rejectedAt).seconds ? (r.acceptedAt || r.rejectedAt).seconds * 1000 : (r.acceptedAt || r.rejectedAt)).toISOString().split('T')[0] : undefined,
+  })), [studentRequests]);
 
   const filteredRequests = useMemo(
-    () => requests.filter((r) => r.direction === activeTab),
+    () => requests.filter((r: any) => r.direction === activeTab),
     [requests, activeTab],
   );
 
   const getCounts = (key: TabKey) =>
-    requests.filter((r) => r.direction === key).length;
+    requests.filter((r: any) => r.direction === key).length;
 
-  const handleAccept = (requestId: string) => {
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.id === requestId
-          ? { ...r, status: 'accepted', responseDate: new Date().toISOString().split('T')[0] }
-          : r,
-      ),
-    );
+  const handleAccept = async (requestId: string) => {
+    try {
+      await dispatch(acceptStudentRequestThunk(requestId));
+    } catch (e) {
+      console.warn('Failed to accept request', e);
+    }
   };
 
-  const handleReject = (requestId: string) => {
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.id === requestId
-          ? { ...r, status: 'rejected', responseDate: new Date().toISOString().split('T')[0] }
-          : r,
-      ),
-    );
+  const handleReject = async (requestId: string) => {
+    try {
+      await dispatch(rejectStudentRequestThunk(requestId));
+    } catch (e) {
+      console.warn('Failed to reject request', e);
+    }
   };
 
   const renderRequest = ({ item }: { item: StudentRequest }) => {

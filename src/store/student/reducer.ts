@@ -1,17 +1,9 @@
 /**
  * GDS Driving School — Student Redux Reducer
  * =============================================
- * Classic switch/case reducer matching admin pattern.
- * Initializes from student mock data.
+ * Classic switch/case reducer.
+ * Initialized with empty state — populated via async thunks from Firebase services.
  */
-
-import {
-  instructors as mockInstructors,
-  studentRequests as mockRequests,
-  instructorPackages as mockPackages,
-  purchasedPackages as mockPurchased,
-  lessons as mockLessons,
-} from '../../modules/student/mockData';
 
 import {
   SET_INSTRUCTORS,
@@ -30,26 +22,16 @@ import {
   type StudentAction,
 } from './types';
 
-// ─── Derive my instructors from accepted requests ─────────────────────────────
-
-const acceptedIds = mockRequests
-  .filter(r => r.status === 'accepted')
-  .map(r => r.instructorId);
-
-const initialMyInstructors = mockInstructors.filter(i =>
-  acceptedIds.includes(i.id),
-);
-
-// ─── Initial State ────────────────────────────────────────────────────────────
+// ─── Initial State (empty — populated from Firebase) ──────────────────────────
 
 const initialState: StudentState = {
-  instructors: mockInstructors,
-  myInstructors: initialMyInstructors,
-  requests: mockRequests,
-  packages: mockPackages,
-  purchasedPackages: mockPurchased,
+  instructors: [],
+  myInstructors: [],
+  requests: [],
+  packages: {},
+  purchasedPackages: [],
   availableSlots: [],
-  lessons: mockLessons,
+  lessons: [],
   searchLoading: false,
   packagesLoading: false,
   slotsLoading: false,

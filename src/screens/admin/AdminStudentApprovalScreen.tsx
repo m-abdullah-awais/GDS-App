@@ -18,7 +18,7 @@ import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import type { RootState } from '../../store';
 import type { AdminStudent, ApprovalStatus } from '../../store/admin/types';
-import { approveStudent, rejectStudent } from '../../store/admin/actions';
+import { approveStudentThunk, rejectStudentThunk } from '../../store/admin/thunks';
 import {
   SearchBar,
   FilterChips,
@@ -89,18 +89,23 @@ const AdminStudentApprovalScreen = () => {
   const executeAction = useCallback(() => {
     if (!selectedStudent || !confirmAction) return;
     setConfirmLoading(true);
-    setTimeout(() => {
-      if (confirmAction === 'approve') {
-        dispatch(approveStudent(selectedStudent.id));
-        showToast('success', `${selectedStudent.name} has been approved`);
-      } else {
-        dispatch(rejectStudent(selectedStudent.id));
-        showToast('error', `${selectedStudent.name} has been rejected`);
-      }
-      setConfirmLoading(false);
-      setConfirmAction(null);
-      setSelectedStudent(null);
-    }, 600);
+    const thunk = confirmAction === 'approve'
+      ? approveStudentThunk(selectedStudent.id)
+      : rejectStudentThunk(selectedStudent.id);
+    dispatch(thunk as any)
+      .then(() => {
+        if (confirmAction === 'approve') {
+          showToast('success', `${selectedStudent.name} has been approved`);
+        } else {
+          showToast('error', `${selectedStudent.name} has been rejected`);
+        }
+      })
+      .catch(() => showToast('error', 'Operation failed. Please try again.'))
+      .finally(() => {
+        setConfirmLoading(false);
+        setConfirmAction(null);
+        setSelectedStudent(null);
+      });
   }, [selectedStudent, confirmAction, dispatch, showToast]);
 
   const openDrawer = useCallback((student: AdminStudent) => {

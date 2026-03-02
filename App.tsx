@@ -8,30 +8,38 @@ import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { Provider } from 'react-redux';
-import store from './src/store';
+import { PersistGate } from 'redux-persist/integration/react';
+import store, { persistor } from './src/store';
 import { ToastProvider } from './src/components/admin/ToastContext';
 import { ConfirmationProvider } from './src/components/common';
 import RootNavigator from './src/navigation/RootNavigator';
 import { ThemeProvider, useTheme } from './src/theme';
+import { useAuthStateListener } from './src/hooks';
+import { linkingConfig } from './src/navigation/linking';
 
 function App() {
   return (
     <Provider store={store}>
-      <ThemeProvider initialScheme="system">
-        <SafeAreaProvider>
-          <ToastProvider>
-            <ConfirmationProvider>
-              <AppContent />
-            </ConfirmationProvider>
-          </ToastProvider>
-        </SafeAreaProvider>
-      </ThemeProvider>
+      <PersistGate loading={null} persistor={persistor}>
+        <ThemeProvider initialScheme="system">
+          <SafeAreaProvider>
+            <ToastProvider>
+              <ConfirmationProvider>
+                <AppContent />
+              </ConfirmationProvider>
+            </ToastProvider>
+          </SafeAreaProvider>
+        </ThemeProvider>
+      </PersistGate>
     </Provider>
   );
 }
 
 function AppContent() {
   const { theme } = useTheme();
+
+  // Subscribe to Firebase Auth state + Firestore user profile
+  useAuthStateListener();
 
   const navigationTheme = {
     ...(theme.dark ? DarkTheme : DefaultTheme),
@@ -49,7 +57,7 @@ function AppContent() {
   return (
     <>
       <StatusBar barStyle={theme.colors.statusBar} />
-      <NavigationContainer theme={navigationTheme}>
+      <NavigationContainer theme={navigationTheme} linking={linkingConfig}>
         <RootNavigator />
       </NavigationContainer>
     </>

@@ -20,8 +20,67 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { AppTheme } from '../../constants/theme';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { InstructorStackParamList } from '../../navigation/instructor/InstructorStack';
-import { areas as initialAreas, type Area, type Postcode } from '../../modules/instructor/mockData';
+import { areas as initialAreas, type Area, type Postcode } from '../../types/instructor-views';
 import { useConfirmation } from '../../components/common';
+import { useSelector } from 'react-redux';
+import { userService } from '../../services';
+
+// Reference areas data (would typically come from admin configuration)
+const REFERENCE_AREAS: Area[] = [
+  {
+    id: 'AREA-001', name: 'South West London',
+    postcodes: [
+      { id: 'PC-001', code: 'SW1', selected: false },
+      { id: 'PC-002', code: 'SW3', selected: false },
+      { id: 'PC-003', code: 'SW5', selected: false },
+      { id: 'PC-004', code: 'SW7', selected: false },
+      { id: 'PC-005', code: 'SW9', selected: false },
+      { id: 'PC-006', code: 'SW11', selected: false },
+      { id: 'PC-007', code: 'SW15', selected: false },
+    ],
+  },
+  {
+    id: 'AREA-002', name: 'Central London',
+    postcodes: [
+      { id: 'PC-008', code: 'W1', selected: false },
+      { id: 'PC-009', code: 'W2', selected: false },
+      { id: 'PC-010', code: 'WC1', selected: false },
+      { id: 'PC-011', code: 'WC2', selected: false },
+      { id: 'PC-012', code: 'EC1', selected: false },
+      { id: 'PC-013', code: 'EC2', selected: false },
+    ],
+  },
+  {
+    id: 'AREA-003', name: 'North London',
+    postcodes: [
+      { id: 'PC-014', code: 'N1', selected: false },
+      { id: 'PC-015', code: 'N7', selected: false },
+      { id: 'PC-016', code: 'N19', selected: false },
+      { id: 'PC-017', code: 'NW1', selected: false },
+      { id: 'PC-018', code: 'NW3', selected: false },
+      { id: 'PC-019', code: 'NW5', selected: false },
+    ],
+  },
+  {
+    id: 'AREA-004', name: 'East London',
+    postcodes: [
+      { id: 'PC-020', code: 'E1', selected: false },
+      { id: 'PC-021', code: 'E2', selected: false },
+      { id: 'PC-022', code: 'E3', selected: false },
+      { id: 'PC-023', code: 'E14', selected: false },
+      { id: 'PC-024', code: 'E15', selected: false },
+    ],
+  },
+  {
+    id: 'AREA-005', name: 'South East London',
+    postcodes: [
+      { id: 'PC-025', code: 'SE1', selected: false },
+      { id: 'PC-026', code: 'SE5', selected: false },
+      { id: 'PC-027', code: 'SE15', selected: false },
+      { id: 'PC-028', code: 'SE22', selected: false },
+    ],
+  },
+];
 
 type Props = NativeStackScreenProps<InstructorStackParamList, 'Areas'>;
 
@@ -29,15 +88,21 @@ const InstructorAreasScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
   const { notify } = useConfirmation();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const authProfile = useSelector((state: any) => state.auth.profile);
 
-  const [areasData, setAreasData] = useState<Area[]>(
-    initialAreas.map((a) => ({
-      ...a,
-      postcodes: a.postcodes.map((p) => ({ ...p })),
+  // Mark user's existing areas as selected
+  const userAreas: string[] = authProfile?.areas || [];
+  const mergedAreas = REFERENCE_AREAS.map(a => ({
+    ...a,
+    postcodes: a.postcodes.map(p => ({
+      ...p,
+      selected: userAreas.includes(p.code) || userAreas.includes(a.name),
     })),
-  );
+  }));
+
+  const [areasData, setAreasData] = useState<Area[]>(mergedAreas);
   const [expandedAreaId, setExpandedAreaId] = useState<string | null>(
-    initialAreas[0]?.id ?? null,
+    REFERENCE_AREAS[0]?.id ?? null,
   );
 
   const togglePostcode = (areaId: string, postcodeId: string) => {
@@ -56,12 +121,32 @@ const InstructorAreasScreen = ({ navigation }: Props) => {
   };
 
   const handleSave = async () => {
-    await notify({
-      title: 'Success',
-      message: 'Areas and postcodes saved successfully!',
-      variant: 'success',
-    });
-    navigation.goBack();
+    try {
+      const selectedPostcodes = areasData.flatMap(a =>
+        a.postcodes.filter(p => p.selected).map(p => p.code),
+      );
+      const selectedAreaNames = areasData
+        .filter(a => a.postcodes.some(p => p.selected))
+        .map(a => a.name);
+      if (authProfile?.uid) {
+        await userService.updateUserProfile(authProfile.uid, {
+          areas: selectedAreaNames,
+          postcodes: selectedPostcodes,
+        });
+      }
+      await notify({
+        title: 'Success',
+        message: 'Areas and postcodes saved successfully!',
+        variant: 'success',
+      });
+      navigation.goBack();
+    } catch (e) {
+      await notify({
+        title: 'Error',
+        message: 'Failed to save areas.',
+        variant: 'error',
+      });
+    }
   };
 
   const renderPostcode = (postcode: Postcode, areaId: string) => (

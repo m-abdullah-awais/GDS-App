@@ -10,7 +10,7 @@
  *   - Sign out
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -21,11 +21,16 @@ import {
   View,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useDispatch, useSelector } from 'react-redux';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useTheme, type ColorSchemePreference } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
+import type { RootState } from '../../store';
 import { useToast } from '../../components/admin';
 import { ProfileImageOptionsModal, useConfirmation } from '../../components/common';
+import * as authService from '../../services/authService';
+import * as userService from '../../services/userService';
+import { clearAuth } from '../../store/auth/authSlice';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -50,11 +55,11 @@ const getInitials = (name: string) =>
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 const INITIAL_PROFILE: ProfileData = {
-  name: 'Sarah Admin',
+  name: '',
   role: 'System Administrator',
-  email: 'admin@gdsplatform.com',
-  phone: '+44 7000 000000',
-  location: 'London, UK',
+  email: '',
+  phone: '',
+  location: '',
 };
 
 const APPEARANCE_OPTIONS: { label: string; value: ColorSchemePreference }[] = [
@@ -84,11 +89,21 @@ const AdminProfileScreen = () => {
   const { showToast } = useToast();
   const { confirm, notify } = useConfirmation();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const dispatch = useDispatch();
+  const authProfile = useSelector((state: RootState) => state.auth.profile);
 
-  const [profile, setProfile] = useState<ProfileData>(INITIAL_PROFILE);
-  const [draft, setDraft] = useState<ProfileData>(INITIAL_PROFILE);
+  const profileFromAuth: ProfileData = useMemo(() => ({
+    name: authProfile?.full_name || '',
+    role: 'System Administrator',
+    email: authProfile?.email || '',
+    phone: authProfile?.phone || '',
+    location: authProfile?.address || '',
+  }), [authProfile]);
+
+  const [profile, setProfile] = useState<ProfileData>(profileFromAuth);
+  const [draft, setDraft] = useState<ProfileData>(profileFromAuth);
   const [editing, setEditing] = useState(false);
-  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(authProfile?.profile_picture_url || authProfile?.profileImage || null);
   const [imageOptionsVisible, setImageOptionsVisible] = useState(false);
   const [notifSystem, setNotifSystem] = useState(true);
   const [notifEmails, setNotifEmails] = useState(true);
@@ -103,7 +118,7 @@ const AdminProfileScreen = () => {
     setEditing(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trimmed: ProfileData = {
       name: draft.name.trim(),
       role: draft.role.trim(),
@@ -127,10 +142,21 @@ const AdminProfileScreen = () => {
       });
       return;
     }
-    setProfile(trimmed);
-    setDraft(trimmed);
-    setEditing(false);
-    showToast('success', 'Your profile has been updated.');
+    try {
+      if (authProfile?.uid) {
+        await userService.updateUserProfile(authProfile.uid, {
+          full_name: trimmed.name,
+          phone: trimmed.phone,
+          address: trimmed.location,
+        });
+      }
+      setProfile(trimmed);
+      setDraft(trimmed);
+      setEditing(false);
+      showToast('success', 'Your profile has been updated.');
+    } catch {
+      showToast('error', 'Failed to update profile.');
+    }
   };
 
   const handlePickImage = () => {
@@ -148,7 +174,13 @@ const AdminProfileScreen = () => {
     });
 
     if (shouldSignOut) {
-      showToast('info', 'Signed out successfully.');
+      try {
+        await authService.signOut();
+        dispatch(clearAuth());
+        showToast('info', 'Signed out successfully.');
+      } catch {
+        showToast('error', 'Sign out failed.');
+      }
     }
   };
 

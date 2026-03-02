@@ -6,13 +6,14 @@
  * Mirrors StudentMessagesScreen with instructor-specific data.
  */
 
-import React from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   FlatList,
   Pressable,
   StyleSheet,
   Text,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
@@ -21,10 +22,10 @@ import type { InstructorStackParamList } from '../../navigation/instructor/Instr
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
-import {
-  instructorConversations,
-  type InstructorConversation,
-} from '../../modules/instructor/mockData';
+import type { InstructorConversation } from '../../types/instructor-views';
+import { useSelector } from 'react-redux';
+import { messageService } from '../../services';
+import { mapMessagesToConversations } from '../../utils/mappers';
 
 type Nav = NativeStackNavigationProp<InstructorStackParamList>;
 
@@ -184,11 +185,36 @@ const InstructorMessagesScreen = () => {
   const navigation = useNavigation<Nav>();
   const { theme } = useTheme();
   const s = createStyles(theme);
+  const authProfile = useSelector((state: any) => state.auth.profile);
+  const [conversations, setConversations] = useState<InstructorConversation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!authProfile?.uid) return;
+    setLoading(true);
+    messageService.getMessagesForUser(authProfile.uid)
+      .then((msgs: any[]) => {
+        const mapped = mapMessagesToConversations(msgs, authProfile.uid);
+        setConversations(mapped as any);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [authProfile?.uid]);
+
+  if (loading) {
+    return (
+      <ScreenContainer showHeader title="Messages">
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" />
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer showHeader title="Messages">
       <FlatList
-        data={instructorConversations}
+        data={conversations}
         keyExtractor={item => item.id}
         contentContainerStyle={s.listContent}
         showsVerticalScrollIndicator={false}

@@ -6,8 +6,9 @@
  * and navigation to available packages.
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   ScrollView,
@@ -23,7 +24,11 @@ import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
 import { Button } from '../../components/Button';
 import Avatar from '../../components/Avatar';
-import { instructors, studentRequests, type Review } from '../../modules/student/mockData';
+import { useSelector, useDispatch } from 'react-redux';
+import type { RootState } from '../../store';
+import { sendInstructorRequestThunk } from '../../store/student/thunks';
+import * as userService from '../../services/userService';
+import * as feedbackService from '../../services/feedbackService';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 type Nav = NativeStackNavigationProp<StudentStackParamList>;
@@ -96,13 +101,71 @@ const reviewCardStyles = (theme: AppTheme) =>
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+interface Review {
+  id: string;
+  studentName: string;
+  date: string;
+  rating: number;
+  comment: string;
+}
+
 const InstructorProfileScreen = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { theme } = useTheme();
   const s = createStyles(theme);
+  const dispatch = useDispatch();
 
-  const instructor = instructors.find(i => i.id === route.params.instructorId);
+  const profile = useSelector((state: RootState) => state.auth.profile);
+  // Get instructor from Redux store (populated by loadStudentData)
+  const instructorVM = useSelector((state: RootState) =>
+    state.student.instructors.find(i => i.id === route.params.instructorId),
+  );
+  const requests = useSelector((state: RootState) => state.student.requests);
+
+  // Fetch full profile + reviews from Firestore
+  const [instructorDetail, setInstructorDetail] = useState<any>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sendingRequest, setSendingRequest] = useState(false);
+
+  useEffect(() => {
+    const fetchDetails = async () => {
+      setLoading(true);
+      try {
+        const [user, fbReviews] = await Promise.all([
+          userService.getUserById(route.params.instructorId),
+          feedbackService.getInstructorFeedback(route.params.instructorId),
+        ]);
+        setInstructorDetail(user);
+        setReviews(fbReviews.map((r: any) => ({
+          id: r.id,
+          studentName: r.studentName || r.student_name || 'Student',
+          date: r.createdAt ? new Date(r.createdAt as any).toLocaleDateString() : '',
+          rating: r.rating || 0,
+          comment: r.comment || r.feedback || '',
+        })));
+      } catch (err) {
+        console.error('Failed to load instructor details:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDetails();
+  }, [route.params.instructorId]);
+
+  // Merge data: prefer Firestore detail, fallback to Redux VM
+  const instructor = instructorDetail || instructorVM;
+
+  if (loading && !instructor) {
+    return (
+      <ScreenContainer showHeader title="Instructor">
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   if (!instructor) {
     return (
@@ -128,24 +191,24 @@ const InstructorProfileScreen = () => {
           <View style={s.ratingRow}>
             <StarRating rating={Math.round(instructor.rating)} theme={theme} />
             <Text style={s.ratingText}>
-              {instructor.rating} ({instructor.reviewCount} reviews)
+              {instructor.rating || 0} ({reviews.length} reviews)
             </Text>
           </View>
 
           {/* Stats */}
           <View style={s.statsRow}>
             <View style={s.stat}>
-              <Text style={s.statValue}>{instructor.passRate}%</Text>
+              <Text style={s.statValue}>{instructor.passRate || instructor.pass_rate || 'N/A'}%</Text>
               <Text style={s.statLabel}>Pass Rate</Text>
             </View>
             <View style={s.statDivider} />
             <View style={s.stat}>
-              <Text style={s.statValue}>{instructor.yearsExperience}</Text>
+              <Text style={s.statValue}>{instructor.yearsExperience || instructor.years_experience || '-'}</Text>
               <Text style={s.statLabel}>Years Exp</Text>
             </View>
             <View style={s.statDivider} />
             <View style={s.stat}>
-              <Text style={s.statValue}>{instructor.reviewCount}</Text>
+              <Text style={s.statValue}>{reviews.length}</Text>
               <Text style={s.statLabel}>Reviews</Text>
             </View>
           </View>
@@ -164,7 +227,7 @@ const InstructorProfileScreen = () => {
         {/* ── About Section ────────────────────────────────── */}
         <View style={s.section}>
           <Text style={s.sectionTitle}>About</Text>
-          <Text style={s.aboutText}>{instructor.about}</Text>
+          <Text style={s.aboutText}>{instructor.about || instructor.bio || 'No bio provided.'}</Text>
         </View>
 
         {/* ── Transmission & Areas ─────────────────────────── */}
@@ -183,7 +246,7 @@ const InstructorProfileScreen = () => {
             <View style={s.detailRow}>
               <Text style={s.detailLabel}>Areas Covered</Text>
               <View style={s.areasRow}>
-                {instructor.coveredPostcodes.map(code => (
+                {(instructor.coveredPostcodes || instructor.covered_postcodes || instructor.postcodes || []).map((code: string) => (
                   <View key={code} style={s.areaChip}>
                     <Text style={s.areaChipText}>{code}</Text>
                   </View>
@@ -198,10 +261,10 @@ const InstructorProfileScreen = () => {
           <View style={s.sectionHeaderRow}>
             <Text style={s.sectionTitle}>Reviews</Text>
             <Text style={s.reviewCount}>
-              {instructor.reviews.length} reviews
+              {reviews.length} reviews
             </Text>
           </View>
-          {instructor.reviews.map(review => (
+          {reviews.map(review => (
             <ReviewCard key={review.id} review={review} theme={theme} />
           ))}
         </View>
@@ -209,7 +272,7 @@ const InstructorProfileScreen = () => {
         {/* ── Request / Packages CTA ───────────────────── */}
         <View style={s.ctaSection}>
           {(() => {
-            const existingRequest = studentRequests.find(
+            const existingRequest = requests.find(
               r => r.instructorId === instructor.id,
             );
 
@@ -267,7 +330,21 @@ const InstructorProfileScreen = () => {
                     variant="primary"
                     size="lg"
                     fullWidth
-                    onPress={() => {}}
+                    loading={sendingRequest}
+                    onPress={async () => {
+                      if (!profile?.uid) return;
+                      setSendingRequest(true);
+                      try {
+                        await (dispatch as any)(sendInstructorRequestThunk(
+                          profile.uid,
+                          instructor.id,
+                          profile.displayName || profile.name,
+                          profile.email,
+                        ));
+                      } catch {} finally {
+                        setSendingRequest(false);
+                      }
+                    }}
                   />
                 </>
               );
@@ -280,7 +357,21 @@ const InstructorProfileScreen = () => {
                 variant="primary"
                 size="lg"
                 fullWidth
-                onPress={() => {}}
+                loading={sendingRequest}
+                onPress={async () => {
+                  if (!profile?.uid) return;
+                  setSendingRequest(true);
+                  try {
+                    await (dispatch as any)(sendInstructorRequestThunk(
+                      profile.uid,
+                      instructor.id,
+                      profile.displayName || profile.name,
+                      profile.email,
+                    ));
+                  } catch {} finally {
+                    setSendingRequest(false);
+                  }
+                }}
               />
             );
           })()}

@@ -14,18 +14,12 @@ import Ionicons from 'react-native-vector-icons/Ionicons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { AuthStackParamList } from '../../navigation/AuthStack'
-import { setDevRoleOverride } from '../../navigation/devAuth'
 import { useTheme } from '../../theme'
 import Button from '../../components/Button'
 import { useConfirmation } from '../../components/common'
+import { signInWithEmail, sendPasswordResetEmail } from '../../services/authService'
 
 type LoginScreenProps = NativeStackScreenProps<AuthStackParamList, 'Login'>
-
-const DEV_ROLE_BUTTONS = [
-  { label: 'Login as Admin', role: 'admin' as const },
-  { label: 'Login as Instructor', role: 'instructor' as const },
-  { label: 'Login as Student', role: 'student' as const },
-]
 
 const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const { theme } = useTheme()
@@ -33,7 +27,6 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [devLoadingRole, setDevLoadingRole] = useState<'admin' | 'instructor' | 'student' | null>(null)
   const styles = useMemo(() => createStyles(theme), [theme])
 
   const isFormValid = useMemo(() => {
@@ -41,7 +34,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
     return hasValidEmail && password.trim().length >= 6
   }, [email, password])
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!isFormValid) {
       void notify({
         title: 'Incomplete form',
@@ -52,24 +45,51 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
     }
 
     setIsSubmitting(true)
-    setTimeout(() => {
+    try {
+      await signInWithEmail(email.trim(), password)
+      // Auth state listener in App.tsx will handle navigation automatically
+    } catch (error: any) {
+      let message = 'An unexpected error occurred. Please try again.'
+      const code = error?.code
+      if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        message = 'Invalid email or password.'
+      } else if (code === 'auth/invalid-email') {
+        message = 'Please enter a valid email address.'
+      } else if (code === 'auth/too-many-requests') {
+        message = 'Too many failed attempts. Please try again later.'
+      } else if (code === 'auth/network-request-failed') {
+        message = 'Network error. Please check your connection.'
+      }
+      void notify({ title: 'Sign in failed', message, variant: 'error' })
+    } finally {
       setIsSubmitting(false)
-      void notify({
-        title: 'Login request',
-        message: 'Connect this action to your authentication API.',
-        variant: 'info',
-      })
-    }, 450)
+    }
   }
 
-  const handleDevLogin = (role: 'admin' | 'instructor' | 'student') => {
-    if (devLoadingRole) return
-
-    setDevLoadingRole(role)
-    setTimeout(() => {
-      setDevRoleOverride(role)
-      setDevLoadingRole(null)
-    }, 350)
+  const handleForgotPassword = async () => {
+    const trimmedEmail = email.trim()
+    if (!/\S+@\S+\.\S+/.test(trimmedEmail)) {
+      void notify({
+        title: 'Enter your email',
+        message: 'Please enter your email address above, then tap "Forgot password?" again.',
+        variant: 'info',
+      })
+      return
+    }
+    try {
+      await sendPasswordResetEmail(trimmedEmail)
+      void notify({
+        title: 'Reset email sent',
+        message: 'Check your inbox for a password reset link.',
+        variant: 'success',
+      })
+    } catch {
+      void notify({
+        title: 'Reset failed',
+        message: 'Could not send password reset email. Please try again.',
+        variant: 'error',
+      })
+    }
   }
 
   return (
@@ -136,14 +156,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
               </View>
             </View>
 
-            <Pressable
-              onPress={() =>
-                void notify({
-                  title: 'Forgot Password',
-                  message: 'Connect this action to your password reset flow.',
-                  variant: 'info',
-                })
-              }>
+            <Pressable onPress={handleForgotPassword}>
               <Text style={styles.forgotPassword}>Forgot password?</Text>
             </Pressable>
 
@@ -164,31 +177,6 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
               </Pressable>
             </View>
           </View>
-
-          {__DEV__ && (
-            <View style={styles.devCard}>
-              <View style={styles.devHeaderRow}>
-                <Ionicons name="construct-outline" size={16} color={theme.colors.warning} />
-                <Text style={styles.devTitle}>Development Only</Text>
-              </View>
-              <Text style={styles.devSubtitle}>Use these shortcuts only for local testing. Do not use in real scenarios.</Text>
-
-              <View style={styles.devButtonsContainer}>
-                {DEV_ROLE_BUTTONS.map((option) => (
-                  <Button
-                    key={option.role}
-                    title={option.label}
-                    variant="outline"
-                    onPress={() => handleDevLogin(option.role)}
-                    loading={devLoadingRole === option.role}
-                    disabled={!!devLoadingRole}
-                    fullWidth
-                    style={styles.devButton}
-                  />
-                ))}
-              </View>
-            </View>
-          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

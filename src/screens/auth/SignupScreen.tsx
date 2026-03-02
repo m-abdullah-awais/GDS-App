@@ -17,12 +17,12 @@ import { AuthStackParamList } from '../../navigation/AuthStack'
 import { useTheme } from '../../theme'
 import Button from '../../components/Button'
 import { useConfirmation } from '../../components/common'
+import { signUpStudent, signUpInstructor } from '../../services/authService'
 
 type SignupScreenProps = NativeStackScreenProps<AuthStackParamList, 'Register'>
-type SignupRole = 'admin' | 'instructor' | 'student'
+type SignupRole = 'instructor' | 'student'
 
 const ROLE_OPTIONS: Array<{ label: string; value: SignupRole; icon: string }> = [
-  { label: 'Admin', value: 'admin', icon: 'shield-checkmark-outline' },
   { label: 'Instructor', value: 'instructor', icon: 'school-outline' },
   { label: 'Student', value: 'student', icon: 'person-outline' },
 ]
@@ -30,10 +30,10 @@ const ROLE_OPTIONS: Array<{ label: string; value: SignupRole; icon: string }> = 
 const SignupScreen = ({ navigation }: SignupScreenProps) => {
   const { theme } = useTheme()
   const { notify } = useConfirmation()
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  const [fullName, setFullName] = useState('Asd')
+  const [email, setEmail] = useState('asd@yopmail.com')
+  const [password, setPassword] = useState('123456')
+  const [confirmPassword, setConfirmPassword] = useState('123456')
   const [role, setRole] = useState<SignupRole | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const styles = useMemo(() => createStyles(theme), [theme])
@@ -55,7 +55,7 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
     }
   }, [fullName, email, password, confirmPassword, role])
 
-  const handleSignup = () => {
+  const handleSignup = async () => {
     if (!formState.isValid) {
       void notify({
         title: 'Incomplete form',
@@ -66,14 +66,38 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
     }
 
     setIsSubmitting(true)
-    setTimeout(() => {
-      setIsSubmitting(false)
+    try {
+      if (role === 'student') {
+        await signUpStudent(email.trim(), password, fullName.trim())
+      } else if (role === 'instructor') {
+        await signUpInstructor(email.trim(), password, fullName.trim())
+      }
+      // Auth state listener in App.tsx will pick up the new user automatically
       void notify({
-        title: 'Sign up request',
-        message: `Connect this action to your registration API. Selected role: ${role}.`,
-        variant: 'info',
+        title: 'Account created',
+        message: role === 'instructor'
+          ? 'Your instructor application is pending admin approval.'
+          : 'Welcome to GDS! You can now browse instructors.',
+        variant: 'success',
       })
-    }, 450)
+    } catch (error: any) {
+      console.log("err", error);
+      
+      let message = 'An unexpected error occurred. Please try again.'
+      const code = error?.code
+      if (code === 'auth/email-already-in-use') {
+        message = 'An account with this email already exists.'
+      } else if (code === 'auth/invalid-email') {
+        message = 'Please enter a valid email address.'
+      } else if (code === 'auth/weak-password') {
+        message = 'Password must be at least 6 characters.'
+      } else if (code === 'auth/network-request-failed') {
+        message = 'Network error. Please check your connection.'
+      }
+      void notify({ title: 'Sign up failed', message, variant: 'error' })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (

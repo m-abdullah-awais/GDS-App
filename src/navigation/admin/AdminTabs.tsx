@@ -3,7 +3,10 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../theme';
 import AppTopHeader from '../../components/AppTopHeader';
-import { clearDevRoleOverride } from '../devAuth';
+import { useSelector, useDispatch } from 'react-redux';
+import type { RootState } from '../../store';
+import { clearAuth } from '../../store/auth/authSlice';
+import * as authService from '../../services/authService';
 import CustomDrawerContent from '../../components/CustomDrawerContent';
 import { useConfirmation } from '../../components/common';
 
@@ -38,6 +41,10 @@ const Drawer = createDrawerNavigator<AdminTabsParamList>();
 const AdminTabs = () => {
   const { theme } = useTheme();
   const { confirm } = useConfirmation();
+  const dispatch = useDispatch();
+  const profile = useSelector((state: RootState) => state.auth.profile);
+  const userName = profile?.full_name || 'Admin';
+  const userEmail = profile?.email || '';
 
   const handleLogout = async () => {
     const shouldLogout = await confirm({
@@ -50,7 +57,8 @@ const AdminTabs = () => {
     });
 
     if (shouldLogout) {
-      clearDevRoleOverride();
+      await authService.signOut();
+      dispatch(clearAuth());
     }
   };
 
@@ -59,8 +67,8 @@ const AdminTabs = () => {
       drawerContent={(props) => (
         <CustomDrawerContent
           {...props}
-          userName="Sarah Admin"
-          userEmail="admin@gds-driving.com"
+          userName={userName}
+          userEmail={userEmail}
           roleLabel="Admin"
           onLogout={handleLogout}
         />

@@ -6,8 +6,9 @@
  * and input bar. Professional and clean layout.
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -22,7 +23,9 @@ import type { StudentStackParamList } from '../../navigation/student/StudentStac
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
-import { chatMessages, type ChatMessage } from '../../modules/student/mockData';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../store';
+import * as messageService from '../../services/messageService';
 
 type Route = RouteProp<StudentStackParamList, 'Chat'>;
 
@@ -117,24 +120,79 @@ const bubbleStyles = (theme: AppTheme) =>
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+interface ChatMessage {
+  id: string;
+  conversationId: string;
+  text: string;
+  sender: string;
+  timestamp: string;
+}
+
 const ChatScreen = () => {
   const route = useRoute<Route>();
   const { theme } = useTheme();
   const s = createStyles(theme);
   const flatListRef = useRef<FlatList>(null);
+  const profile = useSelector((state: RootState) => state.auth.profile);
 
   const [inputText, setInputText] = useState('');
-  const [localMessages, setLocalMessages] = useState<ChatMessage[]>(
-    chatMessages.filter(m => m.conversationId === route.params.conversationId),
-  );
+  const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleSend = () => {
-    if (!inputText.trim()) return;
+  // Load conversation messages from Firebase
+  useEffect(() => {
+    if (!profile?.uid || !route.params.conversationId) return;
+    setLoading(true);
+    // conversationId is the other user's ID
+    const otherUserId = route.params.conversationId;
+    messageService.getConversation(profile.uid, otherUserId)
+      .then(msgs => {
+        const mapped: ChatMessage[] = msgs.map(m => ({
+          id: m.id,
+          conversationId: otherUserId,
+          text: m.content || m.text || '',
+          sender: m.senderId === profile.uid ? 'student' : 'instructor',
+          timestamp: m.createdAt
+            ? new Date(m.createdAt as any).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+            : '',
+        }));
+        setLocalMessages(mapped);
+      })
+      .catch(err => console.error('Failed to load conversation:', err))
+      .finally(() => setLoading(false));
+  }, [profile?.uid, route.params.conversationId]);
 
+  // Set up real-time listener
+  useEffect(() => {
+    if (!profile?.uid) return;
+    const otherUserId = route.params.conversationId;
+    const unsubscribe = messageService.onConversation(
+      profile.uid,
+      otherUserId,
+      (msgs) => {
+        const mapped: ChatMessage[] = msgs.map(m => ({
+          id: m.id,
+          conversationId: otherUserId,
+          text: m.content || m.text || '',
+          sender: m.senderId === profile.uid ? 'student' : 'instructor',
+          timestamp: m.createdAt
+            ? new Date(m.createdAt as any).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+            : '',
+        }));
+        setLocalMessages(mapped);
+      },
+    );
+    return () => unsubscribe();
+  }, [profile?.uid, route.params.conversationId]);
+
+  const handleSend = async () => {
+    if (!inputText.trim() || !profile?.uid) return;
+
+    const text = inputText.trim();
     const newMessage: ChatMessage = {
       id: `MSG-LOCAL-${Date.now()}`,
       conversationId: route.params.conversationId,
-      text: inputText.trim(),
+      text,
       sender: 'student',
       timestamp: new Date().toLocaleTimeString('en-GB', {
         hour: '2-digit',
@@ -144,6 +202,16 @@ const ChatScreen = () => {
 
     setLocalMessages(prev => [...prev, newMessage]);
     setInputText('');
+
+    try {
+      await messageService.sendMessage({
+        recipientId: route.params.conversationId,
+        content: text,
+        senderRole: 'student',
+      });
+    } catch (err) {
+      console.error('Failed to send message:', err);
+    }
 
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: true });
@@ -157,6 +225,11 @@ const ChatScreen = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
         {/* ── Messages ─────────────────────────────────────── */}
+        {loading ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+          </View>
+        ) : (
         <FlatList
           ref={flatListRef}
           data={localMessages}
@@ -179,6 +252,7 @@ const ChatScreen = () => {
             </View>
           }
         />
+        )}
 
         {/* ── Input Bar ────────────────────────────────────── */}
         <View style={s.inputBar}>

@@ -33,7 +33,7 @@ import {
   type SkillFeedback,
   type FeedbackAction,
 } from '../../constants/drivingSkills';
-import type { InstructorLesson } from '../../modules/instructor/mockData';
+import type { InstructorLesson } from '../../types/instructor-views';
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 

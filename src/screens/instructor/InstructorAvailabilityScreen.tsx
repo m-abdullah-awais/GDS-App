@@ -27,10 +27,9 @@ import type { InstructorTabsParamList } from '../../navigation/instructor/Instru
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useToast } from '../../components/admin';
 import { useConfirmation } from '../../components/common';
-import {
-  availabilitySlots as initialSlots,
-  type AvailabilitySlot,
-} from '../../modules/instructor/mockData';
+import type { AvailabilitySlot } from '../../types/instructor-views';
+import { useSelector } from 'react-redux';
+import { timetableService } from '../../services';
 
 type Props = DrawerScreenProps<InstructorTabsParamList, 'Availability'>;
 
@@ -113,7 +112,23 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const dateListRef = useRef<FlatList>(null);
 
-  const [slots, setSlots] = useState<AvailabilitySlot[]>([...initialSlots]);
+  const authProfile = useSelector((state: any) => state.auth.profile);
+  const timetable = useSelector((state: any) => state.instructor.timetable);
+
+  // Convert timetable slots to AvailabilitySlot view model
+  const initialSlots: AvailabilitySlot[] = useMemo(() => {
+    if (!timetable?.slots) return [];
+    return timetable.slots
+      .filter((s: any) => s.available !== false)
+      .map((s: any, idx: number) => ({
+        id: `SLOT-${idx}`,
+        date: s.day || '',
+        startTime: s.startTime || '',
+        endTime: s.endTime || '',
+      }));
+  }, [timetable]);
+
+  const [slots, setSlots] = useState<AvailabilitySlot[]>(initialSlots);
   const [selectedDate, setSelectedDate] = useState(DATE_RANGE[0]);
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -306,8 +321,21 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
     setSlots((prev) => prev.filter((s) => s.id !== slotId));
   };
 
-  const handleSave = () => {
-    showToast('success', 'Availability saved successfully!');
+  const handleSave = async () => {
+    try {
+      if (authProfile?.uid) {
+        const days: Record<string, any> = {};
+        for (const slot of slots) {
+          const dayKey = getDayName(slot.date);
+          if (!days[dayKey]) days[dayKey] = [];
+          days[dayKey].push({ startTime: slot.startTime, endTime: slot.endTime, available: true });
+        }
+        await timetableService.saveInstructorTimetable(authProfile.uid, days);
+      }
+      showToast('success', 'Availability saved successfully!');
+    } catch (e) {
+      showToast('error', 'Failed to save availability.');
+    }
   };
 
   const renderSlotItem = ({ item }: { item: AvailabilitySlot }) => (

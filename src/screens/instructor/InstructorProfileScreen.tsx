@@ -26,11 +26,8 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme, type ColorSchemePreference } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
-import {
-  instructorProfile,
-  instructorStudents,
-  earningsSummary,
-} from '../../modules/instructor/mockData';
+import { useSelector } from 'react-redux';
+import { userService, authService } from '../../services';
 import { useToast } from '../../components/admin';
 import { ProfileImageOptionsModal, useConfirmation } from '../../components/common';
 
@@ -54,15 +51,6 @@ const getInitials = (name: string) =>
     .slice(0, 2)
     .map((w) => w[0].toUpperCase())
     .join('') || 'IN';
-
-const toProfileData = (): ProfileData => ({
-  fullName: instructorProfile.fullName,
-  email: instructorProfile.email,
-  phone: instructorProfile.phone,
-  experience: `${instructorProfile.experience}`,
-  transmissionType: instructorProfile.transmissionType,
-  areas: instructorProfile.areas.join(', '),
-});
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -95,11 +83,25 @@ const InstructorProfileScreen = () => {
   const { confirm, notify } = useConfirmation();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
+  const authProfile = useSelector((state: any) => state.auth.profile);
+  const studentRequests = useSelector((state: any) => state.instructor.studentRequests) || [];
+  const instructorPayments = useSelector((state: any) => state.instructor.instructorPayments) || [];
+  const bookings = useSelector((state: any) => state.instructor.bookings) || [];
+
+  const toProfileData = (): ProfileData => ({
+    fullName: authProfile?.full_name || '',
+    email: authProfile?.email || '',
+    phone: authProfile?.phone || '',
+    experience: authProfile?.experience ? `${authProfile.experience}` : '',
+    transmissionType: authProfile?.car_transmission || authProfile?.transmissionType || '',
+    areas: Array.isArray(authProfile?.areas) ? authProfile.areas.join(', ') : '',
+  });
+
   const initial = toProfileData();
   const [profile, setProfile] = useState<ProfileData>(initial);
   const [draft, setDraft] = useState<ProfileData>(initial);
   const [editing, setEditing] = useState(false);
-  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(authProfile?.profile_picture_url || null);
   const [imageOptionsVisible, setImageOptionsVisible] = useState(false);
 
   // Notification toggles
@@ -118,7 +120,7 @@ const InstructorProfileScreen = () => {
     setEditing(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trimmed: ProfileData = {
       fullName: draft.fullName.trim(),
       email: draft.email.trim(),
@@ -143,10 +145,20 @@ const InstructorProfileScreen = () => {
       });
       return;
     }
-    setProfile(trimmed);
-    setDraft(trimmed);
-    setEditing(false);
-    showToast('success', 'Your profile has been updated.');
+    try {
+      await userService.updateUserProfile(authProfile?.uid, {
+        full_name: trimmed.fullName,
+        email: trimmed.email,
+        phone: trimmed.phone,
+        car_transmission: trimmed.transmissionType,
+      });
+      setProfile(trimmed);
+      setDraft(trimmed);
+      setEditing(false);
+      showToast('success', 'Your profile has been updated.');
+    } catch (e) {
+      showToast('error', 'Failed to update profile.');
+    }
   };
 
   const handlePickImage = () => {
@@ -164,12 +176,18 @@ const InstructorProfileScreen = () => {
     });
 
     if (shouldSignOut) {
-      showToast('info', 'Signed out successfully.');
+      try {
+        await authService.signOut();
+      } catch (e) {
+        showToast('info', 'Signed out successfully.');
+      }
     }
   };
 
   const displayName = editing ? draft.fullName : profile.fullName;
-  const totalStudents = instructorStudents.length;
+  const totalStudents = studentRequests.filter((r: any) => r.status === 'accepted' || r.status === 'confirmed').length;
+  const totalLessons = bookings.filter((b: any) => b.status === 'completed').length;
+  const totalEarnings = instructorPayments.reduce((sum: number, p: any) => sum + (p.instructorPayout || p.instructorPayment || 0), 0);
 
   return (
     <ScreenContainer title="Profile">
@@ -239,8 +257,8 @@ const InstructorProfileScreen = () => {
           <View style={styles.statsRow}>
             {[
               { value: `${totalStudents}`, label: 'Students' },
-              { value: `${earningsSummary.totalLessons}`, label: 'Lessons' },
-              { value: `£${earningsSummary.totalEarnings.toLocaleString()}`, label: 'Earned' },
+              { value: `${totalLessons}`, label: 'Lessons' },
+              { value: `£${totalEarnings.toLocaleString()}`, label: 'Earned' },
             ].map((stat, idx) => (
               <React.Fragment key={stat.label}>
                 {idx > 0 && <View style={styles.statDivider} />}

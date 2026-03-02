@@ -4,17 +4,6 @@
  */
 
 import {
-  students,
-  instructors,
-  transactions,
-  conversations,
-  chatMessages,
-  defaultSettings,
-  dashboardStats,
-  adminPackages,
-} from '../../modules/admin/mockData';
-
-import {
   type AdminState,
   type AdminAction,
   APPROVE_STUDENT,
@@ -35,17 +24,39 @@ import {
   REJECT_PACKAGE,
   UPDATE_PACKAGE_COMMISSION,
   DELETE_PACKAGE,
+  SET_STUDENTS,
+  SET_INSTRUCTORS,
+  SET_TRANSACTIONS,
+  SET_CONVERSATIONS,
+  SET_MESSAGES,
+  SET_PACKAGES,
+  SET_SETTINGS,
+  SET_DASHBOARD_STATS,
+  SET_ADMIN_LOADING,
 } from './types';
 
 const initialState: AdminState = {
-  students,
-  instructors,
-  transactions,
-  conversations,
-  messages: chatMessages,
-  packages: adminPackages,
-  settings: defaultSettings,
-  dashboardStats,
+  students: [],
+  instructors: [],
+  transactions: [],
+  conversations: [],
+  messages: [],
+  packages: [],
+  settings: {
+    lessonPricingDefault: 0,
+    platformFees: 0,
+    emailNotifications: true,
+    pushNotifications: true,
+    smsAlerts: false,
+  },
+  dashboardStats: {
+    totalStudents: 0,
+    totalInstructors: 0,
+    activeLessons: 0,
+    pendingApprovals: 0,
+    monthlyRevenue: 0,
+    pendingPayouts: 0,
+  },
 };
 
 const adminReducer = (state = initialState, action: AdminAction): AdminState => {
@@ -279,6 +290,34 @@ const adminReducer = (state = initialState, action: AdminAction): AdminState => 
         ...state,
         packages: state.packages.filter(p => p.id !== action.payload.packageId),
       };
+
+    // ─── Bulk-load Actions ────────────────────────────────────────────────
+    case SET_STUDENTS:
+      return { ...state, students: action.payload };
+
+    case SET_INSTRUCTORS:
+      return { ...state, instructors: action.payload };
+
+    case SET_TRANSACTIONS:
+      return { ...state, transactions: action.payload };
+
+    case SET_CONVERSATIONS:
+      return { ...state, conversations: action.payload };
+
+    case SET_MESSAGES:
+      return { ...state, messages: action.payload };
+
+    case SET_PACKAGES:
+      return { ...state, packages: action.payload };
+
+    case SET_SETTINGS:
+      return { ...state, settings: action.payload };
+
+    case SET_DASHBOARD_STATS:
+      return { ...state, dashboardStats: action.payload };
+
+    case SET_ADMIN_LOADING:
+      return state; // loading tracked in thunks via local state
 
     default:
       return state;

@@ -10,7 +10,10 @@ import InstructorDiscoveryScreen from "../../screens/student/InstructorDiscovery
 import { useTheme } from "../../theme";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import AppTopHeader from '../../components/AppTopHeader';
-import { clearDevRoleOverride } from '../devAuth';
+import { useSelector, useDispatch } from 'react-redux';
+import type { RootState } from '../../store';
+import { clearAuth } from '../../store/auth/authSlice';
+import * as authService from '../../services/authService';
 import CustomDrawerContent from '../../components/CustomDrawerContent';
 import StudentBookLessonsScreen from '../../screens/student/StudentBookLessonsScreen';
 import { useConfirmation } from '../../components/common';
@@ -20,6 +23,10 @@ const Drawer = createDrawerNavigator();
 const StudentTabs = () => {
     const { theme } = useTheme();
     const { confirm } = useConfirmation();
+    const dispatch = useDispatch();
+    const profile = useSelector((state: RootState) => state.auth.profile);
+    const userName = profile?.full_name || 'Student';
+    const userEmail = profile?.email || '';
 
     const handleLogout = async () => {
         const shouldLogout = await confirm({
@@ -32,7 +39,8 @@ const StudentTabs = () => {
         });
 
         if (shouldLogout) {
-            clearDevRoleOverride();
+            await authService.signOut();
+            dispatch(clearAuth());
         }
     };
 
@@ -41,8 +49,8 @@ const StudentTabs = () => {
             drawerContent={(props) => (
                 <CustomDrawerContent
                     {...props}
-                    userName="John Smith"
-                    userEmail="john.smith@email.com"
+                    userName={userName}
+                    userEmail={userEmail}
                     roleLabel="Student"
                     onLogout={handleLogout}
                 />

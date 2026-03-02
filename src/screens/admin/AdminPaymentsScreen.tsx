@@ -12,11 +12,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import type { RootState } from '../../store';
+import { transferPaymentThunk } from '../../store/admin/thunks';
 import {
   StatsCard,
   SearchBar,
@@ -37,6 +38,7 @@ const AdminPaymentsScreen = () => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { showToast } = useToast();
+  const dispatch = useDispatch();
 
   const transactions = useSelector((state: RootState) => state.admin.transactions);
   const instructors = useSelector((state: RootState) => state.admin.instructors);
@@ -83,8 +85,10 @@ const AdminPaymentsScreen = () => {
     showToast('info', 'CSV export coming soon');
   };
 
-  const handlePayNow = (instructorName: string) => {
-    showToast('success', `Stripe payout initiated for ${instructorName}`);
+  const handlePayNow = (instructorId: string, instructorName: string, amount: number) => {
+    dispatch(transferPaymentThunk(instructorId, amount) as any)
+      .then(() => showToast('success', `Stripe payout initiated for ${instructorName}`))
+      .catch(() => showToast('error', 'Payout failed. Please try again.'));
   };
 
   return (
@@ -246,7 +250,7 @@ const AdminPaymentsScreen = () => {
                 {isPending && stripeReady && (
                   <TouchableOpacity
                     style={styles.payNowBtn}
-                    onPress={() => handlePayNow(txn.instructorName)}>
+                    onPress={() => handlePayNow(txn.instructorId, txn.instructorName, txn.amount)}>
                     <Ionicons name="flash-outline" size={16} color="#fff" />
                     <Text style={styles.payNowText}>Pay Now via Stripe</Text>
                   </TouchableOpacity>

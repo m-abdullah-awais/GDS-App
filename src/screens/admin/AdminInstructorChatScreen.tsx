@@ -25,10 +25,13 @@ import type { AppTheme } from '../../constants/theme';
 import type { RootState } from '../../store';
 import type { ChatMessage } from '../../store/admin/types';
 import {
-  sendMessage,
   markConversationRead,
   markConversationResolved,
 } from '../../store/admin/actions';
+import {
+  loadConversationMessages,
+  sendAdminMessageThunk,
+} from '../../store/admin/thunks';
 import { ConfirmModal, StatusBadge, useToast } from '../../components/admin';
 import type { AdminStackParamList } from '../../navigation/admin/AdminStack';
 
@@ -122,6 +125,8 @@ const AdminInstructorChatScreen = () => {
   const [replyText, setReplyText] = useState('');
   const [resolveModal, setResolveModal] = useState(false);
 
+  const adminId = useSelector((state: RootState) => state.auth.profile?.uid ?? '');
+
   const conversation = useSelector((state: RootState) =>
     state.admin.conversations.find(c => c.id === route.params.conversationId),
   );
@@ -132,6 +137,17 @@ const AdminInstructorChatScreen = () => {
       .sort((a, b) => a.timestamp.localeCompare(b.timestamp)),
   );
 
+  // Load messages from Firebase on mount
+  useEffect(() => {
+    if (adminId && conversation) {
+      // instructorId is derived from conversation
+      const instructorId = conversation.instructorId ?? '';
+      if (instructorId) {
+        dispatch(loadConversationMessages(adminId, instructorId) as any);
+      }
+    }
+  }, [adminId, conversation?.id, dispatch]);
+
   useEffect(() => {
     if (conversation?.unreadCount && conversation.unreadCount > 0) {
       dispatch(markConversationRead(conversation.id));
@@ -139,11 +155,12 @@ const AdminInstructorChatScreen = () => {
   }, [conversation, dispatch]);
 
   const handleSend = useCallback(() => {
-    if (!replyText.trim()) return;
-    dispatch(sendMessage(route.params.conversationId, replyText.trim()));
+    if (!replyText.trim() || !conversation) return;
+    const instructorId = conversation.instructorId ?? '';
+    dispatch(sendAdminMessageThunk(route.params.conversationId, instructorId, replyText.trim()) as any);
     setReplyText('');
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
-  }, [dispatch, route.params.conversationId, replyText]);
+  }, [dispatch, route.params.conversationId, conversation, replyText]);
 
   const handleResolve = useCallback(() => {
     if (!conversation) return;

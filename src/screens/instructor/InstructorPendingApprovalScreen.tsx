@@ -4,7 +4,7 @@
  * Shown after profile submission while awaiting admin approval.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme';
@@ -13,7 +13,9 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { AppTheme } from '../../constants/theme';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { InstructorStackParamList } from '../../navigation/instructor/InstructorStack';
-import type { ApprovalStatus } from '../../modules/instructor/mockData';
+import type { ApprovalStatus } from '../../types/instructor-views';
+import { useSelector } from 'react-redux';
+import { userService } from '../../services';
 
 type Props = NativeStackScreenProps<InstructorStackParamList, 'PendingApproval'>;
 
@@ -22,15 +24,25 @@ const InstructorPendingApprovalScreen = ({ navigation }: Props) => {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [status, setStatus] = useState<ApprovalStatus>('pending');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const authProfile = useSelector((state: any) => state.auth.profile);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
+    try {
+      if (authProfile?.uid) {
+        const freshUser = await userService.getUserById(authProfile.uid);
+        if (freshUser?.status === 'active' || freshUser?.approved) {
+          setStatus('approved');
+        } else if (freshUser?.status === 'rejected') {
+          setStatus('rejected');
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to refresh approval status', e);
+    } finally {
       setIsRefreshing(false);
-      // Mock toggle: pending → approved
-      setStatus('approved');
-    }, 1200);
-  };
+    }
+  }, [authProfile?.uid]);
 
   const handleContinue = () => {
     navigation.replace('InstructorTabs');

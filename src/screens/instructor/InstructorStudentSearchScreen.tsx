@@ -4,7 +4,7 @@
  * Search students by name or postcode and send requests.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   FlatList,
   Pressable,
@@ -20,10 +20,9 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { AppTheme } from '../../constants/theme';
 import type { DrawerScreenProps } from '@react-navigation/drawer';
 import type { InstructorTabsParamList } from '../../navigation/instructor/InstructorTabs';
-import {
-  searchableStudents,
-  type InstructorStudent,
-} from '../../modules/instructor/mockData';
+import type { InstructorStudent } from '../../types/instructor-views';
+import { useSelector, useDispatch } from 'react-redux';
+import { userService } from '../../services';
 import { useToast } from '../../components/admin';
 
 type Props = DrawerScreenProps<InstructorTabsParamList, 'Find Students'>;
@@ -34,20 +33,49 @@ const InstructorStudentSearchScreen = ({ navigation }: Props) => {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sentRequests, setSentRequests] = useState<Set<string>>(new Set());
+  const [results, setResults] = useState<InstructorStudent[]>([]);
+  const authProfile = useSelector((state: any) => state.auth.profile);
+  const dispatch = useDispatch<any>();
 
-  const filteredStudents = useMemo(() => {
-    const query = searchQuery.toLowerCase().trim();
-    if (!query) return searchableStudents;
-    return searchableStudents.filter(
-      (s) =>
-        s.name.toLowerCase().includes(query) ||
-        s.postcode.toLowerCase().includes(query),
-    );
-  }, [searchQuery]);
+  const handleSearch = useCallback(async (query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+    try {
+      const users = await userService.searchStudentsByQuery(query.trim());
+      setResults(users.map((u: any) => ({
+        id: u.id || u.uid,
+        name: u.full_name || '',
+        avatar: (u.full_name || '').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'ST',
+        postcode: u.postcode || '',
+        email: u.email || '',
+        phone: u.phone || '',
+        lessonsCompleted: 0,
+        totalLessons: 0,
+      })));
+    } catch (e) {
+      console.warn('Search failed', e);
+    }
+  }, []);
 
-  const handleSendRequest = (studentId: string) => {
-    setSentRequests((prev) => new Set(prev).add(studentId));
-    showToast('success', 'Your request has been sent to the student.');
+  const filteredStudents = results;
+
+  const handleSendRequest = async (studentId: string) => {
+    try {
+      const { requestService } = require('../../services');
+      await requestService.sendStudentInstructorRequest({
+        studentId,
+        instructorId: authProfile?.uid,
+        studentName: results.find(s => s.id === studentId)?.name || '',
+        initiatedBy: 'instructor',
+      });
+      setSentRequests((prev) => new Set(prev).add(studentId));
+      showToast('success', 'Your request has been sent to the student.');
+    } catch (e) {
+      showToast('error', 'Failed to send request.');
+    }
   };
 
   const renderStudent = ({ item }: { item: InstructorStudent }) => {
@@ -85,7 +113,7 @@ const InstructorStudentSearchScreen = ({ navigation }: Props) => {
           <Ionicons name="search-outline" size={18} color={theme.colors.textTertiary} style={{ marginRight: theme.spacing.xs }} />
           <TextInput
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearch}
             placeholder="Search by name or postcode..."
             placeholderTextColor={theme.colors.placeholder}
             style={styles.searchInput}

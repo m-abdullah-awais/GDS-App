@@ -19,11 +19,8 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { AppTheme } from '../../constants/theme';
 import type { DrawerScreenProps } from '@react-navigation/drawer';
 import type { InstructorTabsParamList } from '../../navigation/instructor/InstructorTabs';
-import {
-  earningsSummary,
-  transactions,
-  type Transaction,
-} from '../../modules/instructor/mockData';
+import type { TransactionView, EarningsSummary } from '../../types/instructor-views';
+import { useSelector } from 'react-redux';
 
 type Props = DrawerScreenProps<InstructorTabsParamList, 'Earnings'>;
 
@@ -43,17 +40,49 @@ const InstructorEarningsScreen = ({ navigation }: Props) => {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const summaryColors = ['#2F6BFF', '#0EA5E9', '#7141F4', '#F97316', '#1FBF5B', '#EF4444'];
 
+  const instructorPayments = useSelector((state: any) => state.instructor.instructorPayments) || [];
+  const weeklyPayment = useSelector((state: any) => state.instructor.weeklyPayment);
+  const bookings = useSelector((state: any) => state.instructor.bookings) || [];
+
+  // Compute earnings summary from Redux state
+  const totalEarnings = instructorPayments.reduce((sum: number, p: any) => sum + (p.instructorPayout || p.instructorPayment || 0), 0);
+  const totalCommission = instructorPayments.reduce((sum: number, p: any) => sum + (p.commissionAmount || 0), 0);
+  const totalLessons = bookings.filter((b: any) => b.status === 'completed').length;
+  const earningsSummary: EarningsSummary = {
+    totalEarnings,
+    thisMonth: weeklyPayment?.weeklyInstructorPayment || 0,
+    lastMonth: 0,
+    pendingPayout: weeklyPayment?.weeklyInstructorPayment || 0,
+    totalLessons,
+    commissionPaid: totalCommission,
+  };
+
+  // Map payments to transaction view models
+  const transactions: TransactionView[] = useMemo(() =>
+    instructorPayments.map((p: any) => ({
+      id: p.id,
+      studentName: p.studentName || '',
+      packageName: '',
+      amount: p.instructorPayout || p.instructorPayment || 0,
+      date: p.completedAt
+        ? new Date(p.completedAt.seconds ? p.completedAt.seconds * 1000 : p.completedAt).toISOString().split('T')[0]
+        : '',
+      status: (p.status === 'completed' ? 'completed' : 'pending') as 'completed' | 'pending',
+    })),
+    [instructorPayments],
+  );
+
   const filteredTransactions = useMemo(() => {
     if (activeFilter === 'all') return transactions;
     return transactions.filter((t) => t.status === activeFilter);
-  }, [activeFilter]);
+  }, [activeFilter, transactions]);
 
   const getCounts = (key: FilterTab) => {
     if (key === 'all') return transactions.length;
     return transactions.filter((t) => t.status === key).length;
   };
 
-  const getStatusStyle = (status: Transaction['status']) => {
+  const getStatusStyle = (status: TransactionView['status']) => {
     switch (status) {
       case 'completed':
         return { bg: theme.colors.successLight, text: theme.colors.success, label: 'Completed', icon: '✓' };

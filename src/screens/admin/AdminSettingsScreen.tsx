@@ -4,7 +4,7 @@
  * Platform settings: commission, pricing, notifications, theme toggle.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -22,7 +22,7 @@ import type { ColorSchemePreference } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import type { RootState } from '../../store';
 import type { AdminSettings } from '../../store/admin/types';
-import { updateSettings } from '../../store/admin/actions';
+import { loadAdminSettings, saveAdminSettingsThunk } from '../../store/admin/thunks';
 import { SectionHeader, useToast } from '../../components/admin';
 
 const APPEARANCE_OPTIONS: { label: string; value: ColorSchemePreference }[] = [
@@ -41,6 +41,14 @@ const AdminSettingsScreen = () => {
   const [localSettings, setLocalSettings] = useState<AdminSettings>(settings);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    dispatch(loadAdminSettings() as any);
+  }, [dispatch]);
+
+  useEffect(() => {
+    setLocalSettings(settings);
+  }, [settings]);
+
   const hasChanges = useMemo(
     () => JSON.stringify(localSettings) !== JSON.stringify(settings),
     [localSettings, settings],
@@ -55,11 +63,10 @@ const AdminSettingsScreen = () => {
 
   const handleSave = useCallback(() => {
     setSaving(true);
-    setTimeout(() => {
-      dispatch(updateSettings(localSettings));
-      showToast('success', 'Settings saved successfully');
-      setSaving(false);
-    }, 800);
+    dispatch(saveAdminSettingsThunk(localSettings) as any)
+      .then(() => showToast('success', 'Settings saved successfully'))
+      .catch(() => showToast('error', 'Failed to save settings'))
+      .finally(() => setSaving(false));
   }, [localSettings, dispatch, showToast]);
 
   const handleReset = useCallback(() => {

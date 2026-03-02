@@ -22,11 +22,9 @@ import { useTheme } from '../../theme';
 import Button from '../../components/Button';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { AppTheme } from '../../constants/theme';
-import {
-  instructorPackages,
-  type InstructorPackage,
-  type ApprovalStatus,
-} from '../../modules/instructor/mockData';
+import type { ApprovalStatus, InstructorPackageView } from '../../types/instructor-views';
+import { useSelector, useDispatch } from 'react-redux';
+import { createPackageThunk, updatePackageThunk, deactivatePackageThunk } from '../../store/instructor/thunks';
 import { useToast } from '../../components/admin';
 import { useConfirmation } from '../../components/common';
 
@@ -38,12 +36,40 @@ const InstructorPackageScreen = () => {
   const { showToast } = useToast();
   const { confirm, notify } = useConfirmation();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const dispatch = useDispatch<any>();
+  const authProfile = useSelector((state: any) => state.auth.profile);
+  const reduxPackages = useSelector((state: any) => state.instructor.packages) || [];
+  const pendingPkgs = useSelector((state: any) => state.instructor.pendingPackages) || [];
 
-  const [packages, setPackages] = useState<InstructorPackage[]>(
-    [...instructorPackages].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-  );
+  // Map Firestore packages to view model
+  const packages: InstructorPackageView[] = useMemo(() => {
+    const all = [
+      ...reduxPackages.map((p: any) => ({
+        id: p.id,
+        title: p.title || '',
+        description: p.description || '',
+        lessonCount: p.number_of_lessons || 0,
+        price: p.price || 0,
+        commissionPercentage: p.commission_percent || 15,
+        status: (p.status || 'pending') as ApprovalStatus,
+        createdAt: p.approvedAt || p.updatedAt || '',
+      })),
+      ...pendingPkgs.map((p: any) => ({
+        id: p.id,
+        title: p.title || '',
+        description: p.description || '',
+        lessonCount: p.number_of_lessons || 0,
+        price: p.price || 0,
+        commissionPercentage: 15,
+        status: 'pending' as ApprovalStatus,
+        createdAt: p.created_at || '',
+      })),
+    ];
+    return all;
+  }, [reduxPackages, pendingPkgs]);
+
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingPackage, setEditingPackage] = useState<InstructorPackage | null>(null);
+  const [editingPackage, setEditingPackage] = useState<InstructorPackageView | null>(null);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -81,7 +107,7 @@ const InstructorPackageScreen = () => {
     setModalVisible(true);
   };
 
-  const openEditModal = (pkg: InstructorPackage) => {
+  const openEditModal = (pkg: InstructorPackageView) => {
     setEditingPackage(pkg);
     setTitle(pkg.title);
     setDescription(pkg.description);
@@ -90,7 +116,7 @@ const InstructorPackageScreen = () => {
     setModalVisible(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!isFormValid) {
       void notify({
         title: 'Incomplete',
@@ -100,42 +126,40 @@ const InstructorPackageScreen = () => {
       return;
     }
 
-    if (editingPackage) {
-      setPackages(prev =>
-        prev.map(pkg =>
-          pkg.id === editingPackage.id
-            ? {
-                ...pkg,
-                title: title.trim(),
-                description: description.trim(),
-                lessonCount: Number(lessonCount),
-                price: Number(price),
-                status: 'pending',
-              }
-            : pkg,
-        ),
-      );
-      showToast('success', 'Package updated and sent for re-approval.');
-    } else {
-      const newPackage: InstructorPackage = {
-        id: `PKG-${String(Date.now()).slice(-6)}`,
-        title: title.trim(),
-        description: description.trim(),
-        lessonCount: Number(lessonCount),
-        price: Number(price),
-        commissionPercentage: COMMISSION_PERCENTAGE,
-        status: 'pending',
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-      setPackages(prev => [newPackage, ...prev]);
-      showToast('success', 'Package created and sent for approval.');
+    try {
+      if (editingPackage) {
+        await dispatch(updatePackageThunk(
+          editingPackage.id,
+          {
+            title: title.trim(),
+            description: description.trim(),
+            number_of_lessons: Number(lessonCount),
+            price: Number(price),
+          },
+          authProfile?.uid,
+        ));
+        showToast('success', 'Package updated and sent for re-approval.');
+      } else {
+        await dispatch(createPackageThunk({
+          instructorId: authProfile?.uid,
+          name: title.trim(),
+          description: description.trim(),
+          totalLessons: Number(lessonCount),
+          price: Number(price),
+          duration: '1h',
+          transmission: authProfile?.car_transmission || 'Manual',
+        }));
+        showToast('success', 'Package created and sent for approval.');
+      }
+    } catch (e) {
+      showToast('error', 'Failed to save package.');
     }
 
     setModalVisible(false);
     resetForm();
   };
 
-  const handleDelete = async (pkg: InstructorPackage) => {
+  const handleDelete = async (pkg: InstructorPackageView) => {
     const shouldDelete = await confirm({
       title: 'Delete Package',
       message: `Are you sure you want to delete "${pkg.title}"?`,
@@ -146,8 +170,12 @@ const InstructorPackageScreen = () => {
     });
 
     if (shouldDelete) {
-      setPackages(prev => prev.filter(item => item.id !== pkg.id));
-      showToast('success', 'Package deleted.');
+      try {
+        await dispatch(deactivatePackageThunk(pkg.id, authProfile?.uid));
+        showToast('success', 'Package deleted.');
+      } catch (e) {
+        showToast('error', 'Failed to delete package.');
+      }
     }
   };
 

@@ -166,6 +166,17 @@ export const REJECT_PACKAGE = 'admin/REJECT_PACKAGE';
 export const UPDATE_PACKAGE_COMMISSION = 'admin/UPDATE_PACKAGE_COMMISSION';
 export const DELETE_PACKAGE = 'admin/DELETE_PACKAGE';
 
+// Bulk-load actions (used by thunks to populate store from Firebase)
+export const SET_STUDENTS = 'admin/SET_STUDENTS';
+export const SET_INSTRUCTORS = 'admin/SET_INSTRUCTORS';
+export const SET_TRANSACTIONS = 'admin/SET_TRANSACTIONS';
+export const SET_CONVERSATIONS = 'admin/SET_CONVERSATIONS';
+export const SET_MESSAGES = 'admin/SET_MESSAGES';
+export const SET_PACKAGES = 'admin/SET_PACKAGES';
+export const SET_SETTINGS = 'admin/SET_SETTINGS';
+export const SET_DASHBOARD_STATS = 'admin/SET_DASHBOARD_STATS';
+export const SET_ADMIN_LOADING = 'admin/SET_LOADING';
+
 // ─── Action Interfaces ───────────────────────────────────────────────────────
 
 interface ApproveStudentAction {
@@ -258,6 +269,51 @@ interface DeletePackageAction {
   payload: { packageId: string };
 }
 
+interface SetStudentsAction {
+  type: typeof SET_STUDENTS;
+  payload: AdminStudent[];
+}
+
+interface SetInstructorsAction {
+  type: typeof SET_INSTRUCTORS;
+  payload: AdminInstructor[];
+}
+
+interface SetTransactionsAction {
+  type: typeof SET_TRANSACTIONS;
+  payload: Transaction[];
+}
+
+interface SetConversationsAction {
+  type: typeof SET_CONVERSATIONS;
+  payload: Conversation[];
+}
+
+interface SetMessagesAction {
+  type: typeof SET_MESSAGES;
+  payload: ChatMessage[];
+}
+
+interface SetPackagesAction {
+  type: typeof SET_PACKAGES;
+  payload: AdminPackage[];
+}
+
+interface SetSettingsAction {
+  type: typeof SET_SETTINGS;
+  payload: AdminSettings;
+}
+
+interface SetDashboardStatsAction {
+  type: typeof SET_DASHBOARD_STATS;
+  payload: DashboardStats;
+}
+
+interface SetAdminLoadingAction {
+  type: typeof SET_ADMIN_LOADING;
+  payload: boolean;
+}
+
 export type AdminAction =
   | ApproveStudentAction
   | RejectStudentAction
@@ -276,4 +332,13 @@ export type AdminAction =
   | ApprovePackageAction
   | RejectPackageAction
   | UpdatePackageCommissionAction
-  | DeletePackageAction;
+  | DeletePackageAction
+  | SetStudentsAction
+  | SetInstructorsAction
+  | SetTransactionsAction
+  | SetConversationsAction
+  | SetMessagesAction
+  | SetPackagesAction
+  | SetSettingsAction
+  | SetDashboardStatsAction
+  | SetAdminLoadingAction;

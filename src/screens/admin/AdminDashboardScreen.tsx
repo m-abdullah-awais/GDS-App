@@ -4,18 +4,20 @@
  * Admin overview dashboard with stats, chart placeholders, and recent cards.
  */
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import type { RootState } from '../../store';
+import { loadAdminDashboard } from '../../store/admin/thunks';
 import {
   StatsCard,
   SectionHeader,
@@ -27,9 +29,14 @@ import {
 const AdminDashboardScreen = () => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { dashboardStats, students, instructors, transactions } = useSelector(
+  const dispatch = useDispatch();
+  const { dashboardStats, students, instructors, transactions, loading } = useSelector(
     (state: RootState) => state.admin,
   );
+
+  useEffect(() => {
+    dispatch(loadAdminDashboard() as any);
+  }, [dispatch]);
 
   const recentStudents = useMemo(
     () =>

@@ -22,13 +22,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { InstructorStackParamList } from '../../navigation/instructor/InstructorStack';
 import ScreenContainer from '../../components/ScreenContainer';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {
-  instructorProfile,
-  instructorPackages,
-  instructorStudents,
-  instructorLessons,
-  type InstructorLesson,
-} from '../../modules/instructor/mockData';
+import { useSelector } from 'react-redux';
+import { mapBookingToInstructorLesson } from '../../utils/mappers';
+import type { InstructorLesson } from '../../types/instructor-views';
 
 type Props = CompositeScreenProps<
   DrawerScreenProps<InstructorTabsParamList, 'Dashboard'>,
@@ -49,10 +45,16 @@ const InstructorDashboardScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
   const s = useMemo(() => createStyles(theme), [theme]);
 
-  const upcomingLessons = instructorLessons.filter(l => l.status === 'upcoming');
-  const completedLessons = instructorLessons.filter(l => l.status === 'completed');
-  const approvedPackages = instructorPackages.filter(p => p.status === 'approved').length;
-  const activeStudents = instructorStudents.length;
+  const authProfile = useSelector((state: any) => state.auth.profile);
+  const bookings = useSelector((state: any) => state.instructor.bookings) || [];
+  const packages = useSelector((state: any) => state.instructor.packages) || [];
+  const studentRequests = useSelector((state: any) => state.instructor.studentRequests) || [];
+
+  const lessons: InstructorLesson[] = bookings.map((b: any) => mapBookingToInstructorLesson(b));
+  const upcomingLessons = lessons.filter(l => l.status === 'confirmed' || l.status === 'pending');
+  const completedLessons = lessons.filter(l => l.status === 'completed');
+  const approvedPackages = packages.filter((p: any) => p.status === 'approved').length;
+  const activeStudents = studentRequests.filter((r: any) => r.status === 'accepted' || r.status === 'confirmed').length;
 
   const QUICK_ACTIONS: QuickAction[] = [
     { id: '1', label: 'Configure\nAreas', icon: 'location-outline', iconBg: 'rgba(255,255,255,0.2)', iconColor: theme.colors.textInverse, cardBg: '#2F6BFF', screen: 'Areas' },
@@ -75,7 +77,7 @@ const InstructorDashboardScreen = ({ navigation }: Props) => {
           <View style={s.heroGradientOverlay} />
           <View style={s.heroContent}>
             <Text style={s.heroGreeting}>Welcome back,</Text>
-            <Text style={s.heroName}>{instructorProfile.fullName}</Text>
+            <Text style={s.heroName}>{authProfile?.full_name || 'Instructor'}</Text>
             <Text style={s.heroSubtitle}>
               You have {upcomingLessons.length} upcoming lesson{upcomingLessons.length !== 1 ? 's' : ''} this week
             </Text>

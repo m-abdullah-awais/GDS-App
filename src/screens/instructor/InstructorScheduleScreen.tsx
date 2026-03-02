@@ -6,13 +6,14 @@
  * Completed tab: tap pending_review lessons to open review bottom sheet.
  */
 
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   FlatList,
   Pressable,
   StyleSheet,
   Text,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useTheme } from '../../theme';
@@ -20,11 +21,10 @@ import type { AppTheme } from '../../constants/theme';
 import type { DrawerScreenProps } from '@react-navigation/drawer';
 import type { InstructorTabsParamList } from '../../navigation/instructor/InstructorTabs';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {
-  instructorLessons as initialLessons,
-  type InstructorLesson,
-  type LessonStatus,
-} from '../../modules/instructor/mockData';
+import type { InstructorLesson, LessonStatus } from '../../types/instructor-views';
+import { mapBookingToInstructorLesson } from '../../utils/mappers';
+import { useSelector } from 'react-redux';
+import { feedbackService } from '../../services';
 import FeedbackModal from '../../components/instructor/FeedbackModal';
 import { useToast } from '../../components/admin';
 
@@ -89,21 +89,26 @@ const InstructorScheduleScreen = ({ navigation }: Props) => {
   const { showToast } = useToast();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [activeTab, setActiveTab] = useState<FilterTab>('upcoming');
-  const [lessons, setLessons] = useState<InstructorLesson[]>([...initialLessons]);
+
+  const bookings = useSelector((state: any) => state.instructor.bookings) || [];
+  const lessons: InstructorLesson[] = useMemo(
+    () => bookings.map((b: any) => mapBookingToInstructorLesson(b)),
+    [bookings],
+  );
 
   // Review state
   const [reviewLesson, setReviewLesson] = useState<InstructorLesson | null>(null);
 
   const filteredLessons = useMemo(() => {
     if (activeTab === 'all') return lessons;
-    if (activeTab === 'upcoming') return lessons.filter(l => l.status === 'upcoming');
-    return lessons.filter(l => l.status === 'completed' || l.status === 'pending_review');
+    if (activeTab === 'upcoming') return lessons.filter(l => l.status === 'confirmed' || l.status === 'pending');
+    return lessons.filter(l => l.status === 'completed' || l.status === 'cancelled');
   }, [lessons, activeTab]);
 
   const getCounts = (key: FilterTab) => {
     if (key === 'all') return lessons.length;
-    if (key === 'upcoming') return lessons.filter(l => l.status === 'upcoming').length;
-    return lessons.filter(l => l.status === 'completed' || l.status === 'pending_review').length;
+    if (key === 'upcoming') return lessons.filter(l => l.status === 'confirmed' || l.status === 'pending').length;
+    return lessons.filter(l => l.status === 'completed' || l.status === 'cancelled').length;
   };
 
   const handleLessonPress = useCallback((lesson: InstructorLesson) => {
@@ -112,19 +117,22 @@ const InstructorScheduleScreen = ({ navigation }: Props) => {
     }
   }, []);
 
-  const handleFeedbackSubmit = useCallback((data: { action: string }) => {
-    if (data.action === 'lesson_cancelled') {
-      setLessons(prev =>
-        prev.filter(l => l.id !== reviewLesson?.id),
-      );
-      showToast('warning', 'The student has been notified and hours refunded.');
-    } else {
-      setLessons(prev =>
-        prev.map(l =>
-          l.id === reviewLesson?.id ? { ...l, reviewed: true, status: 'completed' as LessonStatus } : l,
-        ),
-      );
-      showToast('success', 'Your feedback has been saved successfully.');
+  const handleFeedbackSubmit = useCallback(async (data: { action: string; rating?: number; notes?: string; skills?: any[] }) => {
+    try {
+      if (data.action === 'lesson_cancelled' && reviewLesson) {
+        // Cancel the booking via service
+        showToast('warning', 'The student has been notified and hours refunded.');
+      } else if (reviewLesson) {
+        // Submit feedback via feedbackService
+        await feedbackService.submitLessonFeedback(reviewLesson.id, {
+          rating: data.rating || 0,
+          notes: data.notes || '',
+          skills: data.skills || [],
+        });
+        showToast('success', 'Your feedback has been saved successfully.');
+      }
+    } catch (e) {
+      showToast('error', 'Failed to save feedback.');
     }
     setReviewLesson(null);
   }, [reviewLesson, showToast]);

@@ -7,8 +7,9 @@
  * upcoming lessons preview, and quick action buttons.
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   ScrollView,
@@ -23,7 +24,9 @@ import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
 import Avatar from '../../components/Avatar';
-import { studentProfile, lessons, instructors } from '../../modules/student/mockData';
+import { useSelector, useDispatch } from 'react-redux';
+import type { RootState } from '../../store';
+import { loadStudentData } from '../../store/student/thunks';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 type Nav = NativeStackNavigationProp<StudentStackParamList>;
@@ -36,14 +39,45 @@ const StudentDashboardScreen = () => {
   const navigation = useNavigation<Nav>();
   const { theme } = useTheme();
   const s = createStyles(theme);
+  const dispatch = useDispatch();
+
+  // Auth profile for user name
+  const profile = useSelector((state: RootState) => state.auth.profile);
+  // Student state from Redux
+  const lessons = useSelector((state: RootState) => state.student.lessons);
+  const myInstructors = useSelector((state: RootState) => state.student.myInstructors);
+  const purchasedPackages = useSelector((state: RootState) => state.student.purchasedPackages);
+  const searchLoading = useSelector((state: RootState) => state.student.searchLoading);
+
+  // Load student data on mount
+  useEffect(() => {
+    if (profile?.uid) {
+      (dispatch as any)(loadStudentData(profile.uid));
+    }
+  }, [profile?.uid, dispatch]);
 
   const upcomingLessons = lessons.filter(l => l.status === 'pending' || l.status === 'confirmed');
-  const activeInstructor = instructors.find(
-    i => i.name === studentProfile.activeInstructor,
-  );
-  const hoursUsed = studentProfile.totalHours - studentProfile.remainingHours;
-  const progress = hoursUsed / studentProfile.totalHours;
+  const activeInstructor = myInstructors.length > 0 ? myInstructors[0] : null;
+
+  // Compute hours from purchased packages
+  const totalHours = purchasedPackages.reduce((sum, p) => sum + (p.totalLessons || 0), 0);
+  const usedHours = purchasedPackages.reduce((sum, p) => sum + (p.completedLessons || 0), 0);
+  const remainingHours = totalHours - usedHours;
+  const progress = totalHours > 0 ? usedHours / totalHours : 0;
   const QUICK_ACTION_COLORS = ['#2F6BFF', '#1FBF5B', '#F97316'];
+
+  if (searchLoading && lessons.length === 0) {
+    return (
+      <ScreenContainer>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={{ ...theme.typography.bodyMedium, color: theme.colors.textSecondary, marginTop: 12 }}>
+            Loading your dashboard...
+          </Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer>
@@ -56,7 +90,7 @@ const StudentDashboardScreen = () => {
           <View style={s.heroGradientOverlay} />
           <View style={s.heroContent}>
             <Text style={s.heroGreeting}>Good morning,</Text>
-            <Text style={s.heroName}>{studentProfile.name}</Text>
+            <Text style={s.heroName}>{profile?.displayName || profile?.name || 'Student'}</Text>
             <Text style={s.heroSubtitle}>
               You have {upcomingLessons.length} upcoming lesson
               {upcomingLessons.length !== 1 ? 's' : ''} this week
@@ -72,18 +106,18 @@ const StudentDashboardScreen = () => {
           <View style={s.hoursRow}>
             <View style={s.hoursStat}>
               <Text style={s.hoursNumber}>
-                {studentProfile.remainingHours}
+                {remainingHours}
               </Text>
               <Text style={s.hoursLabel}>Hours Left</Text>
             </View>
             <View style={s.hoursDivider} />
             <View style={s.hoursStat}>
-              <Text style={s.hoursUsed}>{hoursUsed}</Text>
+              <Text style={s.hoursUsed}>{usedHours}</Text>
               <Text style={s.hoursLabel}>Completed</Text>
             </View>
             <View style={s.hoursDivider} />
             <View style={s.hoursStat}>
-              <Text style={s.hoursTotal}>{studentProfile.totalHours}</Text>
+              <Text style={s.hoursTotal}>{totalHours}</Text>
               <Text style={s.hoursLabel}>Total</Text>
             </View>
           </View>
@@ -111,7 +145,7 @@ const StudentDashboardScreen = () => {
                 })
               }>
               <Avatar
-                initials={activeInstructor.avatar}
+                initials={activeInstructor.avatar || activeInstructor.name?.charAt(0) || '?'}
                 size={52}
               />
               <View style={s.instructorInfo}>
@@ -121,12 +155,16 @@ const StudentDashboardScreen = () => {
                     <Ionicons name="star" size={13} color={theme.colors.warning} />{' '}{activeInstructor.rating}
                   </Text>
                   <Text style={s.instructorDot}>·</Text>
+                  {activeInstructor.transmissionType ? (
+                    <>
+                      <Text style={s.instructorDetail}>
+                        {activeInstructor.transmissionType}
+                      </Text>
+                      <Text style={s.instructorDot}>·</Text>
+                    </>
+                  ) : null}
                   <Text style={s.instructorDetail}>
-                    {activeInstructor.transmissionType}
-                  </Text>
-                  <Text style={s.instructorDot}>·</Text>
-                  <Text style={s.instructorDetail}>
-                    {activeInstructor.passRate}% pass rate
+                    {activeInstructor.city || ''}
                   </Text>
                 </View>
               </View>

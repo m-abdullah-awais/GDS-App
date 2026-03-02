@@ -22,7 +22,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { AppTheme } from '../../constants/theme';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { InstructorStackParamList } from '../../navigation/instructor/InstructorStack';
-import type { TransmissionType } from '../../modules/instructor/mockData';
+import type { TransmissionType } from '../../types';
 import { useConfirmation } from '../../components/common';
 
 type Props = NativeStackScreenProps<InstructorStackParamList, 'CompleteProfile'>;

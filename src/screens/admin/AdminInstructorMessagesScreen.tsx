@@ -5,7 +5,7 @@
  * Opens dedicated AdminChat screen on row tap.
  */
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   FlatList,
   Pressable,
@@ -21,6 +21,7 @@ import type { AppTheme } from '../../constants/theme';
 import type { RootState } from '../../store';
 import type { Conversation } from '../../store/admin/types';
 import { markConversationRead } from '../../store/admin/actions';
+import { loadAdminConversations } from '../../store/admin/thunks';
 import type { AdminStackParamList } from '../../navigation/admin/AdminStack';
 import {
   Avatar,
@@ -143,6 +144,13 @@ const AdminInstructorMessagesScreen = () => {
   const navigation = useNavigation<Nav>();
 
   const conversations = useSelector((state: RootState) => state.admin.conversations);
+  const adminId = useSelector((state: RootState) => state.auth.profile?.uid ?? '');
+
+  useEffect(() => {
+    if (adminId) {
+      dispatch(loadAdminConversations(adminId) as any);
+    }
+  }, [dispatch, adminId]);
 
   const sortedConvos = useMemo(
     () => [...conversations].sort((a, b) => b.timestamp.localeCompare(a.timestamp)),

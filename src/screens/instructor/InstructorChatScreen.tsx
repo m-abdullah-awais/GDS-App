@@ -6,7 +6,7 @@
  * and input bar. Mirrors StudentChatScreen for instructor flow.
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -23,10 +23,16 @@ import type { InstructorStackParamList } from '../../navigation/instructor/Instr
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
-import {
-  instructorChatMessages,
-  type InstructorChatMessage,
-} from '../../modules/instructor/mockData';
+import { useSelector } from 'react-redux';
+import { messageService } from '../../services';
+
+interface InstructorChatMessage {
+  id: string;
+  conversationId: string;
+  text: string;
+  sender: 'student' | 'instructor';
+  timestamp: string;
+}
 
 type Route = RouteProp<InstructorStackParamList, 'Chat'>;
 
@@ -126,29 +132,63 @@ const InstructorChatScreen = () => {
   const { theme } = useTheme();
   const s = createStyles(theme);
   const flatListRef = useRef<FlatList>(null);
+  const authProfile = useSelector((state: any) => state.auth.profile);
 
   const [inputText, setInputText] = useState('');
-  const [localMessages, setLocalMessages] = useState<InstructorChatMessage[]>(
-    instructorChatMessages.filter(
-      m => m.conversationId === route.params.conversationId,
-    ),
-  );
+  const [localMessages, setLocalMessages] = useState<InstructorChatMessage[]>([]);
 
-  const handleSend = () => {
+  // Load messages and subscribe to real-time updates
+  useEffect(() => {
+    const peerId = route.params.conversationId;
+    if (!authProfile?.uid || !peerId) return;
+
+    // Initial load
+    messageService.getConversation(authProfile.uid, peerId)
+      .then((msgs: any[]) => {
+        setLocalMessages(msgs.map((m: any) => ({
+          id: m.id,
+          conversationId: peerId,
+          text: m.content || '',
+          sender: m.sender_id === authProfile.uid ? 'instructor' : 'student',
+          timestamp: m.createdAt
+            ? new Date(m.createdAt.seconds ? m.createdAt.seconds * 1000 : m.createdAt)
+                .toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+            : '',
+        })));
+      })
+      .catch(() => {});
+
+    // Real-time listener
+    const unsub = messageService.onConversation(authProfile.uid, peerId, (msgs: any[]) => {
+      setLocalMessages(msgs.map((m: any) => ({
+        id: m.id,
+        conversationId: peerId,
+        text: m.content || '',
+        sender: m.sender_id === authProfile.uid ? 'instructor' : 'student',
+        timestamp: m.createdAt
+          ? new Date(m.createdAt.seconds ? m.createdAt.seconds * 1000 : m.createdAt)
+              .toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+          : '',
+      })));
+    });
+    return unsub;
+  }, [authProfile?.uid, route.params.conversationId]);
+
+  const handleSend = async () => {
     if (!inputText.trim()) return;
 
-    const newMessage: InstructorChatMessage = {
-      id: `IMSG-LOCAL-${Date.now()}`,
-      conversationId: route.params.conversationId,
-      text: inputText.trim(),
-      sender: 'instructor',
-      timestamp: new Date().toLocaleTimeString('en-GB', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-    };
+    try {
+      await messageService.sendMessage({
+        sender_id: authProfile?.uid,
+        receiver_id: route.params.conversationId,
+        sender_name: authProfile?.full_name || 'Instructor',
+        sender_role: 'instructor',
+        content: inputText.trim(),
+      });
+    } catch (e) {
+      console.warn('Failed to send message', e);
+    }
 
-    setLocalMessages(prev => [...prev, newMessage]);
     setInputText('');
 
     setTimeout(() => {

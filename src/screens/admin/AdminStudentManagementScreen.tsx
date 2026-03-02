@@ -19,10 +19,10 @@ import type { AppTheme } from '../../constants/theme';
 import type { RootState } from '../../store';
 import type { AdminStudent } from '../../store/admin/types';
 import {
-  suspendStudent,
-  activateStudent,
-  deleteStudent,
-} from '../../store/admin/actions';
+  suspendStudentThunk,
+  activateStudentThunk,
+  deleteStudentThunk,
+} from '../../store/admin/thunks';
 import {
   SearchBar,
   FilterChips,
@@ -86,25 +86,26 @@ const AdminStudentManagementScreen = () => {
   const executeAction = useCallback(() => {
     if (!selected || !confirmType) return;
     setConfirmLoading(true);
-    setTimeout(() => {
-      switch (confirmType) {
-        case 'suspend':
-          dispatch(suspendStudent(selected.id));
-          showToast('warning', `${selected.name} has been suspended`);
-          break;
-        case 'activate':
-          dispatch(activateStudent(selected.id));
-          showToast('success', `${selected.name} has been activated`);
-          break;
-        case 'delete':
-          dispatch(deleteStudent(selected.id));
-          showToast('error', `${selected.name} has been deleted`);
-          break;
-      }
-      setConfirmLoading(false);
-      setConfirmType(null);
-      setSelected(null);
-    }, 600);
+    let thunk: any;
+    switch (confirmType) {
+      case 'suspend': thunk = suspendStudentThunk(selected.id); break;
+      case 'activate': thunk = activateStudentThunk(selected.id); break;
+      case 'delete': thunk = deleteStudentThunk(selected.id); break;
+    }
+    dispatch(thunk as any)
+      .then(() => {
+        switch (confirmType) {
+          case 'suspend': showToast('warning', `${selected.name} has been suspended`); break;
+          case 'activate': showToast('success', `${selected.name} has been activated`); break;
+          case 'delete': showToast('error', `${selected.name} has been deleted`); break;
+        }
+      })
+      .catch(() => showToast('error', 'Operation failed. Please try again.'))
+      .finally(() => {
+        setConfirmLoading(false);
+        setConfirmType(null);
+        setSelected(null);
+      });
   }, [selected, confirmType, dispatch, showToast]);
 
   const confirmConfig = useMemo(() => {

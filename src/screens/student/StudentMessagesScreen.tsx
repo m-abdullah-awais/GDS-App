@@ -6,8 +6,9 @@
  * Tapping navigates to ChatScreen.
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -21,7 +22,10 @@ import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
 import Avatar from '../../components/Avatar';
-import { conversations, type Conversation } from '../../modules/student/mockData';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../store';
+import * as messageService from '../../services/messageService';
+import { mapMessagesToConversations } from '../../utils/mappers';
 
 type Nav = NativeStackNavigationProp<StudentStackParamList>;
 
@@ -150,6 +154,31 @@ const StudentMessagesScreen = () => {
   const navigation = useNavigation<Nav>();
   const { theme } = useTheme();
   const s = createStyles(theme);
+  const profile = useSelector((state: RootState) => state.auth.profile);
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!profile?.uid) return;
+    setLoading(true);
+    messageService.getMessagesForUser(profile.uid)
+      .then(msgs => {
+        const convos = mapMessagesToConversations(msgs, profile.uid);
+        setConversations(convos);
+      })
+      .catch(err => console.error('Failed to load messages:', err))
+      .finally(() => setLoading(false));
+  }, [profile?.uid]);
+
+  if (loading) {
+    return (
+      <ScreenContainer showHeader title="Messages">
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer showHeader title="Messages">

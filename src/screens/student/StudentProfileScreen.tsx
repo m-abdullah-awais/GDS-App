@@ -11,7 +11,7 @@
  *   - Sign out
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -25,7 +25,10 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme, type ColorSchemePreference } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
-import { studentProfile } from '../../modules/student/mockData';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../store';
+import * as userService from '../../services/userService';
+import * as authService from '../../services/authService';
 import { useToast } from '../../components/admin';
 import { ProfileImageOptionsModal, useConfirmation } from '../../components/common';
 
@@ -52,10 +55,10 @@ const getInitials = (name: string) =>
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 const INITIAL_PROFILE: ProfileData = {
-  name: studentProfile.name,
-  email: studentProfile.email ?? 'alex.johnson@email.com',
-  phone: studentProfile.phone ?? '+44 7700 123456',
-  licenceNumber: 'JOHN5702**AJ9AB',
+  name: '',
+  email: '',
+  phone: '',
+  licenceNumber: '',
   transmissionPreference: 'Manual',
 };
 
@@ -86,12 +89,29 @@ const StudentProfileScreen = () => {
   const { showToast } = useToast();
   const { confirm, notify } = useConfirmation();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const authProfile = useSelector((state: RootState) => state.auth.profile);
 
   const [profile, setProfile] = useState<ProfileData>(INITIAL_PROFILE);
   const [draft, setDraft] = useState<ProfileData>(INITIAL_PROFILE);
   const [editing, setEditing] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [imageOptionsVisible, setImageOptionsVisible] = useState(false);
+
+  // Load profile from auth state
+  useEffect(() => {
+    if (authProfile) {
+      const loaded: ProfileData = {
+        name: authProfile.displayName || authProfile.name || '',
+        email: authProfile.email || '',
+        phone: authProfile.phone || authProfile.phoneNumber || '',
+        licenceNumber: (authProfile as any).licenceNumber || '',
+        transmissionPreference: (authProfile as any).transmissionPreference || 'Manual',
+      };
+      setProfile(loaded);
+      setDraft(loaded);
+      setProfileImage((authProfile as any).photoURL || null);
+    }
+  }, [authProfile]);
 
   // Notification toggles
   const [notifLessons, setNotifLessons] = useState(true);
@@ -112,7 +132,7 @@ const StudentProfileScreen = () => {
     setEditing(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trimmed: ProfileData = {
       name: draft.name.trim(),
       email: draft.email.trim(),
@@ -136,10 +156,25 @@ const StudentProfileScreen = () => {
       });
       return;
     }
-    setProfile(trimmed);
-    setDraft(trimmed);
-    setEditing(false);
-    showToast('success', 'Your profile has been updated.');
+    try {
+      if (authProfile?.uid) {
+        await userService.updateUserProfile(authProfile.uid, {
+          displayName: trimmed.name,
+          name: trimmed.name,
+          email: trimmed.email,
+          phone: trimmed.phone,
+          licenceNumber: trimmed.licenceNumber,
+          transmissionPreference: trimmed.transmissionPreference,
+        });
+      }
+      setProfile(trimmed);
+      setDraft(trimmed);
+      setEditing(false);
+      showToast('success', 'Your profile has been updated.');
+    } catch (err) {
+      console.error('Failed to save profile:', err);
+      showToast('error', 'Failed to save profile. Please try again.');
+    }
   };
 
   const handlePickImage = () => {
@@ -157,6 +192,9 @@ const StudentProfileScreen = () => {
     });
 
     if (shouldSignOut) {
+      try {
+        await authService.signOut();
+      } catch {}
       showToast('info', 'Signed out successfully.');
     }
   };
@@ -164,8 +202,8 @@ const StudentProfileScreen = () => {
   const displayName = editing ? draft.name : profile.name;
 
   // Format member since date
-  const memberSince = studentProfile.memberSince
-    ? new Date(studentProfile.memberSince).toLocaleDateString('en-GB', {
+  const memberSince = (authProfile as any)?.createdAt
+    ? new Date((authProfile as any).createdAt).toLocaleDateString('en-GB', {
         month: 'long',
         year: 'numeric',
       })

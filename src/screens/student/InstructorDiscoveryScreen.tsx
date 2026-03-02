@@ -1,13 +1,15 @@
 /**
- * GDS Driving School — InstructorDiscoveryScreen
- * =================================================
+ * GDS Driving School — InstructorDiscoveryScreen (Search Instructors)
+ * =====================================================================
  *
- * Browse and search for driving instructors with filtering.
- * Premium card-based list with search and filter row.
+ * Step 1 of the booking lifecycle.
+ * Search and filter instructors, view request status per instructor,
+ * send connection requests.  Redux-connected.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Modal,
   Pressable,
@@ -20,301 +22,94 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { StudentStackParamList } from '../../navigation/student/StudentStack';
+import { useSelector, useDispatch } from 'react-redux';
+import type { RootState } from '../../store';
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
 import { Button } from '../../components/Button';
-import { instructors, type Instructor } from '../../modules/student/mockData';
+import { InstructorCard } from '../../components/student';
+import {
+  searchInstructors,
+  getInstructorCities,
+  sendInstructorRequest,
+  getRequestStatus,
+} from '../../services/instructorService';
+import { getActivePackagesForInstructor } from '../../services/packageService';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import type { InstructorRequestStatus } from '../../store/student/types';
 
 type Nav = NativeStackNavigationProp<StudentStackParamList>;
 
-type TransmissionFilter = 'All' | 'Manual' | 'Automatic' | 'Both';
-
-const TRANSMISSION_OPTIONS: TransmissionFilter[] = [
-  'All',
-  'Manual',
-  'Automatic',
-  'Both',
-];
-
-const AREA_OPTIONS = ['All Areas', 'SW', 'E', 'N', 'SE', 'W'];
-
-// ─── Avatar ───────────────────────────────────────────────────────────────────
-
-const Avatar = ({
-  initials,
-  size = 52,
-  theme,
-}: {
-  initials: string;
-  size?: number;
-  theme: AppTheme;
-}) => (
-  <View
-    style={{
-      width: size,
-      height: size,
-      borderRadius: size / 2,
-      backgroundColor: theme.colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-    <Text
-      style={[
-        theme.typography.buttonSmall,
-        { color: theme.colors.textInverse, fontSize: size * 0.36 },
-      ]}>
-      {initials}
-    </Text>
-  </View>
-);
-
-// ─── Instructor Card ──────────────────────────────────────────────────────────
-
-const InstructorCard = ({
-  instructor,
-  theme,
-  onViewProfile,
-}: {
-  instructor: Instructor;
-  theme: AppTheme;
-  onViewProfile: () => void;
-}) => {
-  const s = cardStyles(theme);
-
-  return (
-    <View style={s.card}>
-      <View style={s.cardHeader}>
-        <Avatar initials={instructor.avatar} size={52} theme={theme} />
-        <View style={s.cardInfo}>
-          <Text style={s.cardName}>{instructor.name}</Text>
-          <View style={s.ratingRow}>
-            <Text style={s.ratingStar}>★</Text>
-            <Text style={s.ratingText}>
-              {instructor.rating} ({instructor.reviewCount} reviews)
-            </Text>
-          </View>
-        </View>
-        {instructor.acceptingStudents && (
-          <View style={s.acceptingBadge}>
-            <Text style={s.acceptingText}>Accepting</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={s.cardDetails}>
-        <View style={s.detailChip}>
-          <Ionicons name="cog-outline" size={13} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
-          <Text style={s.detailChipText}>
-            {instructor.transmissionType === 'Both'
-              ? 'Manual & Auto'
-              : instructor.transmissionType === 'Manual'
-              ? 'Manual'
-              : 'Automatic'}
-          </Text>
-        </View>
-        <View style={s.detailChip}>
-          <Ionicons name="location-outline" size={13} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
-          <Text style={s.detailChipText}>
-            {instructor.coveredPostcodes.join(', ')}
-          </Text>
-        </View>
-      </View>
-
-      <View style={s.cardFooter}>
-        <View style={s.statsRow}>
-          <Ionicons name="trophy-outline" size={12} color={theme.colors.textTertiary} style={{ marginRight: 3 }} />
-          <Text style={s.statText}>{instructor.passRate}% pass rate</Text>
-          <Text style={s.statDot}>·</Text>
-          <Text style={s.statText}>{instructor.yearsExperience} yrs exp</Text>
-        </View>
-        <Button
-          title="View Profile"
-          variant="primary"
-          size="sm"
-          onPress={onViewProfile}
-        />
-      </View>
-    </View>
-  );
-};
-
-const cardStyles = (theme: AppTheme) =>
-  StyleSheet.create({
-    card: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.lg,
-      padding: theme.spacing.md,
-      marginHorizontal: theme.spacing.md,
-      marginBottom: theme.spacing.sm,
-      ...theme.shadows.md,
-    },
-    cardHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    cardInfo: {
-      flex: 1,
-      marginLeft: theme.spacing.sm,
-    },
-    cardName: {
-      ...theme.typography.h3,
-      color: theme.colors.textPrimary,
-    },
-    ratingRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: theme.spacing.xxs,
-    },
-    ratingStar: {
-      fontSize: 14,
-      color: theme.colors.warning,
-      marginRight: theme.spacing.xxs,
-    },
-    ratingText: {
-      ...theme.typography.bodySmall,
-      color: theme.colors.textSecondary,
-    },
-    acceptingBadge: {
-      backgroundColor: theme.colors.successLight,
-      paddingHorizontal: theme.spacing.xs,
-      paddingVertical: theme.spacing.xxs,
-      borderRadius: theme.borderRadius.sm,
-    },
-    acceptingText: {
-      ...theme.typography.caption,
-      color: theme.colors.success,
-      fontWeight: '600',
-    },
-    cardDetails: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: theme.spacing.xs,
-      marginTop: theme.spacing.sm,
-    },
-    detailChip: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      backgroundColor: theme.colors.surfaceSecondary,
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: theme.spacing.xxs + 2,
-      borderRadius: theme.borderRadius.sm,
-    },
-    detailChipText: {
-      ...theme.typography.bodySmall,
-      color: theme.colors.textSecondary,
-    },
-    cardFooter: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginTop: theme.spacing.md,
-      paddingTop: theme.spacing.sm,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.divider,
-    },
-    statsRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flex: 1,
-    },
-    statText: {
-      ...theme.typography.caption,
-      color: theme.colors.textTertiary,
-    },
-    statDot: {
-      ...theme.typography.caption,
-      color: theme.colors.textTertiary,
-      marginHorizontal: theme.spacing.xxs,
-    },
-  });
-
-// ─── Component ────────────────────────────────────────────────────────────────
-
 const InstructorDiscoveryScreen = () => {
   const navigation = useNavigation<Nav>();
+  const dispatch = useDispatch();
   const { theme } = useTheme();
-  const s = createStyles(theme);
+  const s = useMemo(() => createStyles(theme), [theme]);
 
+  // Redux ─────────────────────────────────────────────────
+  const instructors = useSelector((state: RootState) => state.student.instructors);
+  const requests = useSelector((state: RootState) => state.student.requests);
+  const purchasedPackages = useSelector((state: RootState) => state.student.purchasedPackages);
+
+  // Local state ───────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
-  const [transmissionFilter, setTransmissionFilter] =
-    useState<TransmissionFilter>('All');
-  const [areaFilter, setAreaFilter] = useState('All Areas');
-
-  // Temp filter state for the modal
+  const [cityFilter, setCityFilter] = useState('All');
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [tempTransmission, setTempTransmission] =
-    useState<TransmissionFilter>('All');
-  const [tempArea, setTempArea] = useState('All Areas');
+  const [tempCity, setTempCity] = useState('All');
+  const [sendingId, setSendingId] = useState<string | null>(null);
 
+  // Derived ───────────────────────────────────────────────
+  const cities = useMemo(() => getInstructorCities(instructors), [instructors]);
+  const cityOptions = useMemo(() => ['All', ...cities], [cities]);
+
+  const filtered = useMemo(
+    () =>
+      searchInstructors(instructors, {
+        query: searchQuery,
+        city: cityFilter === 'All' ? undefined : cityFilter,
+      }),
+    [instructors, searchQuery, cityFilter],
+  );
+
+  const hasActiveFilters = cityFilter !== 'All';
+
+  // Handlers ──────────────────────────────────────────────
   const openFilters = () => {
-    setTempTransmission(transmissionFilter);
-    setTempArea(areaFilter);
+    setTempCity(cityFilter);
     setShowFilterModal(true);
   };
-
   const applyFilters = () => {
-    setTransmissionFilter(tempTransmission);
-    setAreaFilter(tempArea);
+    setCityFilter(tempCity);
     setShowFilterModal(false);
   };
 
-  const resetFilters = () => {
-    setTempTransmission('All');
-    setTempArea('All Areas');
-  };
+  const handleSendRequest = useCallback(
+    async (instructorId: string) => {
+      setSendingId(instructorId);
+      await sendInstructorRequest(instructorId, dispatch);
+      setSendingId(null);
+    },
+    [dispatch],
+  );
 
-  const hasActiveFilters =
-    transmissionFilter !== 'All' || areaFilter !== 'All Areas';
-  const activeFilterCount =
-    (transmissionFilter !== 'All' ? 1 : 0) +
-    (areaFilter !== 'All Areas' ? 1 : 0);
-
-  const filtered = useMemo(() => {
-    return instructors.filter(inst => {
-      // Search
-      if (
-        searchQuery &&
-        !inst.name.toLowerCase().includes(searchQuery.toLowerCase())
-      ) {
-        return false;
-      }
-      // Transmission
-      if (
-        transmissionFilter !== 'All' &&
-        inst.transmissionType !== transmissionFilter &&
-        inst.transmissionType !== 'Both'
-      ) {
-        return false;
-      }
-      // Area
-      if (areaFilter !== 'All Areas') {
-        const hasArea = inst.coveredPostcodes.some(p =>
-          p.startsWith(areaFilter),
-        );
-        if (!hasArea) return false;
-      }
-      return true;
-    });
-  }, [searchQuery, transmissionFilter, areaFilter]);
-
+  // Render ────────────────────────────────────────────────
   return (
-    <ScreenContainer showHeader title="Find Instructor">
-      {/* ── Search Bar + Filter Button ─────────────── */}
+    <ScreenContainer showHeader title="Search Instructors">
+      {/* ── Search Bar + Filter ─────────────────────── */}
       <View style={s.searchRow}>
         <View style={s.searchBar}>
           <Ionicons name="search-outline" size={18} color={theme.colors.placeholder} style={s.searchIcon} />
           <TextInput
             style={s.searchInput}
-            placeholder="Search instructors..."
+            placeholder="Search by name..."
             placeholderTextColor={theme.colors.placeholder}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={() => setSearchQuery('')}>
-              <Text style={s.clearIcon}>✕</Text>
+              <Ionicons name="close-circle" size={18} color={theme.colors.textTertiary} />
             </Pressable>
           )}
         </View>
@@ -322,46 +117,33 @@ const InstructorDiscoveryScreen = () => {
         <Pressable
           style={[s.filterButton, hasActiveFilters && s.filterButtonActive]}
           onPress={openFilters}>
-          <Ionicons name="options-outline" size={20} color={hasActiveFilters ? theme.colors.primary : theme.colors.textSecondary} />
-          {activeFilterCount > 0 && (
-            <View style={s.filterCountBadge}>
-              <Text style={s.filterCountText}>{activeFilterCount}</Text>
-            </View>
+          <Ionicons
+            name="options-outline"
+            size={20}
+            color={hasActiveFilters ? theme.colors.primary : theme.colors.textSecondary}
+          />
+          {hasActiveFilters && (
+            <View style={s.filterDot} />
           )}
         </Pressable>
       </View>
 
-      {/* Active filter tags */}
+      {/* Active filter tag */}
       {hasActiveFilters && (
         <View style={s.activeTagsRow}>
-          {transmissionFilter !== 'All' && (
-            <View style={s.activeTag}>
-              <Text style={s.activeTagText}>{transmissionFilter}</Text>
-              <Pressable onPress={() => setTransmissionFilter('All')}>
-                <Text style={s.activeTagClose}>✕</Text>
-              </Pressable>
-            </View>
-          )}
-          {areaFilter !== 'All Areas' && (
-            <View style={s.activeTag}>
-              <Text style={s.activeTagText}>{areaFilter}</Text>
-              <Pressable onPress={() => setAreaFilter('All Areas')}>
-                <Text style={s.activeTagClose}>✕</Text>
-              </Pressable>
-            </View>
-          )}
-          <Pressable
-            style={s.clearFiltersButton}
-            onPress={() => {
-              setTransmissionFilter('All');
-              setAreaFilter('All Areas');
-            }}>
-            <Text style={s.clearFiltersText}>Clear All</Text>
+          <View style={s.activeTag}>
+            <Text style={s.activeTagText}>{cityFilter}</Text>
+            <Pressable onPress={() => setCityFilter('All')}>
+              <Ionicons name="close" size={14} color={theme.colors.primary} />
+            </Pressable>
+          </View>
+          <Pressable onPress={() => setCityFilter('All')}>
+            <Text style={s.clearFiltersText}>Clear</Text>
           </Pressable>
         </View>
       )}
 
-      {/* ── Filter Modal ───────────────────────────────── */}
+      {/* ── Filter Modal ────────────────────────────── */}
       <Modal
         visible={showFilterModal}
         transparent
@@ -373,117 +155,78 @@ const InstructorDiscoveryScreen = () => {
             onPress={() => setShowFilterModal(false)}
           />
           <View style={s.modalContainer}>
-            {/* Handle bar */}
             <View style={s.modalHandle} />
-
-            {/* Header */}
             <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>Filters</Text>
-              <Pressable onPress={resetFilters}>
+              <Text style={s.modalTitle}>Filter by City</Text>
+              <Pressable onPress={() => setTempCity('All')}>
                 <Text style={s.modalReset}>Reset</Text>
               </Pressable>
             </View>
-
-            <ScrollView
-              style={s.modalBody}
-              showsVerticalScrollIndicator={false}>
-              {/* Transmission */}
-              <Text style={s.modalSectionTitle}>Transmission Type</Text>
+            <ScrollView style={s.modalBody} showsVerticalScrollIndicator={false}>
               <View style={s.modalChipGrid}>
-                {TRANSMISSION_OPTIONS.map(option => {
-                  const isSelected = tempTransmission === option;
+                {cityOptions.map(option => {
+                  const isSelected = tempCity === option;
                   return (
                     <Pressable
                       key={option}
-                      style={[
-                        s.modalChip,
-                        isSelected && s.modalChipSelected,
-                      ]}
-                      onPress={() => setTempTransmission(option)}>
-                      <Text
-                        style={[
-                          s.modalChipText,
-                          isSelected && s.modalChipTextSelected,
-                        ]}>
+                      style={[s.modalChip, isSelected && s.modalChipSelected]}
+                      onPress={() => setTempCity(option)}>
+                      <Text style={[s.modalChipText, isSelected && s.modalChipTextSelected]}>
                         {option}
                       </Text>
                     </Pressable>
                   );
                 })}
               </View>
-
-              {/* Area */}
-              <Text style={s.modalSectionTitle}>Area</Text>
-              <View style={s.modalChipGrid}>
-                {AREA_OPTIONS.map(option => {
-                  const isSelected = tempArea === option;
-                  return (
-                    <Pressable
-                      key={option}
-                      style={[
-                        s.modalChip,
-                        isSelected && s.modalChipSelected,
-                      ]}
-                      onPress={() => setTempArea(option)}>
-                      <Text
-                        style={[
-                          s.modalChipText,
-                          isSelected && s.modalChipTextSelected,
-                        ]}>
-                        {option}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
               <View style={{ height: theme.spacing.xl }} />
             </ScrollView>
-
-            {/* Footer */}
             <View style={s.modalFooter}>
-              <Button
-                title="Apply Filters"
-                variant="primary"
-                size="lg"
-                fullWidth
-                onPress={applyFilters}
-              />
+              <Button title="Apply" variant="primary" size="lg" fullWidth onPress={applyFilters} />
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* ── Results ────────────────────────────────────── */}
+      {/* ── Results ─────────────────────────────────── */}
       <FlatList
         data={filtered}
         keyExtractor={item => item.id}
         contentContainerStyle={s.listContent}
         showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <InstructorCard
-            instructor={item}
-            theme={theme}
-            onViewProfile={() =>
-              navigation.navigate('InstructorProfile', {
-                instructorId: item.id,
-              })
-            }
-          />
-        )}
+        renderItem={({ item }) => {
+          const reqStatus = getRequestStatus(requests, item.id) as
+            | InstructorRequestStatus
+            | 'none';
+          const activeCount = getActivePackagesForInstructor(purchasedPackages, item.id).length;
+
+          return (
+            <View style={s.cardWrapper}>
+              <InstructorCard
+                instructor={item}
+                requestStatus={reqStatus}
+                onViewProfile={() =>
+                  navigation.navigate('InstructorProfile', { instructorId: item.id })
+                }
+                onSendRequest={() => handleSendRequest(item.id)}
+                onViewPackages={() =>
+                  navigation.navigate('PackageListing', { instructorId: item.id })
+                }
+                activePackagesCount={activeCount}
+                loading={sendingId === item.id}
+              />
+            </View>
+          );
+        }}
         ListEmptyComponent={
           <View style={s.emptyState}>
-            <Ionicons name="search-outline" size={52} color={theme.colors.textTertiary} style={s.emptyIcon} />
+            <Ionicons name="search-outline" size={52} color={theme.colors.textTertiary} />
             <Text style={s.emptyTitle}>No instructors found</Text>
-            <Text style={s.emptySubtitle}>
-              Try adjusting your search or filters
-            </Text>
+            <Text style={s.emptySubtitle}>Try adjusting your search or filters</Text>
           </View>
         }
         ListHeaderComponent={
           <Text style={s.resultCount}>
-            {filtered.length} instructor{filtered.length !== 1 ? 's' : ''}{' '}
-            found
+            {filtered.length} instructor{filtered.length !== 1 ? 's' : ''} found
           </Text>
         }
       />
@@ -495,7 +238,6 @@ const InstructorDiscoveryScreen = () => {
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    // Search + Filter Row
     searchRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -514,22 +256,13 @@ const createStyles = (theme: AppTheme) =>
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
-    searchIcon: {
-      marginRight: theme.spacing.xs,
-    },
+    searchIcon: { marginRight: theme.spacing.xs },
     searchInput: {
       flex: 1,
       ...theme.typography.bodyMedium,
       color: theme.colors.textPrimary,
       padding: 0,
     },
-    clearIcon: {
-      ...theme.typography.bodyMedium,
-      color: theme.colors.textTertiary,
-      padding: theme.spacing.xxs,
-    },
-
-    // Filter Button
     filterButton: {
       width: 46,
       height: 46,
@@ -544,40 +277,17 @@ const createStyles = (theme: AppTheme) =>
       borderColor: theme.colors.primary,
       backgroundColor: theme.colors.primaryLight,
     },
-
-    filterCountBadge: {
+    filterDot: {
       position: 'absolute',
-      top: -6,
-      right: -6,
+      top: 6,
+      right: 6,
+      width: 8,
+      height: 8,
+      borderRadius: 4,
       backgroundColor: theme.colors.primary,
-      minWidth: 20,
-      height: 20,
-      borderRadius: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 4,
     },
-    filterCountText: {
-      ...theme.typography.caption,
-      color: theme.colors.textInverse,
-      fontWeight: '700',
-      fontSize: 11,
-    },
-    clearFiltersButton: {
-      paddingVertical: theme.spacing.xxs,
-      paddingHorizontal: theme.spacing.xs,
-      marginLeft: 'auto',
-    },
-    clearFiltersText: {
-      ...theme.typography.bodySmall,
-      color: theme.colors.error,
-      fontWeight: '600',
-    },
-
-    // Active Tags
     activeTagsRow: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
       alignItems: 'center',
       paddingHorizontal: theme.spacing.md,
       paddingTop: theme.spacing.sm,
@@ -598,19 +308,13 @@ const createStyles = (theme: AppTheme) =>
       color: theme.colors.primary,
       fontWeight: '600',
     },
-    activeTagClose: {
-      ...theme.typography.caption,
-      color: theme.colors.primary,
-      fontWeight: '700',
-      fontSize: 10,
-      padding: 4,
+    clearFiltersText: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.error,
+      fontWeight: '600',
+      marginLeft: 'auto',
     },
-
-    // Modal
-    modalOverlay: {
-      flex: 1,
-      justifyContent: 'flex-end',
-    },
+    modalOverlay: { flex: 1, justifyContent: 'flex-end' },
     modalBackdrop: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: 'rgba(0,0,0,0.4)',
@@ -619,7 +323,7 @@ const createStyles = (theme: AppTheme) =>
       backgroundColor: theme.colors.surface,
       borderTopLeftRadius: theme.borderRadius['2xl'],
       borderTopRightRadius: theme.borderRadius['2xl'],
-      maxHeight: '70%',
+      maxHeight: '60%',
       ...theme.shadows.xl,
     },
     modalHandle: {
@@ -638,28 +342,18 @@ const createStyles = (theme: AppTheme) =>
       paddingTop: theme.spacing.md,
       paddingBottom: theme.spacing.sm,
     },
-    modalTitle: {
-      ...theme.typography.h2,
-      color: theme.colors.textPrimary,
-    },
+    modalTitle: { ...theme.typography.h2, color: theme.colors.textPrimary },
     modalReset: {
       ...theme.typography.bodyMedium,
       color: theme.colors.error,
       fontWeight: '600',
     },
-    modalBody: {
-      paddingHorizontal: theme.spacing.lg,
-    },
-    modalSectionTitle: {
-      ...theme.typography.h4,
-      color: theme.colors.textPrimary,
-      marginTop: theme.spacing.lg,
-      marginBottom: theme.spacing.sm,
-    },
+    modalBody: { paddingHorizontal: theme.spacing.lg },
     modalChipGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: theme.spacing.xs,
+      marginTop: theme.spacing.sm,
     },
     modalChip: {
       paddingHorizontal: theme.spacing.md,
@@ -678,18 +372,17 @@ const createStyles = (theme: AppTheme) =>
       color: theme.colors.textSecondary,
       fontWeight: '500',
     },
-    modalChipTextSelected: {
-      color: theme.colors.primary,
-      fontWeight: '700',
-    },
+    modalChipTextSelected: { color: theme.colors.primary, fontWeight: '700' },
     modalFooter: {
       paddingHorizontal: theme.spacing.lg,
       paddingVertical: theme.spacing.md,
       borderTopWidth: 1,
       borderTopColor: theme.colors.divider,
     },
-
-    // List
+    cardWrapper: {
+      marginHorizontal: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
+    },
     listContent: {
       paddingTop: theme.spacing.xs,
       paddingBottom: theme.spacing['3xl'],
@@ -700,19 +393,11 @@ const createStyles = (theme: AppTheme) =>
       marginHorizontal: theme.spacing.md,
       marginBottom: theme.spacing.sm,
     },
-
-    // Empty
     emptyState: {
       alignItems: 'center',
       padding: theme.spacing['3xl'],
     },
-    emptyIcon: {
-      marginBottom: theme.spacing.md,
-    },
-    emptyTitle: {
-      ...theme.typography.h3,
-      color: theme.colors.textPrimary,
-    },
+    emptyTitle: { ...theme.typography.h3, color: theme.colors.textPrimary },
     emptySubtitle: {
       ...theme.typography.bodyMedium,
       color: theme.colors.textTertiary,

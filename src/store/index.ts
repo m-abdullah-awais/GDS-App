@@ -5,9 +5,11 @@
 
 import { createStore, combineReducers } from 'redux';
 import adminReducer from './admin/reducer';
+import studentReducer from './student/reducer';
 
 const rootReducer = combineReducers({
   admin: adminReducer,
+  student: studentReducer,
 });
 
 export type RootState = ReturnType<typeof rootReducer>;

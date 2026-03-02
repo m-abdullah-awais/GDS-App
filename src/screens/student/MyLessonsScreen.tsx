@@ -3,7 +3,8 @@
  * =======================================
  *
  * Tab-based lesson view: Upcoming, Completed, Cancelled.
- * Each lesson card shows instructor, date, time, duration, status badge.
+ * Redux-connected. Uses shared LessonCard component.
+ * Supports cancel action for upcoming lessons.
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -14,184 +15,57 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSelector, useDispatch } from 'react-redux';
+import type { RootState } from '../../store';
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
-import { lessons, type Lesson, type LessonStatus } from '../../modules/student/mockData';
+import { LessonCard } from '../../components/student';
+import { filterLessons, cancelLessonBooking } from '../../services/bookingService';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import type { BookedLesson } from '../../store/student/types';
 
 type TabKey = 'upcoming' | 'completed' | 'cancelled';
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'upcoming', label: 'Upcoming' },
-  { key: 'completed', label: 'Completed' },
-  { key: 'cancelled', label: 'Cancelled' },
+const TABS: { key: TabKey; label: string; icon: string }[] = [
+  { key: 'upcoming', label: 'Upcoming', icon: 'calendar-outline' },
+  { key: 'completed', label: 'Completed', icon: 'checkmark-circle-outline' },
+  { key: 'cancelled', label: 'Cancelled', icon: 'close-circle-outline' },
 ];
-
-// ─── Status Badge ─────────────────────────────────────────────────────────────
-
-const getStatusStyle = (status: LessonStatus, theme: AppTheme) => {
-  switch (status) {
-    case 'upcoming':
-      return {
-        bg: theme.colors.primaryLight,
-        text: theme.colors.primary,
-        label: 'Upcoming',
-      };
-    case 'completed':
-      return {
-        bg: theme.colors.successLight,
-        text: theme.colors.success,
-        label: 'Completed',
-      };
-    case 'cancelled':
-      return {
-        bg: theme.colors.errorLight,
-        text: theme.colors.error,
-        label: 'Cancelled',
-      };
-  }
-};
-
-// ─── Avatar ───────────────────────────────────────────────────────────────────
-
-const Avatar = ({
-  initials,
-  size = 44,
-  theme,
-}: {
-  initials: string;
-  size?: number;
-  theme: AppTheme;
-}) => (
-  <View
-    style={{
-      width: size,
-      height: size,
-      borderRadius: size / 2,
-      backgroundColor: theme.colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-    <Text
-      style={[
-        theme.typography.buttonSmall,
-        { color: theme.colors.textInverse, fontSize: size * 0.36 },
-      ]}>
-      {initials}
-    </Text>
-  </View>
-);
-
-// ─── Lesson Card ──────────────────────────────────────────────────────────────
-
-const LessonCard = ({
-  lesson,
-  theme,
-}: {
-  lesson: Lesson;
-  theme: AppTheme;
-}) => {
-  const s = lessonStyles(theme);
-  const status = getStatusStyle(lesson.status, theme);
-
-  return (
-    <View style={s.card}>
-      <View style={s.cardLeft}>
-        <Avatar initials={lesson.instructorAvatar} size={44} theme={theme} />
-      </View>
-      <View style={s.cardCenter}>
-        <Text style={s.instructorName}>{lesson.instructorName}</Text>
-        <View style={s.metaRow}>
-          <Ionicons name="calendar-outline" size={13} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
-          <Text style={s.metaText}>{lesson.date}</Text>
-        </View>
-        <View style={s.metaRow}>
-          <Ionicons name="time-outline" size={13} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
-          <Text style={s.metaText}>{lesson.time}</Text>
-          <Text style={s.metaDot}>·</Text>
-          <Text style={s.metaText}>{lesson.duration}</Text>
-        </View>
-        {lesson.location && (
-          <View style={s.metaRow}>
-            <Ionicons name="location-outline" size={13} color={theme.colors.textTertiary} style={{ marginRight: 4 }} />
-            <Text style={s.locationText} numberOfLines={1}>{lesson.location}</Text>
-          </View>
-        )}
-      </View>
-      <View style={[s.statusBadge, { backgroundColor: status.bg }]}>
-        <Text style={[s.statusText, { color: status.text }]}>
-          {status.label}
-        </Text>
-      </View>
-    </View>
-  );
-};
-
-const lessonStyles = (theme: AppTheme) =>
-  StyleSheet.create({
-    card: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.lg,
-      padding: theme.spacing.md,
-      marginHorizontal: theme.spacing.md,
-      marginBottom: theme.spacing.sm,
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      ...theme.shadows.sm,
-    },
-    cardLeft: {
-      marginRight: theme.spacing.sm,
-    },
-    cardCenter: {
-      flex: 1,
-    },
-    instructorName: {
-      ...theme.typography.h4,
-      color: theme.colors.textPrimary,
-      marginBottom: theme.spacing.xxs,
-    },
-    metaRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: 2,
-    },
-    metaText: {
-      ...theme.typography.bodySmall,
-      color: theme.colors.textSecondary,
-    },
-    metaDot: {
-      ...theme.typography.bodySmall,
-      color: theme.colors.textTertiary,
-      marginHorizontal: theme.spacing.xxs,
-    },
-    locationText: {
-      ...theme.typography.caption,
-      color: theme.colors.textTertiary,
-      marginTop: theme.spacing.xxs,
-    },
-    statusBadge: {
-      paddingHorizontal: theme.spacing.xs,
-      paddingVertical: theme.spacing.xxs,
-      borderRadius: theme.borderRadius.sm,
-      marginLeft: theme.spacing.xs,
-    },
-    statusText: {
-      ...theme.typography.caption,
-      fontWeight: '600',
-    },
-  });
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const MyLessonsScreen = () => {
   const { theme } = useTheme();
-  const s = createStyles(theme);
+  const dispatch = useDispatch();
+  const s = useMemo(() => createStyles(theme), [theme]);
   const [activeTab, setActiveTab] = useState<TabKey>('upcoming');
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
+  // Redux
+  const lessons = useSelector((st: RootState) => st.student.lessons);
+
+  // Filtered + sorted
   const filteredLessons = useMemo(
-    () => lessons.filter(l => l.status === activeTab),
-    [activeTab],
+    () => filterLessons(lessons, activeTab),
+    [lessons, activeTab],
+  );
+
+  // Counts per tab
+  const counts = useMemo(() => ({
+    upcoming: filterLessons(lessons, 'upcoming').length,
+    completed: filterLessons(lessons, 'completed').length,
+    cancelled: filterLessons(lessons, 'cancelled').length,
+  }), [lessons]);
+
+  // Cancel handler
+  const handleCancel = useCallback(
+    async (lesson: BookedLesson) => {
+      setCancellingId(lesson.id);
+      await cancelLessonBooking(lesson.id, 'student', dispatch);
+      setCancellingId(null);
+    },
+    [dispatch],
   );
 
   return (
@@ -206,7 +80,7 @@ const MyLessonsScreen = () => {
           contentContainerStyle={s.tabBarContent}
           renderItem={({ item: tab }) => {
             const isActive = tab.key === activeTab;
-            const count = lessons.filter(l => l.status === tab.key).length;
+            const count = counts[tab.key];
             return (
               <Pressable
                 key={tab.key}
@@ -235,18 +109,17 @@ const MyLessonsScreen = () => {
         contentContainerStyle={s.listContent}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <LessonCard lesson={item} theme={theme} />
+          <View style={s.cardWrapper}>
+            <LessonCard
+              lesson={item}
+              onCancel={() => handleCancel(item)}
+            />
+          </View>
         )}
         ListEmptyComponent={
           <View style={s.emptyState}>
             <Ionicons
-              name={
-                activeTab === 'upcoming'
-                  ? 'calendar-outline'
-                  : activeTab === 'completed'
-                  ? 'checkmark-circle-outline'
-                  : 'close-circle-outline'
-              }
+              name={TABS.find(t => t.key === activeTab)?.icon ?? 'calendar-outline'}
               size={48}
               color={theme.colors.textTertiary}
               style={s.emptyIcon}
@@ -326,6 +199,10 @@ const createStyles = (theme: AppTheme) =>
     listContent: {
       paddingTop: theme.spacing.xs,
       paddingBottom: theme.spacing['3xl'],
+    },
+    cardWrapper: {
+      marginHorizontal: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
     },
 
     // Empty

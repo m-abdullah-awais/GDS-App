@@ -2,12 +2,14 @@
  * GDS Driving School — PackageListingScreen
  * ============================================
  *
- * Lists available driving lesson packages for an instructor.
- * Premium card layout with clear pricing hierarchy.
+ * Lists available packages for an accepted instructor.
+ * Redux-connected.  Guards: only accessible for accepted instructors.
+ * Uses PackageCard + PaymentModal from shared student components.
  */
 
-import React from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
@@ -16,192 +18,100 @@ import {
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { StudentStackParamList } from '../../navigation/student/StudentStack';
+import { useSelector, useDispatch } from 'react-redux';
+import type { RootState } from '../../store';
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
-import { Button } from '../../components/Button';
+import { PackageCard, PaymentModal } from '../../components/student';
 import {
-  packages,
-  instructors,
-  type Package as PackageType,
-} from '../../modules/student/mockData';
+  fetchInstructorPackages,
+  buyPackage,
+  isPackagePurchased,
+} from '../../services/packageService';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import type { InstructorPackage, PurchasedPackage } from '../../store/student/types';
 
 type Nav = NativeStackNavigationProp<StudentStackParamList>;
 type Route = RouteProp<StudentStackParamList, 'PackageListing'>;
 
-// ─── Package Card ─────────────────────────────────────────────────────────────
-
-const PackageCard = ({
-  pkg,
-  theme,
-  onBuy,
-}: {
-  pkg: PackageType;
-  theme: AppTheme;
-  onBuy: () => void;
-}) => {
-  const s = pkgStyles(theme);
-  const discount = Math.round(
-    ((pkg.originalPrice - pkg.finalPrice) / pkg.originalPrice) * 100,
-  );
-
-  return (
-    <View style={[s.card, pkg.popular && s.cardPopular]}>
-      {pkg.popular && (
-        <View style={s.popularBanner}>
-          <Text style={s.popularText}>★ Most Popular</Text>
-        </View>
-      )}
-      <View style={s.cardBody}>
-        <View style={s.cardTop}>
-          <Text style={s.title}>{pkg.title}</Text>
-          <Text style={s.description}>{pkg.description}</Text>
-        </View>
-
-        <View style={s.lessonsRow}>
-          <View style={s.lessonsBadge}>
-            <Text style={s.lessonsCount}>{pkg.lessonCount}</Text>
-            <Text style={s.lessonsLabel}>lessons</Text>
-          </View>
-          <View style={s.priceColumn}>
-            <Text style={s.originalPrice}>£{pkg.originalPrice}</Text>
-            <Text style={s.finalPrice}>£{pkg.finalPrice}</Text>
-            <Text style={s.perLesson}>
-              £{(pkg.finalPrice / pkg.lessonCount).toFixed(0)}/lesson
-            </Text>
-          </View>
-        </View>
-
-        {discount > 0 && (
-          <View style={s.savingsBadge}>
-            <Text style={s.savingsText}>
-              Save {discount}% — You save £{pkg.originalPrice - pkg.finalPrice}
-            </Text>
-          </View>
-        )}
-
-        <Button
-          title="Buy Package"
-          variant="primary"
-          size="lg"
-          fullWidth
-          onPress={onBuy}
-        />
-      </View>
-    </View>
-  );
-};
-
-const pkgStyles = (theme: AppTheme) =>
-  StyleSheet.create({
-    card: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.xl,
-      marginHorizontal: theme.spacing.md,
-      marginBottom: theme.spacing.md,
-      overflow: 'hidden',
-      ...theme.shadows.md,
-    },
-    cardPopular: {
-      borderWidth: 2,
-      borderColor: theme.colors.accent,
-    },
-    popularBanner: {
-      backgroundColor: theme.colors.accent,
-      paddingVertical: theme.spacing.xs,
-      alignItems: 'center',
-    },
-    popularText: {
-      ...theme.typography.buttonSmall,
-      color: '#FFFFFF',
-      letterSpacing: 0.5,
-    },
-    cardBody: {
-      padding: theme.spacing.lg,
-    },
-    cardTop: {
-      marginBottom: theme.spacing.md,
-    },
-    title: {
-      ...theme.typography.h2,
-      color: theme.colors.textPrimary,
-    },
-    description: {
-      ...theme.typography.bodyMedium,
-      color: theme.colors.textSecondary,
-      marginTop: theme.spacing.xs,
-      lineHeight: 22,
-    },
-    lessonsRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: theme.colors.surfaceSecondary,
-      borderRadius: theme.borderRadius.md,
-      padding: theme.spacing.md,
-      marginBottom: theme.spacing.md,
-    },
-    lessonsBadge: {
-      alignItems: 'center',
-    },
-    lessonsCount: {
-      ...theme.typography.displayMedium,
-      color: theme.colors.primary,
-    },
-    lessonsLabel: {
-      ...theme.typography.caption,
-      color: theme.colors.textTertiary,
-      textTransform: 'uppercase',
-    },
-    priceColumn: {
-      alignItems: 'flex-end',
-    },
-    originalPrice: {
-      ...theme.typography.bodyMedium,
-      color: theme.colors.textTertiary,
-      textDecorationLine: 'line-through',
-    },
-    finalPrice: {
-      ...theme.typography.displayMedium,
-      color: theme.colors.textPrimary,
-    },
-    perLesson: {
-      ...theme.typography.caption,
-      color: theme.colors.success,
-      marginTop: 2,
-    },
-    savingsBadge: {
-      backgroundColor: theme.colors.successLight,
-      borderRadius: theme.borderRadius.sm,
-      paddingVertical: theme.spacing.xs,
-      paddingHorizontal: theme.spacing.sm,
-      alignSelf: 'flex-start',
-      marginBottom: theme.spacing.md,
-    },
-    savingsText: {
-      ...theme.typography.caption,
-      color: theme.colors.success,
-      fontWeight: '600',
-    },
-  });
-
-// ─── Component ────────────────────────────────────────────────────────────────
-
 const PackageListingScreen = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
+  const dispatch = useDispatch();
   const { theme } = useTheme();
-  const s = createStyles(theme);
+  const s = useMemo(() => createStyles(theme), [theme]);
 
-  const instructor = instructors.find(
-    i => i.id === route.params.instructorId,
+  const instructorId = route.params.instructorId;
+
+  // Redux ──────────────────────────────────────────────
+  const instructors = useSelector((state: RootState) => state.student.instructors);
+  const myInstructors = useSelector((state: RootState) => state.student.myInstructors);
+  const packages = useSelector((state: RootState) => state.student.packages);
+  const purchasedPackages = useSelector(
+    (state: RootState) => state.student.purchasedPackages,
   );
-  const instructorPackages = packages.filter(
-    p => p.instructorId === route.params.instructorId,
+  const loadingPackages = useSelector(
+    (state: RootState) => state.student.packagesLoading,
   );
+
+  const instructor = instructors.find(i => i.id === instructorId);
+  const isAccepted = myInstructors.some(i => i.id === instructorId);
+  const instructorPackages = packages[instructorId] ?? [];
+
+  // Local state ────────────────────────────────────────
+  const [paymentPkg, setPaymentPkg] = useState<InstructorPackage | null>(null);
+  const [buyingLoading, setBuyingLoading] = useState(false);
+
+  // Fetch packages on mount
+  useEffect(() => {
+    fetchInstructorPackages(instructorId, dispatch);
+  }, [instructorId, dispatch]);
+
+  // Find purchased record for a package
+  const findPurchased = useCallback(
+    (pkgId: string): PurchasedPackage | undefined =>
+      purchasedPackages.find(
+        p => p.packageId === pkgId && p.instructorId === instructorId,
+      ),
+    [purchasedPackages, instructorId],
+  );
+
+  // Handlers ───────────────────────────────────────────
+  const handleBuy = useCallback(async () => {
+    if (!paymentPkg) { return; }
+    setBuyingLoading(true);
+    await buyPackage(paymentPkg, dispatch);
+    setBuyingLoading(false);
+  }, [paymentPkg, dispatch]);
+
+  const handleBookLesson = useCallback(
+    (pkgId: string) => {
+      navigation.navigate('BookLesson', {
+        instructorId,
+        packageId: pkgId,
+      });
+    },
+    [navigation, instructorId],
+  );
+
+  // Guard: not accepted
+  if (!isAccepted) {
+    return (
+      <ScreenContainer showHeader title="Packages">
+        <View style={s.guardContainer}>
+          <Ionicons name="lock-closed-outline" size={52} color={theme.colors.textTertiary} />
+          <Text style={s.guardTitle}>Not Connected</Text>
+          <Text style={s.guardSubtitle}>
+            You need an accepted connection with this instructor before viewing their packages.
+          </Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
-    <ScreenContainer showHeader title="Available Packages">
+    <ScreenContainer showHeader title="Packages">
       <FlatList
         data={instructorPackages}
         keyExtractor={item => item.id}
@@ -219,33 +129,49 @@ const PackageListingScreen = () => {
             </View>
           ) : null
         }
-        renderItem={({ item }) => (
-          <PackageCard
-            pkg={item}
-            theme={theme}
-            onBuy={() =>
-              navigation.navigate('BookingRequest', {
-                instructorId: route.params.instructorId,
-                packageId: item.id,
-              })
-            }
-          />
-        )}
+        renderItem={({ item }) => {
+          const purchased = findPurchased(item.id);
+          return (
+            <View style={s.cardWrapper}>
+              <PackageCard
+                pkg={item}
+                purchased={purchased}
+                onBuy={() => setPaymentPkg(item)}
+                onBookLesson={() => handleBookLesson(item.id)}
+              />
+            </View>
+          );
+        }}
         ListEmptyComponent={
-          <View style={s.emptyState}>
-            <Text style={s.emptyIcon}>📦</Text>
-            <Text style={s.emptyTitle}>No packages available</Text>
-            <Text style={s.emptySubtitle}>
-              This instructor hasn't listed any packages yet
-            </Text>
-          </View>
+          loadingPackages ? (
+            <View style={s.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <Text style={s.loadingText}>Loading packages...</Text>
+            </View>
+          ) : (
+            <View style={s.emptyState}>
+              <Ionicons name="cube-outline" size={48} color={theme.colors.textTertiary} />
+              <Text style={s.emptyTitle}>No packages available</Text>
+              <Text style={s.emptySubtitle}>
+                This instructor hasn't listed any packages yet
+              </Text>
+            </View>
+          )
         }
+      />
+
+      {/* Payment Modal */}
+      <PaymentModal
+        visible={!!paymentPkg}
+        pkg={paymentPkg}
+        instructorName={instructor?.name ?? ''}
+        onConfirm={handleBuy}
+        onClose={() => setPaymentPkg(null)}
+        loading={buyingLoading}
       />
     </ScreenContainer>
   );
 };
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
@@ -266,24 +192,51 @@ const createStyles = (theme: AppTheme) =>
       color: theme.colors.textSecondary,
       marginTop: theme.spacing.xxs,
     },
-
-    // Empty
+    cardWrapper: {
+      marginHorizontal: theme.spacing.md,
+      marginBottom: theme.spacing.md,
+    },
+    loadingContainer: {
+      alignItems: 'center',
+      padding: theme.spacing['3xl'],
+    },
+    loadingText: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textSecondary,
+      marginTop: theme.spacing.md,
+    },
     emptyState: {
       alignItems: 'center',
       padding: theme.spacing['3xl'],
     },
-    emptyIcon: {
-      fontSize: 48,
-      marginBottom: theme.spacing.md,
-    },
     emptyTitle: {
       ...theme.typography.h3,
       color: theme.colors.textPrimary,
+      marginTop: theme.spacing.md,
     },
     emptySubtitle: {
       ...theme.typography.bodyMedium,
       color: theme.colors.textTertiary,
       marginTop: theme.spacing.xxs,
+      textAlign: 'center',
+    },
+    guardContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      flex: 1,
+      padding: theme.spacing['3xl'],
+    },
+    guardTitle: {
+      ...theme.typography.h3,
+      color: theme.colors.textPrimary,
+      marginTop: theme.spacing.md,
+    },
+    guardSubtitle: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textTertiary,
+      marginTop: theme.spacing.xxs,
+      textAlign: 'center',
+      lineHeight: 22,
     },
   });
 

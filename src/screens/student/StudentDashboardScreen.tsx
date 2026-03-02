@@ -22,40 +22,13 @@ import type { StudentStackParamList } from '../../navigation/student/StudentStac
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
+import Avatar from '../../components/Avatar';
 import { studentProfile, lessons, instructors } from '../../modules/student/mockData';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 type Nav = NativeStackNavigationProp<StudentStackParamList>;
 
-// ─── Avatar Helper ────────────────────────────────────────────────────────────
 
-const Avatar = ({
-  initials,
-  size = 44,
-  theme,
-}: {
-  initials: string;
-  size?: number;
-  theme: AppTheme;
-}) => (
-  <View
-    style={{
-      width: size,
-      height: size,
-      borderRadius: size / 2,
-      backgroundColor: theme.colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-    <Text
-      style={[
-        theme.typography.buttonSmall,
-        { color: theme.colors.textInverse, fontSize: size * 0.36 },
-      ]}>
-      {initials}
-    </Text>
-  </View>
-);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -64,7 +37,7 @@ const StudentDashboardScreen = () => {
   const { theme } = useTheme();
   const s = createStyles(theme);
 
-  const upcomingLessons = lessons.filter(l => l.status === 'upcoming');
+  const upcomingLessons = lessons.filter(l => l.status === 'pending' || l.status === 'confirmed');
   const activeInstructor = instructors.find(
     i => i.name === studentProfile.activeInstructor,
   );
@@ -140,13 +113,12 @@ const StudentDashboardScreen = () => {
               <Avatar
                 initials={activeInstructor.avatar}
                 size={52}
-                theme={theme}
               />
               <View style={s.instructorInfo}>
                 <Text style={s.instructorName}>{activeInstructor.name}</Text>
                 <View style={s.instructorMeta}>
                   <Text style={s.instructorRating}>
-                    ★ {activeInstructor.rating}
+                    <Ionicons name="star" size={13} color={theme.colors.warning} />{' '}{activeInstructor.rating}
                   </Text>
                   <Text style={s.instructorDot}>·</Text>
                   <Text style={s.instructorDetail}>

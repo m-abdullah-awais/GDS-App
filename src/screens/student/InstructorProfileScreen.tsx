@@ -22,40 +22,12 @@ import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
 import { Button } from '../../components/Button';
+import Avatar from '../../components/Avatar';
 import { instructors, studentRequests, type Review } from '../../modules/student/mockData';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 type Nav = NativeStackNavigationProp<StudentStackParamList>;
 type Route = RouteProp<StudentStackParamList, 'InstructorProfile'>;
-
-// ─── Avatar ───────────────────────────────────────────────────────────────────
-
-const Avatar = ({
-  initials,
-  size = 80,
-  theme,
-}: {
-  initials: string;
-  size?: number;
-  theme: AppTheme;
-}) => (
-  <View
-    style={{
-      width: size,
-      height: size,
-      borderRadius: size / 2,
-      backgroundColor: theme.colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-    <Text
-      style={[
-        theme.typography.h1,
-        { color: theme.colors.textInverse, fontSize: size * 0.36 },
-      ]}>
-      {initials}
-    </Text>
-  </View>
-);
 
 // ─── Star Rating ──────────────────────────────────────────────────────────────
 
@@ -151,7 +123,7 @@ const InstructorProfileScreen = () => {
         showsVerticalScrollIndicator={false}>
         {/* ── Header Card ──────────────────────────────────── */}
         <View style={s.headerCard}>
-          <Avatar initials={instructor.avatar} size={80} theme={theme} />
+          <Avatar initials={instructor.avatar} size={80} />
           <Text style={s.name}>{instructor.name}</Text>
           <View style={s.ratingRow}>
             <StarRating rating={Math.round(instructor.rating)} theme={theme} />
@@ -180,7 +152,7 @@ const InstructorProfileScreen = () => {
 
           {instructor.acceptingStudents ? (
             <View style={s.acceptingBadge}>
-              <Text style={s.acceptingText}>✓ Currently Accepting Students</Text>
+              <Text style={s.acceptingText}><Ionicons name="checkmark-circle" size={14} color="inherit" /> Currently Accepting Students</Text>
             </View>
           ) : (
             <View style={s.notAcceptingBadge}>
@@ -246,8 +218,9 @@ const InstructorProfileScreen = () => {
                 <>
                   <View style={s.ctaStatusRow}>
                     <View style={[s.ctaStatusBadge, { backgroundColor: theme.colors.successLight }]}>
+                      <Ionicons name="checkmark-circle" size={14} color={theme.colors.success} />
                       <Text style={[s.ctaStatusText, { color: theme.colors.success }]}>
-                        ✓ Request Accepted
+                        Request Accepted
                       </Text>
                     </View>
                   </View>
@@ -269,7 +242,7 @@ const InstructorProfileScreen = () => {
             if (existingRequest?.status === 'pending') {
               return (
                 <View style={s.ctaPendingCard}>
-                  <Text style={s.ctaPendingIcon}>⏳</Text>
+                  <Ionicons name="hourglass-outline" size={32} color={theme.colors.warning} style={{ marginBottom: 8 }} />
                   <Text style={s.ctaPendingTitle}>Request Pending</Text>
                   <Text style={s.ctaPendingSubtitle}>
                     Your request has been sent. You'll be able to view packages once the instructor accepts.
@@ -283,8 +256,9 @@ const InstructorProfileScreen = () => {
                 <>
                   <View style={s.ctaStatusRow}>
                     <View style={[s.ctaStatusBadge, { backgroundColor: theme.colors.errorLight }]}>
+                      <Ionicons name="close-circle" size={14} color={theme.colors.error} />
                       <Text style={[s.ctaStatusText, { color: theme.colors.error }]}>
-                        ✗ Previous Request Declined
+                        Previous Request Declined
                       </Text>
                     </View>
                   </View>

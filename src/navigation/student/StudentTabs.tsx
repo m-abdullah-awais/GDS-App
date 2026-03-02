@@ -4,8 +4,7 @@ import { createDrawerNavigator } from "@react-navigation/drawer";
 import StudentDashboardScreen from "../../screens/student/StudentDashboardScreen";
 import MyLessonsScreen from "../../screens/student/MyLessonsScreen";
 import StudentProfileScreen from "../../screens/student/StudentProfileScreen";
-import StudentBookLessonsScreen from "../../screens/student/StudentBookLessonsScreen";
-import StudentMyRequestsScreen from "../../screens/student/StudentMyRequestsScreen";
+import MyInstructorsScreen from "../../screens/student/MyInstructorsScreen";
 import StudentProgressScreen from "../../screens/student/StudentProgressScreen";
 import StudentMessagesScreen from "../../screens/student/StudentMessagesScreen";
 import InstructorDiscoveryScreen from "../../screens/student/InstructorDiscoveryScreen";
@@ -14,6 +13,7 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import AppTopHeader from '../../components/AppTopHeader';
 import { clearDevRoleOverride } from '../devAuth';
 import CustomDrawerContent from '../../components/CustomDrawerContent';
+import StudentBookLessonsScreen from '../../screens/student/StudentBookLessonsScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -80,7 +80,7 @@ const StudentTabs = () => {
                 }}
             />
             <Drawer.Screen
-                name="Find Instructors"
+                name="Search Instructors"
                 component={InstructorDiscoveryScreen}
                 options={{
                     headerShown: false,
@@ -90,22 +90,22 @@ const StudentTabs = () => {
                 }}
             />
             <Drawer.Screen
-                name="Book Lessons"
+                name="My Instructors"
+                component={MyInstructorsScreen}
+                options={{
+                    headerShown: false,
+                    drawerIcon: ({ color, size }) => (
+                        <Ionicons name="people-outline" size={size} color={color} style={{ marginRight: 6 }} />
+                    ),
+                }}
+            />
+            <Drawer.Screen
+                name="Book Lesson"
                 component={StudentBookLessonsScreen}
                 options={{
                     headerShown: false,
                     drawerIcon: ({ color, size }) => (
                         <Ionicons name="add-circle-outline" size={size} color={color} style={{ marginRight: 6 }} />
-                    ),
-                }}
-            />
-            <Drawer.Screen
-                name="My Requests"
-                component={StudentMyRequestsScreen}
-                options={{
-                    headerShown: false,
-                    drawerIcon: ({ color, size }) => (
-                        <Ionicons name="document-text-outline" size={size} color={color} style={{ marginRight: 6 }} />
                     ),
                 }}
             />
@@ -132,7 +132,6 @@ const StudentTabs = () => {
                 name="Profile"
                 component={StudentProfileScreen}
                 options={{
-                    // headerShown: false,
                     drawerIcon: ({ color, size }) => (
                         <Ionicons name="person-outline" size={size} color={color} style={{ marginRight: 6 }} />
                     ),

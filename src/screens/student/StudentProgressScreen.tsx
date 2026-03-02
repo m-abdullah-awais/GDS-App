@@ -181,7 +181,7 @@ const StudentProgressScreen = () => {
   const [activeTab, setActiveTab] = useState<SkillTab>('skills');
 
   const completedLessons = lessons.filter(l => l.status === 'completed').length;
-  const upcomingLessons = lessons.filter(l => l.status === 'upcoming').length;
+  const upcomingLessons = lessons.filter(l => l.status === 'pending' || l.status === 'confirmed').length;
   const hoursUsed = studentProfile.totalHours - studentProfile.remainingHours;
   const hoursProgress = hoursUsed / studentProfile.totalHours;
 

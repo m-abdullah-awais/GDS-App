@@ -20,39 +20,10 @@ import type { StudentStackParamList } from '../../navigation/student/StudentStac
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
+import Avatar from '../../components/Avatar';
 import { conversations, type Conversation } from '../../modules/student/mockData';
 
 type Nav = NativeStackNavigationProp<StudentStackParamList>;
-
-// ─── Avatar ───────────────────────────────────────────────────────────────────
-
-const Avatar = ({
-  initials,
-  size = 48,
-  theme,
-}: {
-  initials: string;
-  size?: number;
-  theme: AppTheme;
-}) => (
-  <View
-    style={{
-      width: size,
-      height: size,
-      borderRadius: size / 2,
-      backgroundColor: theme.colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-    <Text
-      style={[
-        theme.typography.buttonSmall,
-        { color: theme.colors.textInverse, fontSize: size * 0.36 },
-      ]}>
-      {initials}
-    </Text>
-  </View>
-);
 
 // ─── Conversation Row ─────────────────────────────────────────────────────────
 
@@ -75,7 +46,6 @@ const ConversationRow = ({
       <Avatar
         initials={conversation.instructorAvatar}
         size={48}
-        theme={theme}
       />
       <View style={s.content}>
         <View style={s.topRow}>

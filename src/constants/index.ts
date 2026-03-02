@@ -17,3 +17,10 @@ export {
 } from './spacing';
 export { shadows, darkShadows, type ShadowLevel } from './shadows';
 export { lightTheme, darkTheme, type AppTheme } from './theme';
+export {
+  DRIVING_SKILLS,
+  SKILL_LEVELS,
+  type SkillFeedback,
+  type FeedbackAction,
+  type SkillLevelDef,
+} from './drivingSkills';

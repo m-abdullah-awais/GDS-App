@@ -103,8 +103,16 @@ export interface LessonReview {
   studentName: string;
   date: string;
   duration: string;
+  /** Overall rating 1-5 (legacy / computed from skills average). */
   rating: number;
+  /** Legacy free-text comment — use `notes` for new submissions. */
   comment: string;
+  /** Per-skill ratings (new feedback format). */
+  skills?: { skill: string; rating: number }[];
+  /** Detailed notes (new feedback format). */
+  notes?: string;
+  /** Feedback action: submit | lesson_cancelled. */
+  action?: 'submit' | 'cancel' | 'lesson_cancelled';
 }
 
 export interface Transaction {
@@ -512,6 +520,13 @@ export const lessonReviews: LessonReview[] = [
     duration: '2 hours',
     rating: 5,
     comment: 'Excellent progress on roundabouts. Alex is gaining confidence quickly.',
+    action: 'submit',
+    notes: 'Excellent progress on roundabouts. Alex is gaining confidence quickly.',
+    skills: [
+      { skill: 'Roundabouts', rating: 5 },
+      { skill: 'Mirrors (Use of mirrors)', rating: 4 },
+      { skill: 'Signalling', rating: 5 },
+    ],
   },
   {
     id: 'REV-002',
@@ -521,6 +536,13 @@ export const lessonReviews: LessonReview[] = [
     duration: '1.5 hours',
     rating: 4,
     comment: 'Good lesson. Needs more practice with parallel parking.',
+    action: 'submit',
+    notes: 'Good lesson. Needs more practice with parallel parking.',
+    skills: [
+      { skill: 'Parallel Park', rating: 3 },
+      { skill: 'Steering', rating: 4 },
+      { skill: 'Observation', rating: 4 },
+    ],
   },
 ];
 

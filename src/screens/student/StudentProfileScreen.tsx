@@ -2,17 +2,16 @@
  * GDS Driving School — StudentProfileScreen
  * ===========================================
  *
- * Student account hub featuring:
- *   - Avatar hero with name & role badge
- *   - Personal info rows (name, email, phone, joined)
- *   - Active package summary
+ * Student account hub with:
+ *   - Tappable avatar (profile picture placeholder with camera icon)
+ *   - Editable profile fields (name, email, phone, licence number, transmission)
+ *   - Active package summary with progress bar
  *   - Appearance toggle (light / dark / system)
  *   - Notification preference toggles
- *   - App info rows (version, terms, privacy)
- *   - Sign out button
+ *   - Sign out
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -20,515 +19,601 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme, type ColorSchemePreference } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
 import { studentProfile } from '../../modules/student/mockData';
 
-// ─── Extended mock profile data ───────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────────────
 
-const profileDetails = {
-  email: 'alex.johnson@email.com',
-  phone: '+44 7700 900 123',
-  joinedDate: 'February 2026',
-  licenceNumber: 'JOHN5702**AJ9AB',
-  transmissionPreference: 'Manual',
-};
+interface ProfileData {
+  name: string;
+  email: string;
+  phone: string;
+  licenceNumber: string;
+  transmissionPreference: string;
+}
 
-const APP_VERSION = '1.0.0 (build 42)';
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 const getInitials = (name: string) =>
   name
     .split(' ')
-    .map(p => p[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('') || 'ST';
 
-// ─── Small reusable components ────────────────────────────────────────────────
+// ─── Constants ──────────────────────────────────────────────────────────────
 
-const SectionHeader = ({ title, theme }: { title: string; theme: AppTheme }) => (
-  <Text
-    style={{
-      ...theme.typography.caption,
-      color: theme.colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.8,
-      marginTop: theme.spacing.lg,
-      marginBottom: theme.spacing.xs,
-      paddingHorizontal: theme.spacing.md,
-    }}>
-    {title}
-  </Text>
-);
+const INITIAL_PROFILE: ProfileData = {
+  name: studentProfile.name,
+  email: studentProfile.email ?? 'alex.johnson@email.com',
+  phone: studentProfile.phone ?? '+44 7700 123456',
+  licenceNumber: 'JOHN5702**AJ9AB',
+  transmissionPreference: 'Manual',
+};
 
-const InfoRow = ({
-  label,
-  value,
-  last = false,
-  theme,
-}: {
-  label: string;
-  value: string;
-  last?: boolean;
-  theme: AppTheme;
-}) => (
-  <View
-    style={[
-      {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: theme.spacing.sm,
-        paddingHorizontal: theme.spacing.md,
-        backgroundColor: theme.colors.surface,
-      },
-      !last && {
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: theme.colors.border,
-      },
-    ]}>
-    <Text style={{ ...theme.typography.bodyMedium, color: theme.colors.textSecondary, flex: 1 }}>
-      {label}
-    </Text>
-    <Text
-      style={{
-        ...theme.typography.bodyMedium,
-        color: theme.colors.textPrimary,
-        flex: 2,
-        textAlign: 'right',
-      }}
-      numberOfLines={1}>
-      {value}
-    </Text>
-  </View>
-);
-
-const ActionRow = ({
-  label,
-  onPress,
-  destructive = false,
-  last = false,
-  theme,
-}: {
-  label: string;
-  onPress: () => void;
-  destructive?: boolean;
-  last?: boolean;
-  theme: AppTheme;
-}) => (
-  <Pressable
-    onPress={onPress}
-    style={({ pressed }) => [
-      {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: theme.spacing.sm + 2,
-        paddingHorizontal: theme.spacing.md,
-        backgroundColor: pressed
-          ? theme.colors.surfaceSecondary
-          : theme.colors.surface,
-      },
-      !last && {
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: theme.colors.border,
-      },
-    ]}>
-    <Text
-      style={{
-        ...theme.typography.bodyMedium,
-        color: destructive ? theme.colors.error : theme.colors.textPrimary,
-      }}>
-      {label}
-    </Text>
-    {!destructive && (
-      <Text style={{ ...theme.typography.bodyMedium, color: theme.colors.textSecondary }}>›</Text>
-    )}
-  </Pressable>
-);
-
-const ToggleRow = ({
-  label,
-  value,
-  onToggle,
-  last = false,
-  theme,
-}: {
-  label: string;
-  value: boolean;
-  onToggle: (v: boolean) => void;
-  last?: boolean;
-  theme: AppTheme;
-}) => (
-  <View
-    style={[
-      {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: theme.spacing.sm,
-        paddingHorizontal: theme.spacing.md,
-        backgroundColor: theme.colors.surface,
-      },
-      !last && {
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: theme.colors.border,
-      },
-    ]}>
-    <Text style={{ ...theme.typography.bodyMedium, color: theme.colors.textPrimary }}>
-      {label}
-    </Text>
-    <Switch
-      value={value}
-      onValueChange={onToggle}
-      trackColor={{
-        false: theme.colors.border,
-        true: theme.colors.primary,
-      }}
-      thumbColor={theme.colors.textInverse}
-    />
-  </View>
-);
-
-const Card = ({ children, theme }: { children: React.ReactNode; theme: AppTheme }) => (
-  <View
-    style={{
-      backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.lg,
-      overflow: 'hidden',
-      marginHorizontal: theme.spacing.md,
-      ...theme.shadows.sm,
-    }}>
-    {children}
-  </View>
-);
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
-
-const APPEARANCE_OPTIONS: { key: ColorSchemePreference; label: string }[] = [
-  { key: 'light', label: 'Light' },
-  { key: 'system', label: 'Auto' },
-  { key: 'dark', label: 'Dark' },
+const APPEARANCE_OPTIONS: { label: string; value: ColorSchemePreference }[] = [
+  { label: 'Light', value: 'light' },
+  { label: 'System', value: 'system' },
+  { label: 'Dark', value: 'dark' },
 ];
+
+const PROFILE_FIELDS: {
+  key: keyof ProfileData;
+  label: string;
+  icon: string;
+  keyboard?: 'default' | 'email-address' | 'phone-pad';
+  capitalize?: 'none' | 'words' | 'sentences';
+}[] = [
+  { key: 'name', label: 'Full Name', icon: 'person-outline', capitalize: 'words' },
+  { key: 'email', label: 'Email Address', icon: 'mail-outline', keyboard: 'email-address', capitalize: 'none' },
+  { key: 'phone', label: 'Phone Number', icon: 'call-outline', keyboard: 'phone-pad' },
+  { key: 'licenceNumber', label: 'Licence Number', icon: 'id-card-outline', capitalize: 'none' },
+  { key: 'transmissionPreference', label: 'Transmission Preference', icon: 'car-outline' },
+];
+
+// ─── Component ──────────────────────────────────────────────────────────────
 
 const StudentProfileScreen = () => {
   const { theme, colorScheme, setColorScheme } = useTheme();
-  const s = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
-  // Notification prefs (mock state)
+  const [profile, setProfile] = useState<ProfileData>(INITIAL_PROFILE);
+  const [draft, setDraft] = useState<ProfileData>(INITIAL_PROFILE);
+  const [editing, setEditing] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+
+  // Notification toggles
   const [notifLessons, setNotifLessons] = useState(true);
   const [notifMessages, setNotifMessages] = useState(true);
-  const [notifRequests, setNotifRequests] = useState(false);
+  const [notifBookings, setNotifBookings] = useState(false);
   const [notifPromotions, setNotifPromotions] = useState(false);
 
   const hoursUsed = studentProfile.totalHours - studentProfile.remainingHours;
+  const progressPercent = Math.round((hoursUsed / studentProfile.totalHours) * 100);
 
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: () => {} },
-      ],
-    );
+  const handleEdit = () => {
+    setDraft(profile);
+    setEditing(true);
   };
 
-  return (
-    <ScreenContainer>
-      <ScrollView
-        style={s.scroll}
-        contentContainerStyle={s.scrollContent}
-        showsVerticalScrollIndicator={false}>
+  const handleCancel = () => {
+    setDraft(profile);
+    setEditing(false);
+  };
 
-        {/* ── Avatar Hero ────────────────────────────────────────── */}
-        <View style={s.heroSection}>
-          <View style={s.avatarRing}>
-            <View style={s.avatar}>
-              <Text style={s.avatarInitials}>
-                {getInitials(studentProfile.name)}
-              </Text>
+  const handleSave = () => {
+    const trimmed: ProfileData = {
+      name: draft.name.trim(),
+      email: draft.email.trim(),
+      phone: draft.phone.trim(),
+      licenceNumber: draft.licenceNumber.trim(),
+      transmissionPreference: draft.transmissionPreference.trim(),
+    };
+    if (!trimmed.name) {
+      Alert.alert('Validation', 'Name cannot be empty.');
+      return;
+    }
+    if (!trimmed.email || !trimmed.email.includes('@')) {
+      Alert.alert('Validation', 'Please enter a valid email address.');
+      return;
+    }
+    setProfile(trimmed);
+    setDraft(trimmed);
+    setEditing(false);
+    Alert.alert('Saved', 'Your profile has been updated.');
+  };
+
+  const handlePickImage = () => {
+    Alert.alert('Profile Picture', 'Choose an option', [
+      { text: 'Take Photo', onPress: () => setProfileImage('camera_photo') },
+      { text: 'Choose from Gallery', onPress: () => setProfileImage('gallery_photo') },
+      ...(profileImage
+        ? [{ text: 'Remove Photo', style: 'destructive' as const, onPress: () => setProfileImage(null) }]
+        : []),
+      { text: 'Cancel', style: 'cancel' as const },
+    ]);
+  };
+
+  const handleSignOut = () =>
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: () => {} },
+    ]);
+
+  const displayName = editing ? draft.name : profile.name;
+
+  // Format member since date
+  const memberSince = studentProfile.memberSince
+    ? new Date(studentProfile.memberSince).toLocaleDateString('en-GB', {
+        month: 'long',
+        year: 'numeric',
+      })
+    : 'N/A';
+
+  return (
+    <ScreenContainer title="Profile">
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ── Hero ──────────────────────────────── */}
+        <View style={styles.hero}>
+          <Pressable onPress={handlePickImage} style={styles.avatarWrap}>
+            <View style={styles.avatarRing}>
+              {profileImage ? (
+                <View style={styles.avatarCircle}>
+                  <Ionicons name="person" size={36} color={theme.colors.textInverse} />
+                </View>
+              ) : (
+                <View style={styles.avatarCircle}>
+                  <Text style={styles.avatarText}>{getInitials(displayName)}</Text>
+                </View>
+              )}
             </View>
+            <View style={styles.cameraBadge}>
+              <Ionicons name="camera" size={14} color="#FFF" />
+            </View>
+          </Pressable>
+          <Text style={styles.heroName} numberOfLines={1}>{displayName}</Text>
+          <Text style={styles.heroSub} numberOfLines={1}>Member since {memberSince}</Text>
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleBadgeText}>Student</Text>
           </View>
-          <Text style={s.heroName}>{studentProfile.name}</Text>
-          <View style={s.roleBadge}>
-            <Text style={s.roleBadgeText}>Student</Text>
-          </View>
-          <Text style={s.heroSub}>Member since {profileDetails.joinedDate}</Text>
         </View>
 
-        {/* ── Package Summary ────────────────────────────────────── */}
-        <SectionHeader title="Active Package" theme={theme} />
-        <Card theme={theme}>
-          <View style={s.packageCard}>
-            <View style={s.packageLeft}>
-              <Text style={s.packageInstructor}>{studentProfile.activeInstructor}</Text>
-              <Text style={s.packageLabel}>Your instructor</Text>
-            </View>
-            <View style={s.packageDivider} />
-            <View style={s.packageStat}>
-              <Text style={s.packageStatValue}>{hoursUsed}</Text>
-              <Text style={s.packageStatLabel}>hrs done</Text>
-            </View>
-            <View style={s.packageStat}>
-              <Text style={s.packageStatValue}>{studentProfile.remainingHours}</Text>
-              <Text style={s.packageStatLabel}>hrs left</Text>
-            </View>
-            <View style={s.packageStat}>
-              <Text style={s.packageStatValue}>{studentProfile.totalHours}</Text>
-              <Text style={s.packageStatLabel}>total</Text>
-            </View>
+        {/* ── Edit / Save / Cancel ──────────────── */}
+        {!editing ? (
+          <Pressable
+            style={({ pressed }) => [styles.editBtn, pressed && { opacity: 0.7 }]}
+            onPress={handleEdit}
+          >
+            <Ionicons name="create-outline" size={16} color={theme.colors.primary} />
+            <Text style={styles.editBtnText}>Edit Profile</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.actionRow}>
+            <Pressable
+              style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.7 }]}
+              onPress={handleCancel}
+            >
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.7 }]}
+              onPress={handleSave}
+            >
+              <Ionicons name="checkmark" size={16} color="#FFF" />
+              <Text style={styles.saveBtnText}>Save Changes</Text>
+            </Pressable>
           </View>
-          {/* Hours bar */}
-          <View style={s.packageBarWrap}>
-            <View style={s.packageBarBg}>
-              <View
-                style={[
-                  s.packageBarFill,
-                  { width: `${(hoursUsed / studentProfile.totalHours) * 100}%` },
-                ]}
-              />
-            </View>
-            <Text style={s.packageBarLabel}>
-              {Math.round((hoursUsed / studentProfile.totalHours) * 100)}% complete
-            </Text>
-          </View>
-        </Card>
+        )}
 
-        {/* ── Personal Info ──────────────────────────────────────── */}
-        <SectionHeader title="Personal Information" theme={theme} />
-        <Card theme={theme}>
-          <InfoRow label="Full Name" value={studentProfile.name} theme={theme} />
-          <InfoRow label="Email" value={profileDetails.email} theme={theme} />
-          <InfoRow label="Phone" value={profileDetails.phone} theme={theme} />
-          <InfoRow label="Licence No." value={profileDetails.licenceNumber} theme={theme} />
-          <InfoRow
-            label="Transmission"
-            value={profileDetails.transmissionPreference}
-            last
-            theme={theme}
-          />
-        </Card>
-
-        {/* ── Appearance ─────────────────────────────────────────── */}
-        <SectionHeader title="Appearance" theme={theme} />
-        <Card theme={theme}>
-          <View style={s.appearanceRow}>
-            <Text style={s.appearanceLabel}>Theme</Text>
-            <View style={s.segmented}>
-              {APPEARANCE_OPTIONS.map(opt => (
-                <Pressable
-                  key={opt.key}
-                  style={[
-                    s.segmentBtn,
-                    colorScheme === opt.key && s.segmentBtnActive,
-                  ]}
-                  onPress={() => setColorScheme(opt.key)}>
-                  <Text
-                    style={[
-                      s.segmentText,
-                      colorScheme === opt.key && s.segmentTextActive,
-                    ]}>
-                    {opt.label}
+        {/* ── Active Package Summary ────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Active Package</Text>
+          <View style={styles.packageRow}>
+            <View style={styles.packageLeft}>
+              <View style={styles.packageInstructorRow}>
+                <View style={styles.packageInstructorAvatar}>
+                  <Text style={styles.packageInstructorInitials}>
+                    {studentProfile.activeInstructorAvatar ?? 'JM'}
                   </Text>
-                </Pressable>
-              ))}
+                </View>
+                <View>
+                  <Text style={styles.packageInstructorName}>
+                    {studentProfile.activeInstructor}
+                  </Text>
+                  <Text style={styles.packageInstructorLabel}>Your instructor</Text>
+                </View>
+              </View>
             </View>
           </View>
-        </Card>
 
-        {/* ── Notifications ──────────────────────────────────────── */}
-        <SectionHeader title="Notifications" theme={theme} />
-        <Card theme={theme}>
-          <ToggleRow
-            label="Lesson Reminders"
-            value={notifLessons}
-            onToggle={setNotifLessons}
-            theme={theme}
-          />
-          <ToggleRow
-            label="Messages"
-            value={notifMessages}
-            onToggle={setNotifMessages}
-            theme={theme}
-          />
-          <ToggleRow
-            label="Booking Requests"
-            value={notifRequests}
-            onToggle={setNotifRequests}
-            theme={theme}
-          />
-          <ToggleRow
-            label="Promotions & Offers"
-            value={notifPromotions}
-            onToggle={setNotifPromotions}
-            last
-            theme={theme}
-          />
-        </Card>
+          {/* Stats row */}
+          <View style={styles.statsRow}>
+            {[
+              { value: `${hoursUsed}`, label: 'Hrs Done' },
+              { value: `${studentProfile.remainingHours}`, label: 'Hrs Left' },
+              { value: `${studentProfile.totalHours}`, label: 'Total' },
+              { value: `${studentProfile.completedLessons}`, label: 'Lessons' },
+            ].map((stat, idx) => (
+              <React.Fragment key={stat.label}>
+                {idx > 0 && <View style={styles.statDivider} />}
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{stat.value}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                </View>
+              </React.Fragment>
+            ))}
+          </View>
 
-        {/* ── App Info ───────────────────────────────────────────── */}
-        <SectionHeader title="About" theme={theme} />
-        <Card theme={theme}>
-          <InfoRow label="App Version" value={APP_VERSION} theme={theme} />
-          <ActionRow label="Terms & Conditions" onPress={() => {}} theme={theme} />
-          <ActionRow label="Privacy Policy" onPress={() => {}} theme={theme} />
-          <ActionRow label="Help & Support" onPress={() => {}} last theme={theme} />
-        </Card>
+          {/* Progress bar */}
+          <View style={styles.progressWrap}>
+            <View style={styles.progressBg}>
+              <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
+            </View>
+            <Text style={styles.progressLabel}>{progressPercent}% complete</Text>
+          </View>
+        </View>
 
-        {/* ── Sign Out ───────────────────────────────────────────── */}
-        <SectionHeader title="Account" theme={theme} />
-        <Card theme={theme}>
-          <ActionRow
-            label="Sign Out"
-            onPress={handleSignOut}
-            destructive
-            last
-            theme={theme}
-          />
-        </Card>
+        {/* ── Profile Fields ────────────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Personal Information</Text>
+          {PROFILE_FIELDS.map((f, idx) => (
+            <View
+              key={f.key}
+              style={[
+                styles.fieldRow,
+                idx < PROFILE_FIELDS.length - 1 && styles.fieldBorder,
+              ]}
+            >
+              <View style={styles.fieldIcon}>
+                <Ionicons name={f.icon as any} size={16} color={theme.colors.primary} />
+              </View>
+              <View style={styles.fieldContent}>
+                <Text style={styles.fieldLabel}>{f.label}</Text>
+                {editing ? (
+                  <TextInput
+                    value={draft[f.key]}
+                    onChangeText={(v) => setDraft((d) => ({ ...d, [f.key]: v }))}
+                    keyboardType={f.keyboard ?? 'default'}
+                    autoCapitalize={f.capitalize ?? 'sentences'}
+                    style={styles.fieldInput}
+                    placeholderTextColor={theme.colors.placeholder}
+                  />
+                ) : (
+                  <Text style={styles.fieldValue} numberOfLines={1}>
+                    {profile[f.key]}
+                  </Text>
+                )}
+              </View>
+            </View>
+          ))}
+        </View>
 
-        <View style={{ height: theme.spacing['2xl'] }} />
+        {/* ── Appearance ────────────────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Appearance</Text>
+          <View style={styles.themeRow}>
+            <Text style={styles.themeLabel}>Theme</Text>
+            <View style={styles.segmented}>
+              {APPEARANCE_OPTIONS.map((opt) => {
+                const active = colorScheme === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    style={[styles.segBtn, active && styles.segBtnActive]}
+                    onPress={() => setColorScheme(opt.value)}
+                  >
+                    <Text style={[styles.segText, active && styles.segTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+
+        {/* ── Notifications ─────────────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Notifications</Text>
+          {[
+            { label: 'Lesson Reminders', val: notifLessons, set: setNotifLessons },
+            { label: 'Messages', val: notifMessages, set: setNotifMessages },
+            { label: 'Booking Updates', val: notifBookings, set: setNotifBookings },
+            { label: 'Promotions & Offers', val: notifPromotions, set: setNotifPromotions },
+          ].map((item, idx, arr) => (
+            <React.Fragment key={item.label}>
+              <View style={styles.toggleRow}>
+                <Text style={styles.toggleLabel}>{item.label}</Text>
+                <Switch
+                  value={item.val}
+                  onValueChange={item.set}
+                  trackColor={{ false: theme.colors.border, true: theme.colors.primaryLight }}
+                  thumbColor={item.val ? theme.colors.primary : theme.colors.textTertiary}
+                />
+              </View>
+              {idx < arr.length - 1 && <View style={styles.divider} />}
+            </React.Fragment>
+          ))}
+        </View>
+
+        {/* ── Sign Out ──────────────────────────── */}
+        <Pressable
+          style={({ pressed }) => [styles.signOutBtn, pressed && { opacity: 0.7 }]}
+          onPress={handleSignOut}
+        >
+          <Ionicons name="log-out-outline" size={18} color={theme.colors.error} />
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </Pressable>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </ScreenContainer>
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Styles ─────────────────────────────────────────────────────────────────
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
     scroll: { flex: 1 },
-    scrollContent: {
-      paddingBottom: theme.spacing.xl,
-    },
+    content: { padding: 16, gap: 14 },
 
     // Hero
-    heroSection: {
+    hero: {
       alignItems: 'center',
-      paddingTop: theme.spacing.xl,
-      paddingBottom: theme.spacing.lg,
       backgroundColor: theme.colors.surface,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.border,
-      marginBottom: theme.spacing.xs,
+      borderRadius: theme.borderRadius.xl,
+      paddingVertical: 24,
+      paddingHorizontal: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.divider,
     },
+    avatarWrap: { position: 'relative', marginBottom: 12 },
     avatarRing: {
-      width: 92,
-      height: 92,
-      borderRadius: 46,
+      width: 88,
+      height: 88,
+      borderRadius: 44,
       borderWidth: 3,
       borderColor: theme.colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: theme.spacing.sm,
     },
-    avatar: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
+    avatarCircle: {
+      width: 76,
+      height: 76,
+      borderRadius: 38,
       backgroundColor: theme.colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    avatarInitials: {
-      ...theme.typography.h2,
-      color: theme.colors.textInverse,
+    avatarText: {
+      ...theme.typography.h1,
+      color: '#FFF',
+      fontWeight: '700',
+    },
+    cameraBadge: {
+      position: 'absolute',
+      bottom: 0,
+      right: 0,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: theme.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: theme.colors.surface,
     },
     heroName: {
       ...theme.typography.h3,
       color: theme.colors.textPrimary,
-      marginBottom: theme.spacing.xs,
-    },
-    roleBadge: {
-      backgroundColor: theme.colors.primaryLight,
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: 3,
-      borderRadius: theme.borderRadius.full,
-      marginBottom: theme.spacing.xs,
-    },
-    roleBadgeText: {
-      ...theme.typography.caption,
-      color: theme.colors.primary,
-      fontWeight: '600',
+      fontWeight: '700',
     },
     heroSub: {
       ...theme.typography.bodySmall,
       color: theme.colors.textSecondary,
+      marginTop: 2,
+    },
+    roleBadge: {
+      marginTop: 8,
+      backgroundColor: theme.colors.primaryLight,
+      paddingHorizontal: 14,
+      paddingVertical: 4,
+      borderRadius: theme.borderRadius.full,
+    },
+    roleBadgeText: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+      fontWeight: '700',
     },
 
-    // Package card
-    packageCard: {
+    // Edit / Action row
+    editBtn: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: theme.spacing.md,
+      justifyContent: 'center',
+      gap: 8,
+      borderWidth: 1.5,
+      borderColor: theme.colors.primary,
+      borderRadius: theme.borderRadius.md,
+      paddingVertical: 12,
+      backgroundColor: theme.colors.primaryLight,
     },
-    packageLeft: {
+    editBtnText: {
+      ...theme.typography.buttonMedium,
+      color: theme.colors.primary,
+    },
+    actionRow: { flexDirection: 'row', gap: 10 },
+    cancelBtn: {
       flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1.5,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.md,
+      paddingVertical: 12,
+      backgroundColor: theme.colors.surface,
     },
-    packageInstructor: {
+    cancelBtnText: {
+      ...theme.typography.buttonMedium,
+      color: theme.colors.textSecondary,
+    },
+    saveBtn: {
+      flex: 2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      borderRadius: theme.borderRadius.md,
+      paddingVertical: 12,
+      backgroundColor: theme.colors.primary,
+    },
+    saveBtnText: {
+      ...theme.typography.buttonMedium,
+      color: '#FFF',
+    },
+
+    // Card
+    card: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.borderRadius.lg,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.divider,
+    },
+    cardTitle: {
+      ...theme.typography.h4,
+      color: theme.colors.textPrimary,
+      fontWeight: '700',
+      marginBottom: 12,
+    },
+
+    // Package
+    packageRow: {
+      marginBottom: 8,
+    },
+    packageLeft: {},
+    packageInstructorRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    packageInstructorAvatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: theme.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    packageInstructorInitials: {
+      ...theme.typography.caption,
+      color: '#FFF',
+      fontWeight: '700',
+    },
+    packageInstructorName: {
       ...theme.typography.bodyMedium,
       color: theme.colors.textPrimary,
       fontWeight: '600',
     },
-    packageLabel: {
+    packageInstructorLabel: {
+      ...theme.typography.caption,
+      color: theme.colors.textSecondary,
+    },
+
+    // Stats
+    statsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+    },
+    statItem: { flex: 1, alignItems: 'center' },
+    statValue: {
+      ...theme.typography.h4,
+      color: theme.colors.primary,
+      fontWeight: '700',
+    },
+    statLabel: {
       ...theme.typography.caption,
       color: theme.colors.textSecondary,
       marginTop: 2,
     },
-    packageDivider: {
+    statDivider: {
       width: StyleSheet.hairlineWidth,
       height: 36,
       backgroundColor: theme.colors.border,
-      marginHorizontal: theme.spacing.sm,
     },
-    packageStat: {
-      alignItems: 'center',
-      marginHorizontal: theme.spacing.xs,
-    },
-    packageStatValue: {
-      ...theme.typography.h4,
-      color: theme.colors.primary,
-    },
-    packageStatLabel: {
-      ...theme.typography.caption,
-      color: theme.colors.textSecondary,
-    },
-    packageBarWrap: {
-      paddingHorizontal: theme.spacing.md,
-      paddingBottom: theme.spacing.md,
-    },
-    packageBarBg: {
+
+    // Progress bar
+    progressWrap: { paddingTop: 4 },
+    progressBg: {
       height: 6,
       borderRadius: 3,
       backgroundColor: theme.colors.primaryLight,
       overflow: 'hidden',
       marginBottom: 4,
     },
-    packageBarFill: {
+    progressFill: {
       height: 6,
       borderRadius: 3,
       backgroundColor: theme.colors.primary,
     },
-    packageBarLabel: {
+    progressLabel: {
       ...theme.typography.caption,
       color: theme.colors.textSecondary,
     },
 
-    // Appearance segmented control
-    appearanceRow: {
+    // Field rows
+    fieldRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      paddingVertical: 10,
+    },
+    fieldBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.border,
+    },
+    fieldIcon: { width: 28, marginTop: 2 },
+    fieldContent: { flex: 1 },
+    fieldLabel: {
+      ...theme.typography.caption,
+      color: theme.colors.textTertiary,
+      marginBottom: 2,
+    },
+    fieldValue: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textPrimary,
+    },
+    fieldInput: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textPrimary,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.sm,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      backgroundColor: theme.colors.surfaceSecondary,
+    },
+
+    // Theme
+    themeRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: theme.spacing.sm,
-      paddingHorizontal: theme.spacing.md,
     },
-    appearanceLabel: {
+    themeLabel: {
       ...theme.typography.bodyMedium,
       color: theme.colors.textPrimary,
     },
@@ -538,22 +623,56 @@ const createStyles = (theme: AppTheme) =>
       borderRadius: theme.borderRadius.md,
       padding: 3,
     },
-    segmentBtn: {
-      paddingVertical: 5,
-      paddingHorizontal: theme.spacing.sm,
+    segBtn: {
+      paddingVertical: 6,
+      paddingHorizontal: 14,
       borderRadius: theme.borderRadius.sm,
     },
-    segmentBtnActive: {
+    segBtnActive: {
       backgroundColor: theme.colors.primary,
     },
-    segmentText: {
+    segText: {
       ...theme.typography.caption,
       color: theme.colors.textSecondary,
       fontWeight: '500',
     },
-    segmentTextActive: {
-      color: theme.colors.textInverse,
-      fontWeight: '600',
+    segTextActive: {
+      color: '#FFF',
+      fontWeight: '700',
+    },
+
+    // Toggles
+    toggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 6,
+    },
+    toggleLabel: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textPrimary,
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.colors.border,
+    },
+
+    // Sign Out
+    signOutBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: theme.borderRadius.md,
+      borderWidth: 1.5,
+      borderColor: theme.colors.error,
+      backgroundColor: theme.colors.errorLight,
+    },
+    signOutText: {
+      ...theme.typography.buttonMedium,
+      color: theme.colors.error,
+      fontWeight: '700',
     },
   });
 

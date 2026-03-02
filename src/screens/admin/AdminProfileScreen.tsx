@@ -1,19 +1,32 @@
+/**
+ * GDS Driving School — AdminProfileScreen
+ * ==========================================
+ *
+ * Admin account hub with:
+ *   - Tappable avatar (profile picture placeholder with camera icon)
+ *   - Editable profile fields (name, role, email, phone, location)
+ *   - Access / permissions pills
+ *   - Appearance toggle (light / dark / system)
+ *   - Sign out
+ */
+
 import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ScreenContainer from '../../components/ScreenContainer';
-import { useTheme } from '../../theme';
+import { useTheme, type ColorSchemePreference } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 interface ProfileData {
   name: string;
@@ -23,129 +36,58 @@ interface ProfileData {
   location: string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 const getInitials = (name: string) =>
   name
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
-    .map(w => w[0].toUpperCase())
+    .map((w) => w[0].toUpperCase())
     .join('') || 'AD';
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-const FieldRow = ({
-  icon,
-  label,
-  value,
-  editing,
-  onChangeText,
-  keyboardType,
-  autoCapitalize,
-  theme,
-}: {
-  icon: string;
-  label: string;
-  value: string;
-  editing: boolean;
-  onChangeText: (v: string) => void;
-  keyboardType?: 'default' | 'email-address' | 'phone-pad';
-  autoCapitalize?: 'none' | 'words' | 'sentences';
-  theme: AppTheme;
-}) => {
-  const [focused, setFocused] = useState(false);
-
-  return (
-    <View style={fieldStyles(theme).wrapper}>
-      <View style={fieldStyles(theme).iconCol}>
-        <Ionicons name={icon} size={16} color={theme.colors.primary} />
-      </View>
-      <View style={fieldStyles(theme).content}>
-        <Text style={fieldStyles(theme).label}>{label}</Text>
-        {editing ? (
-          <TextInput
-            value={value}
-            onChangeText={onChangeText}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            keyboardType={keyboardType ?? 'default'}
-            autoCapitalize={autoCapitalize ?? 'sentences'}
-            style={[
-              fieldStyles(theme).input,
-              focused && fieldStyles(theme).inputFocused,
-            ]}
-            placeholderTextColor={theme.colors.textSecondary}
-          />
-        ) : (
-          <Text style={fieldStyles(theme).value} numberOfLines={1}>{value}</Text>
-        )}
-      </View>
-    </View>
-  );
-};
-
-const fieldStyles = (theme: AppTheme) =>
-  StyleSheet.create({
-    wrapper: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      paddingVertical: theme.spacing.sm,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.border,
-    },
-    iconCol: {
-      width: 28,
-      marginTop: 2,
-    },
-    content: { flex: 1 },
-    label: {
-      ...theme.typography.caption,
-      color: theme.colors.textSecondary,
-      marginBottom: 2,
-    },
-    value: {
-      ...theme.typography.bodyMedium,
-      color: theme.colors.textPrimary,
-    },
-    input: {
-      ...theme.typography.bodyMedium,
-      color: theme.colors.textPrimary,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: theme.borderRadius.sm,
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: theme.spacing.xs,
-      backgroundColor: theme.colors.surfaceSecondary,
-    },
-    inputFocused: {
-      borderColor: theme.colors.borderFocused,
-      backgroundColor: theme.colors.surface,
-    },
-  });
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
+// ─── Constants ──────────────────────────────────────────────────────────────
 
 const INITIAL_PROFILE: ProfileData = {
-  name: 'Platform Admin',
+  name: 'Sarah Admin',
   role: 'System Administrator',
   email: 'admin@gdsplatform.com',
   phone: '+44 7000 000000',
   location: 'London, UK',
 };
 
+const APPEARANCE_OPTIONS: { label: string; value: ColorSchemePreference }[] = [
+  { label: 'Light', value: 'light' },
+  { label: 'System', value: 'system' },
+  { label: 'Dark', value: 'dark' },
+];
+
+const PROFILE_FIELDS: {
+  key: keyof ProfileData;
+  label: string;
+  icon: string;
+  keyboard?: 'default' | 'email-address' | 'phone-pad';
+  capitalize?: 'none' | 'words' | 'sentences';
+}[] = [
+  { key: 'name', label: 'Full Name', icon: 'person-outline', capitalize: 'words' },
+  { key: 'role', label: 'Role / Title', icon: 'briefcase-outline' },
+  { key: 'email', label: 'Email Address', icon: 'mail-outline', keyboard: 'email-address', capitalize: 'none' },
+  { key: 'phone', label: 'Phone Number', icon: 'call-outline', keyboard: 'phone-pad' },
+  { key: 'location', label: 'Location', icon: 'location-outline' },
+];
+
+// ─── Component ──────────────────────────────────────────────────────────────
+
 const AdminProfileScreen = () => {
-  const { theme } = useTheme();
+  const { theme, colorScheme, setColorScheme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [profile, setProfile] = useState<ProfileData>(INITIAL_PROFILE);
   const [draft, setDraft] = useState<ProfileData>(INITIAL_PROFILE);
   const [editing, setEditing] = useState(false);
-
-  const field = (key: keyof ProfileData) => ({
-    value: draft[key],
-    onChangeText: (v: string) => setDraft(d => ({ ...d, [key]: v })),
-  });
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [notifSystem, setNotifSystem] = useState(true);
+  const [notifEmails, setNotifEmails] = useState(true);
 
   const handleEdit = () => {
     setDraft(profile);
@@ -165,7 +107,6 @@ const AdminProfileScreen = () => {
       phone: draft.phone.trim(),
       location: draft.location.trim(),
     };
-
     if (!trimmed.name) {
       Alert.alert('Validation', 'Name cannot be empty.');
       return;
@@ -174,12 +115,37 @@ const AdminProfileScreen = () => {
       Alert.alert('Validation', 'Please enter a valid email address.');
       return;
     }
-
     setProfile(trimmed);
     setDraft(trimmed);
     setEditing(false);
     Alert.alert('Saved', 'Your profile has been updated.');
   };
+
+  const handlePickImage = () => {
+    Alert.alert('Profile Picture', 'Choose an option', [
+      {
+        text: 'Take Photo',
+        onPress: () => setProfileImage('camera_photo'),
+      },
+      {
+        text: 'Choose from Gallery',
+        onPress: () => setProfileImage('gallery_photo'),
+      },
+      ...(profileImage
+        ? [{ text: 'Remove Photo', style: 'destructive' as const, onPress: () => setProfileImage(null) }]
+        : []),
+      { text: 'Cancel', style: 'cancel' as const },
+    ]);
+  };
+
+  const handleSignOut = () =>
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: () => {} },
+    ]);
+
+  const displayName = editing ? draft.name : profile.name;
+  const displayRole = editing ? draft.role : profile.role;
 
   return (
     <ScreenContainer title="Profile">
@@ -187,33 +153,39 @@ const AdminProfileScreen = () => {
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled">
-
-        {/* ── Hero ──────────────────────────────────────────── */}
-        <View style={styles.heroCard}>
-          <View style={styles.avatarRing}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{getInitials(editing ? draft.name : profile.name)}</Text>
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ── Hero ──────────────────────────────── */}
+        <View style={styles.hero}>
+          <Pressable onPress={handlePickImage} style={styles.avatarWrap}>
+            <View style={styles.avatarRing}>
+              {profileImage ? (
+                <View style={styles.avatarCircle}>
+                  <Ionicons name="person" size={36} color={theme.colors.textInverse} />
+                </View>
+              ) : (
+                <View style={styles.avatarCircle}>
+                  <Text style={styles.avatarText}>{getInitials(displayName)}</Text>
+                </View>
+              )}
             </View>
-          </View>
-          <View style={styles.heroInfo}>
-            <Text style={styles.heroName} numberOfLines={1}>
-              {editing ? draft.name : profile.name}
-            </Text>
-            <Text style={styles.heroRole} numberOfLines={1}>
-              {editing ? draft.role : profile.role}
-            </Text>
-            <View style={styles.roleBadge}>
-              <Text style={styles.roleBadgeText}>Admin</Text>
+            <View style={styles.cameraBadge}>
+              <Ionicons name="camera" size={14} color="#FFF" />
             </View>
+          </Pressable>
+          <Text style={styles.heroName} numberOfLines={1}>{displayName}</Text>
+          <Text style={styles.heroRole} numberOfLines={1}>{displayRole}</Text>
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleBadgeText}>Admin</Text>
           </View>
         </View>
 
-        {/* ── Edit / Save / Cancel buttons ──────────────────── */}
+        {/* ── Edit / Save / Cancel ──────────────── */}
         {!editing ? (
           <Pressable
-            style={({ pressed }) => [styles.editBtn, pressed && styles.editBtnPressed]}
-            onPress={handleEdit}>
+            style={({ pressed }) => [styles.editBtn, pressed && { opacity: 0.7 }]}
+            onPress={handleEdit}
+          >
             <Ionicons name="create-outline" size={16} color={theme.colors.primary} />
             <Text style={styles.editBtnText}>Edit Profile</Text>
           </Pressable>
@@ -221,124 +193,187 @@ const AdminProfileScreen = () => {
           <View style={styles.actionRow}>
             <Pressable
               style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.7 }]}
-              onPress={handleCancel}>
+              onPress={handleCancel}
+            >
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.7 }]}
-              onPress={handleSave}>
-              <Ionicons name="checkmark-outline" size={16} color={theme.colors.textInverse} />
+              onPress={handleSave}
+            >
+              <Ionicons name="checkmark" size={16} color="#FFF" />
               <Text style={styles.saveBtnText}>Save Changes</Text>
             </Pressable>
           </View>
         )}
 
-        {/* ── Contact / Info ────────────────────────────────── */}
+        {/* ── Profile Fields ────────────────────── */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Profile Information</Text>
-          <FieldRow
-            icon="person-outline"
-            label="Full Name"
-            editing={editing}
-            theme={theme}
-            {...field('name')}
-          />
-          <FieldRow
-            icon="briefcase-outline"
-            label="Role / Title"
-            editing={editing}
-            theme={theme}
-            {...field('role')}
-          />
-          <FieldRow
-            icon="mail-outline"
-            label="Email"
-            editing={editing}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            theme={theme}
-            {...field('email')}
-          />
-          <FieldRow
-            icon="call-outline"
-            label="Phone"
-            editing={editing}
-            keyboardType="phone-pad"
-            autoCapitalize="none"
-            theme={theme}
-            {...field('phone')}
-          />
-          <FieldRow
-            icon="location-outline"
-            label="Location"
-            editing={editing}
-            theme={theme}
-            {...field('location')}
-          />
+          <Text style={styles.cardTitle}>Profile Information</Text>
+          {PROFILE_FIELDS.map((f, idx) => (
+            <View
+              key={f.key}
+              style={[
+                styles.fieldRow,
+                idx < PROFILE_FIELDS.length - 1 && styles.fieldBorder,
+              ]}
+            >
+              <View style={styles.fieldIcon}>
+                <Ionicons name={f.icon as any} size={16} color={theme.colors.primary} />
+              </View>
+              <View style={styles.fieldContent}>
+                <Text style={styles.fieldLabel}>{f.label}</Text>
+                {editing ? (
+                  <TextInput
+                    value={draft[f.key]}
+                    onChangeText={(v) => setDraft((d) => ({ ...d, [f.key]: v }))}
+                    keyboardType={f.keyboard ?? 'default'}
+                    autoCapitalize={f.capitalize ?? 'sentences'}
+                    style={styles.fieldInput}
+                    placeholderTextColor={theme.colors.placeholder}
+                  />
+                ) : (
+                  <Text style={styles.fieldValue} numberOfLines={1}>
+                    {profile[f.key]}
+                  </Text>
+                )}
+              </View>
+            </View>
+          ))}
         </View>
 
-        {/* ── Access ────────────────────────────────────────── */}
+        {/* ── Access ────────────────────────────── */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Access</Text>
+          <Text style={styles.cardTitle}>Access & Permissions</Text>
           <View style={styles.pillRow}>
-            <View style={[styles.pill, { backgroundColor: theme.colors.successLight }]}>
-              <Text style={[styles.pillText, { color: theme.colors.success }]}>Full Permissions</Text>
-            </View>
-            <View style={[styles.pill, { backgroundColor: theme.colors.infoLight }]}>
-              <Text style={[styles.pillText, { color: theme.colors.info }]}>Live Session</Text>
+            {[
+              { label: 'Full Permissions', color: theme.colors.success, bg: theme.colors.successLight },
+              { label: 'Live Session', color: theme.colors.info, bg: theme.colors.infoLight },
+              { label: 'User Management', color: theme.colors.warning, bg: theme.colors.warningLight },
+            ].map((p) => (
+              <View key={p.label} style={[styles.pill, { backgroundColor: p.bg }]}>
+                <Text style={[styles.pillText, { color: p.color }]}>{p.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* ── Appearance ────────────────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Appearance</Text>
+          <View style={styles.themeRow}>
+            <Text style={styles.themeLabel}>Theme</Text>
+            <View style={styles.segmented}>
+              {APPEARANCE_OPTIONS.map((opt) => {
+                const active = colorScheme === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    style={[styles.segBtn, active && styles.segBtnActive]}
+                    onPress={() => setColorScheme(opt.value)}
+                  >
+                    <Text style={[styles.segText, active && styles.segTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
         </View>
 
-        <View style={{ height: theme.spacing['4xl'] }} />
+        {/* ── Notifications ─────────────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Notifications</Text>
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>System Alerts</Text>
+            <Switch
+              value={notifSystem}
+              onValueChange={setNotifSystem}
+              trackColor={{ false: theme.colors.border, true: theme.colors.primaryLight }}
+              thumbColor={notifSystem ? theme.colors.primary : theme.colors.textTertiary}
+            />
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>Email Notifications</Text>
+            <Switch
+              value={notifEmails}
+              onValueChange={setNotifEmails}
+              trackColor={{ false: theme.colors.border, true: theme.colors.primaryLight }}
+              thumbColor={notifEmails ? theme.colors.primary : theme.colors.textTertiary}
+            />
+          </View>
+        </View>
+
+        {/* ── Sign Out ──────────────────────────── */}
+        <Pressable
+          style={({ pressed }) => [styles.signOutBtn, pressed && { opacity: 0.7 }]}
+          onPress={handleSignOut}
+        >
+          <Ionicons name="log-out-outline" size={18} color={theme.colors.error} />
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </Pressable>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </ScreenContainer>
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Styles ─────────────────────────────────────────────────────────────────
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
     scroll: { flex: 1 },
-    content: {
-      padding: theme.spacing.md,
-      gap: theme.spacing.md,
-    },
+    content: { padding: 16, gap: 14 },
 
     // Hero
-    heroCard: {
-      flexDirection: 'row',
+    hero: {
       alignItems: 'center',
-      gap: theme.spacing.md,
       backgroundColor: theme.colors.surface,
       borderRadius: theme.borderRadius.xl,
-      padding: theme.spacing.lg,
-      ...theme.shadows.md,
+      paddingVertical: 24,
+      paddingHorizontal: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.divider,
     },
+    avatarWrap: { position: 'relative', marginBottom: 12 },
     avatarRing: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
+      width: 88,
+      height: 88,
+      borderRadius: 44,
       borderWidth: 3,
       borderColor: theme.colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    avatar: {
-      width: 68,
-      height: 68,
-      borderRadius: 34,
+    avatarCircle: {
+      width: 76,
+      height: 76,
+      borderRadius: 38,
       backgroundColor: theme.colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
     },
     avatarText: {
-      ...theme.typography.h2,
-      color: theme.colors.textInverse,
+      ...theme.typography.h1,
+      color: '#FFF',
       fontWeight: '700',
     },
-    heroInfo: { flex: 1 },
+    cameraBadge: {
+      position: 'absolute',
+      bottom: 0,
+      right: 0,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: theme.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: theme.colors.surface,
+    },
     heroName: {
       ...theme.typography.h3,
       color: theme.colors.textPrimary,
@@ -350,105 +385,193 @@ const createStyles = (theme: AppTheme) =>
       marginTop: 2,
     },
     roleBadge: {
-      marginTop: theme.spacing.xs,
-      alignSelf: 'flex-start',
+      marginTop: 8,
       backgroundColor: theme.colors.primaryLight,
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: 3,
+      paddingHorizontal: 14,
+      paddingVertical: 4,
       borderRadius: theme.borderRadius.full,
     },
     roleBadgeText: {
       ...theme.typography.caption,
       color: theme.colors.primary,
-      fontWeight: '600',
+      fontWeight: '700',
     },
 
-    // Edit button
+    // Edit / Action row
     editBtn: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: theme.spacing.xs,
+      gap: 8,
       borderWidth: 1.5,
       borderColor: theme.colors.primary,
-      borderRadius: theme.borderRadius.lg,
-      paddingVertical: theme.spacing.sm,
+      borderRadius: theme.borderRadius.md,
+      paddingVertical: 12,
       backgroundColor: theme.colors.primaryLight,
     },
-    editBtnPressed: {
-      opacity: 0.7,
-    },
     editBtnText: {
-      ...theme.typography.bodyMedium,
+      ...theme.typography.buttonMedium,
       color: theme.colors.primary,
-      fontWeight: '600',
     },
-
-    // Save / Cancel row
-    actionRow: {
-      flexDirection: 'row',
-      gap: theme.spacing.sm,
-    },
+    actionRow: { flexDirection: 'row', gap: 10 },
     cancelBtn: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1.5,
       borderColor: theme.colors.border,
-      borderRadius: theme.borderRadius.lg,
-      paddingVertical: theme.spacing.sm,
+      borderRadius: theme.borderRadius.md,
+      paddingVertical: 12,
       backgroundColor: theme.colors.surface,
     },
     cancelBtnText: {
-      ...theme.typography.bodyMedium,
+      ...theme.typography.buttonMedium,
       color: theme.colors.textSecondary,
-      fontWeight: '600',
     },
     saveBtn: {
       flex: 2,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: theme.spacing.xs,
-      borderRadius: theme.borderRadius.lg,
-      paddingVertical: theme.spacing.sm,
+      gap: 6,
+      borderRadius: theme.borderRadius.md,
+      paddingVertical: 12,
       backgroundColor: theme.colors.primary,
     },
     saveBtnText: {
-      ...theme.typography.bodyMedium,
-      color: theme.colors.textInverse,
-      fontWeight: '700',
+      ...theme.typography.buttonMedium,
+      color: '#FFF',
     },
 
-    // Cards
+    // Card
     card: {
       backgroundColor: theme.colors.surface,
       borderRadius: theme.borderRadius.lg,
-      padding: theme.spacing.md,
+      padding: 16,
       borderWidth: 1,
-      borderColor: theme.colors.border,
+      borderColor: theme.colors.divider,
     },
-    sectionTitle: {
+    cardTitle: {
       ...theme.typography.h4,
       color: theme.colors.textPrimary,
-      marginBottom: theme.spacing.xs,
+      fontWeight: '700',
+      marginBottom: 12,
     },
 
-    // Access pills
+    // Field rows
+    fieldRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      paddingVertical: 10,
+    },
+    fieldBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.border,
+    },
+    fieldIcon: { width: 28, marginTop: 2 },
+    fieldContent: { flex: 1 },
+    fieldLabel: {
+      ...theme.typography.caption,
+      color: theme.colors.textTertiary,
+      marginBottom: 2,
+    },
+    fieldValue: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textPrimary,
+    },
+    fieldInput: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textPrimary,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.sm,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      backgroundColor: theme.colors.surfaceSecondary,
+    },
+
+    // Pills
     pillRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: theme.spacing.sm,
-      marginTop: theme.spacing.xs,
+      gap: 8,
     },
     pill: {
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: 14,
+      paddingVertical: 6,
       borderRadius: theme.borderRadius.full,
     },
     pillText: {
       ...theme.typography.caption,
-      fontWeight: '600',
+      fontWeight: '700',
+    },
+
+    // Theme
+    themeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    themeLabel: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textPrimary,
+    },
+    segmented: {
+      flexDirection: 'row',
+      backgroundColor: theme.colors.surfaceSecondary,
+      borderRadius: theme.borderRadius.md,
+      padding: 3,
+    },
+    segBtn: {
+      paddingVertical: 6,
+      paddingHorizontal: 14,
+      borderRadius: theme.borderRadius.sm,
+    },
+    segBtnActive: {
+      backgroundColor: theme.colors.primary,
+    },
+    segText: {
+      ...theme.typography.caption,
+      color: theme.colors.textSecondary,
+      fontWeight: '500',
+    },
+    segTextActive: {
+      color: '#FFF',
+      fontWeight: '700',
+    },
+
+    // Toggles
+    toggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 6,
+    },
+    toggleLabel: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textPrimary,
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.colors.border,
+    },
+
+    // Sign Out
+    signOutBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: theme.borderRadius.md,
+      borderWidth: 1.5,
+      borderColor: theme.colors.error,
+      backgroundColor: theme.colors.errorLight,
+    },
+    signOutText: {
+      ...theme.typography.buttonMedium,
+      color: theme.colors.error,
+      fontWeight: '700',
     },
   });
 

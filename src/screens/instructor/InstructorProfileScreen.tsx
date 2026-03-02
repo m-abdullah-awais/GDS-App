@@ -2,17 +2,17 @@
  * GDS Driving School — InstructorProfileScreen
  * ===============================================
  *
- * Instructor account hub featuring:
- *   - Avatar hero with name & role badge
+ * Instructor account hub with:
+ *   - Tappable avatar (profile picture placeholder with camera icon)
+ *   - Editable profile fields (name, email, phone, experience, transmission, areas)
+ *   - Badges section (insurance badge & driving licence status)
  *   - Overview stats (students, lessons, earnings)
- *   - Personal info rows (name, email, phone, experience, transmission, areas)
  *   - Appearance toggle (light / dark / system)
  *   - Notification preference toggles
- *   - App info rows (version, terms, privacy)
- *   - Sign out button
+ *   - Sign out
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -20,6 +20,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -32,180 +33,37 @@ import {
   earningsSummary,
 } from '../../modules/instructor/mockData';
 
-const APP_VERSION = '1.0.0 (build 42)';
+// ─── Types ──────────────────────────────────────────────────────────────────
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+interface ProfileData {
+  fullName: string;
+  email: string;
+  phone: string;
+  experience: string;
+  transmissionType: string;
+  areas: string;
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 const getInitials = (name: string) =>
   name
     .split(' ')
-    .map(p => p[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('') || 'IN';
 
-// ─── Small reusable components ────────────────────────────────────────────────
+const toProfileData = (): ProfileData => ({
+  fullName: instructorProfile.fullName,
+  email: instructorProfile.email,
+  phone: instructorProfile.phone,
+  experience: `${instructorProfile.experience}`,
+  transmissionType: instructorProfile.transmissionType,
+  areas: instructorProfile.areas.join(', '),
+});
 
-const SectionHeader = ({ title, theme }: { title: string; theme: AppTheme }) => (
-  <Text
-    style={{
-      ...theme.typography.caption,
-      color: theme.colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.8,
-      marginTop: theme.spacing.lg,
-      marginBottom: theme.spacing.xs,
-      paddingHorizontal: theme.spacing.md,
-    }}>
-    {title}
-  </Text>
-);
-
-const InfoRow = ({
-  label,
-  value,
-  last = false,
-  theme,
-}: {
-  label: string;
-  value: string;
-  last?: boolean;
-  theme: AppTheme;
-}) => (
-  <View
-    style={[
-      {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: theme.spacing.sm,
-        paddingHorizontal: theme.spacing.md,
-        backgroundColor: theme.colors.surface,
-      },
-      !last && {
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: theme.colors.border,
-      },
-    ]}>
-    <Text style={{ ...theme.typography.bodyMedium, color: theme.colors.textSecondary, flex: 1 }}>
-      {label}
-    </Text>
-    <Text
-      style={{
-        ...theme.typography.bodyMedium,
-        color: theme.colors.textPrimary,
-        fontWeight: '500',
-        flex: 1.4,
-        textAlign: 'right',
-      }}>
-      {value}
-    </Text>
-  </View>
-);
-
-const ActionRow = ({
-  label,
-  onPress,
-  destructive = false,
-  last = false,
-  theme,
-}: {
-  label: string;
-  onPress: () => void;
-  destructive?: boolean;
-  last?: boolean;
-  theme: AppTheme;
-}) => (
-  <Pressable
-    onPress={onPress}
-    style={({ pressed }) => [
-      {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: theme.spacing.sm,
-        paddingHorizontal: theme.spacing.md,
-        backgroundColor: pressed ? theme.colors.pressed : theme.colors.surface,
-      },
-      !last && {
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: theme.colors.border,
-      },
-    ]}>
-    <Text
-      style={{
-        ...theme.typography.bodyMedium,
-        color: destructive ? theme.colors.error : theme.colors.textPrimary,
-        fontWeight: destructive ? '600' : '400',
-      }}>
-      {label}
-    </Text>
-    {!destructive && (
-      <Ionicons name="chevron-forward" size={18} color={theme.colors.textTertiary} />
-    )}
-  </Pressable>
-);
-
-const ToggleRow = ({
-  label,
-  value,
-  onToggle,
-  last = false,
-  theme,
-}: {
-  label: string;
-  value: boolean;
-  onToggle: (v: boolean) => void;
-  last?: boolean;
-  theme: AppTheme;
-}) => (
-  <View
-    style={[
-      {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: theme.spacing.sm,
-        paddingHorizontal: theme.spacing.md,
-        backgroundColor: theme.colors.surface,
-      },
-      !last && {
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: theme.colors.border,
-      },
-    ]}>
-    <Text style={{ ...theme.typography.bodyMedium, color: theme.colors.textPrimary }}>
-      {label}
-    </Text>
-    <Switch
-      value={value}
-      onValueChange={onToggle}
-      trackColor={{ false: theme.colors.border, true: theme.colors.primaryLight }}
-      thumbColor={value ? theme.colors.primary : theme.colors.textTertiary}
-    />
-  </View>
-);
-
-const Card = ({
-  children,
-  theme,
-}: {
-  children: React.ReactNode;
-  theme: AppTheme;
-}) => (
-  <View
-    style={{
-      backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.lg,
-      overflow: 'hidden',
-      marginHorizontal: theme.spacing.md,
-      ...theme.shadows.sm,
-    }}>
-    {children}
-  </View>
-);
-
-// ─── Appearance options ───────────────────────────────────────────────────────
+// ─── Constants ──────────────────────────────────────────────────────────────
 
 const APPEARANCE_OPTIONS: { label: string; value: ColorSchemePreference }[] = [
   { label: 'Light', value: 'light' },
@@ -213,11 +71,32 @@ const APPEARANCE_OPTIONS: { label: string; value: ColorSchemePreference }[] = [
   { label: 'Dark', value: 'dark' },
 ];
 
-// ─── Component ────────────────────────────────────────────────────────────────
+const PROFILE_FIELDS: {
+  key: keyof ProfileData;
+  label: string;
+  icon: string;
+  keyboard?: 'default' | 'email-address' | 'phone-pad' | 'numeric';
+  capitalize?: 'none' | 'words' | 'sentences';
+}[] = [
+  { key: 'fullName', label: 'Full Name', icon: 'person-outline', capitalize: 'words' },
+  { key: 'email', label: 'Email Address', icon: 'mail-outline', keyboard: 'email-address', capitalize: 'none' },
+  { key: 'phone', label: 'Phone Number', icon: 'call-outline', keyboard: 'phone-pad' },
+  { key: 'experience', label: 'Experience (years)', icon: 'time-outline', keyboard: 'numeric' },
+  { key: 'transmissionType', label: 'Transmission', icon: 'car-outline' },
+  { key: 'areas', label: 'Teaching Areas', icon: 'map-outline' },
+];
+
+// ─── Component ──────────────────────────────────────────────────────────────
 
 const InstructorProfileScreen = () => {
   const { theme, colorScheme, setColorScheme } = useTheme();
-  const s = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  const initial = toProfileData();
+  const [profile, setProfile] = useState<ProfileData>(initial);
+  const [draft, setDraft] = useState<ProfileData>(initial);
+  const [editing, setEditing] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
 
   // Notification toggles
   const [notifLessons, setNotifLessons] = useState(true);
@@ -225,99 +104,332 @@ const InstructorProfileScreen = () => {
   const [notifRequests, setNotifRequests] = useState(true);
   const [notifEarnings, setNotifEarnings] = useState(false);
 
+  const handleEdit = () => {
+    setDraft(profile);
+    setEditing(true);
+  };
+
+  const handleCancel = () => {
+    setDraft(profile);
+    setEditing(false);
+  };
+
+  const handleSave = () => {
+    const trimmed: ProfileData = {
+      fullName: draft.fullName.trim(),
+      email: draft.email.trim(),
+      phone: draft.phone.trim(),
+      experience: draft.experience.trim(),
+      transmissionType: draft.transmissionType.trim(),
+      areas: draft.areas.trim(),
+    };
+    if (!trimmed.fullName) {
+      Alert.alert('Validation', 'Name cannot be empty.');
+      return;
+    }
+    if (!trimmed.email || !trimmed.email.includes('@')) {
+      Alert.alert('Validation', 'Please enter a valid email address.');
+      return;
+    }
+    setProfile(trimmed);
+    setDraft(trimmed);
+    setEditing(false);
+    Alert.alert('Saved', 'Your profile has been updated.');
+  };
+
+  const handlePickImage = () => {
+    Alert.alert('Profile Picture', 'Choose an option', [
+      { text: 'Take Photo', onPress: () => setProfileImage('camera_photo') },
+      { text: 'Choose from Gallery', onPress: () => setProfileImage('gallery_photo') },
+      ...(profileImage
+        ? [{ text: 'Remove Photo', style: 'destructive' as const, onPress: () => setProfileImage(null) }]
+        : []),
+      { text: 'Cancel', style: 'cancel' as const },
+    ]);
+  };
+
   const handleSignOut = () =>
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: () => {} },
     ]);
 
-  const initials = getInitials(instructorProfile.fullName);
+  const displayName = editing ? draft.fullName : profile.fullName;
   const totalStudents = instructorStudents.length;
 
   return (
     <ScreenContainer title="Profile">
       <ScrollView
-        style={s.scroll}
-        contentContainerStyle={s.scrollContent}
-        showsVerticalScrollIndicator={false}>
-
-        {/* ── Hero Section ───────────────────────────────────────── */}
-        <View style={s.heroSection}>
-          <View style={s.avatarRing}>
-            <View style={s.avatar}>
-              <Text style={s.avatarInitials}>{initials}</Text>
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ── Hero ──────────────────────────────── */}
+        <View style={styles.hero}>
+          <Pressable onPress={handlePickImage} style={styles.avatarWrap}>
+            <View style={styles.avatarRing}>
+              {profileImage ? (
+                <View style={styles.avatarCircle}>
+                  <Ionicons name="person" size={36} color={theme.colors.textInverse} />
+                </View>
+              ) : (
+                <View style={styles.avatarCircle}>
+                  <Text style={styles.avatarText}>{getInitials(displayName)}</Text>
+                </View>
+              )}
             </View>
-          </View>
-          <Text style={s.heroName}>{instructorProfile.fullName}</Text>
-          <View style={s.roleBadge}>
-            <Text style={s.roleBadgeText}>Instructor</Text>
-          </View>
-          <Text style={s.heroSub}>
-            {instructorProfile.experience} years experience
+            <View style={styles.cameraBadge}>
+              <Ionicons name="camera" size={14} color="#FFF" />
+            </View>
+          </Pressable>
+          <Text style={styles.heroName} numberOfLines={1}>{displayName}</Text>
+          <Text style={styles.heroSub} numberOfLines={1}>
+            {profile.experience} years experience · {profile.transmissionType}
           </Text>
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleBadgeText}>Instructor</Text>
+          </View>
         </View>
 
-        {/* ── Overview Stats ─────────────────────────────────────── */}
-        <SectionHeader title="Overview" theme={theme} />
-        <Card theme={theme}>
-          <View style={s.statsRow}>
-            <View style={s.statItem}>
-              <Text style={s.statValue}>{totalStudents}</Text>
-              <Text style={s.statLabel}>Students</Text>
+        {/* ── Edit / Save / Cancel ──────────────── */}
+        {!editing ? (
+          <Pressable
+            style={({ pressed }) => [styles.editBtn, pressed && { opacity: 0.7 }]}
+            onPress={handleEdit}
+          >
+            <Ionicons name="create-outline" size={16} color={theme.colors.primary} />
+            <Text style={styles.editBtnText}>Edit Profile</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.actionRow}>
+            <Pressable
+              style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.7 }]}
+              onPress={handleCancel}
+            >
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.7 }]}
+              onPress={handleSave}
+            >
+              <Ionicons name="checkmark" size={16} color="#FFF" />
+              <Text style={styles.saveBtnText}>Save Changes</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* ── Overview Stats ────────────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Overview</Text>
+          <View style={styles.statsRow}>
+            {[
+              { value: `${totalStudents}`, label: 'Students' },
+              { value: `${earningsSummary.totalLessons}`, label: 'Lessons' },
+              { value: `£${earningsSummary.totalEarnings.toLocaleString()}`, label: 'Earned' },
+            ].map((stat, idx) => (
+              <React.Fragment key={stat.label}>
+                {idx > 0 && <View style={styles.statDivider} />}
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{stat.value}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                </View>
+              </React.Fragment>
+            ))}
+          </View>
+        </View>
+
+        {/* ── Profile Fields ────────────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Personal Information</Text>
+          {PROFILE_FIELDS.map((f, idx) => (
+            <View
+              key={f.key}
+              style={[
+                styles.fieldRow,
+                idx < PROFILE_FIELDS.length - 1 && styles.fieldBorder,
+              ]}
+            >
+              <View style={styles.fieldIcon}>
+                <Ionicons name={f.icon as any} size={16} color={theme.colors.primary} />
+              </View>
+              <View style={styles.fieldContent}>
+                <Text style={styles.fieldLabel}>{f.label}</Text>
+                {editing ? (
+                  <TextInput
+                    value={draft[f.key]}
+                    onChangeText={(v) => setDraft((d) => ({ ...d, [f.key]: v }))}
+                    keyboardType={f.keyboard ?? 'default'}
+                    autoCapitalize={f.capitalize ?? 'sentences'}
+                    style={styles.fieldInput}
+                    placeholderTextColor={theme.colors.placeholder}
+                    multiline={f.key === 'areas'}
+                  />
+                ) : (
+                  <Text style={styles.fieldValue} numberOfLines={f.key === 'areas' ? 2 : 1}>
+                    {f.key === 'experience'
+                      ? `${profile[f.key]} years`
+                      : profile[f.key]}
+                  </Text>
+                )}
+              </View>
             </View>
-            <View style={s.statDivider} />
-            <View style={s.statItem}>
-              <Text style={s.statValue}>{earningsSummary.totalLessons}</Text>
-              <Text style={s.statLabel}>Lessons</Text>
-            </View>
-            <View style={s.statDivider} />
-            <View style={s.statItem}>
-              <Text style={s.statValue}>
-                £{earningsSummary.totalEarnings.toLocaleString()}
+          ))}
+        </View>
+
+        {/* ── Badges & Credentials ──────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Badges & Credentials</Text>
+          <View style={styles.badgeRow}>
+            <View style={[
+              styles.badgeCard,
+              {
+                backgroundColor: instructorProfile.insuranceBadge
+                  ? theme.colors.successLight
+                  : theme.colors.errorLight,
+                borderColor: instructorProfile.insuranceBadge
+                  ? theme.colors.success
+                  : theme.colors.error,
+              },
+            ]}>
+              <Ionicons
+                name={instructorProfile.insuranceBadge ? 'shield-checkmark' : 'shield-outline'}
+                size={28}
+                color={
+                  instructorProfile.insuranceBadge
+                    ? theme.colors.success
+                    : theme.colors.error
+                }
+              />
+              <Text style={[
+                styles.badgeTitle,
+                {
+                  color: instructorProfile.insuranceBadge
+                    ? theme.colors.success
+                    : theme.colors.error,
+                },
+              ]}>
+                Insurance
               </Text>
-              <Text style={s.statLabel}>Earned</Text>
+              <Text style={[
+                styles.badgeStatus,
+                {
+                  color: instructorProfile.insuranceBadge
+                    ? theme.colors.success
+                    : theme.colors.error,
+                },
+              ]}>
+                {instructorProfile.insuranceBadge ? 'Verified' : 'Not Uploaded'}
+              </Text>
+            </View>
+
+            <View style={[
+              styles.badgeCard,
+              {
+                backgroundColor: instructorProfile.drivingLicense
+                  ? theme.colors.successLight
+                  : theme.colors.errorLight,
+                borderColor: instructorProfile.drivingLicense
+                  ? theme.colors.success
+                  : theme.colors.error,
+              },
+            ]}>
+              <Ionicons
+                name={instructorProfile.drivingLicense ? 'card' : 'card-outline'}
+                size={28}
+                color={
+                  instructorProfile.drivingLicense
+                    ? theme.colors.success
+                    : theme.colors.error
+                }
+              />
+              <Text style={[
+                styles.badgeTitle,
+                {
+                  color: instructorProfile.drivingLicense
+                    ? theme.colors.success
+                    : theme.colors.error,
+                },
+              ]}>
+                Driving Licence
+              </Text>
+              <Text style={[
+                styles.badgeStatus,
+                {
+                  color: instructorProfile.drivingLicense
+                    ? theme.colors.success
+                    : theme.colors.error,
+                },
+              ]}>
+                {instructorProfile.drivingLicense ? 'Verified' : 'Not Uploaded'}
+              </Text>
             </View>
           </View>
-        </Card>
 
-        {/* ── Personal Info ──────────────────────────────────────── */}
-        <SectionHeader title="Personal Information" theme={theme} />
-        <Card theme={theme}>
-          <InfoRow label="Full Name" value={instructorProfile.fullName} theme={theme} />
-          <InfoRow label="Email" value={instructorProfile.email} theme={theme} />
-          <InfoRow label="Phone" value={instructorProfile.phone} theme={theme} />
-          <InfoRow
-            label="Experience"
-            value={`${instructorProfile.experience} years`}
-            theme={theme}
-          />
-          <InfoRow
-            label="Transmission"
-            value={instructorProfile.transmissionType}
-            theme={theme}
-          />
-          <InfoRow
-            label="Areas"
-            value={instructorProfile.areas.join(', ')}
-            last
-            theme={theme}
-          />
-        </Card>
+          {/* Approval status */}
+          <View style={styles.approvalRow}>
+            <Text style={styles.approvalLabel}>Approval Status</Text>
+            <View style={[
+              styles.approvalBadge,
+              {
+                backgroundColor:
+                  instructorProfile.approvalStatus === 'approved'
+                    ? theme.colors.successLight
+                    : instructorProfile.approvalStatus === 'pending'
+                      ? theme.colors.warningLight
+                      : theme.colors.errorLight,
+              },
+            ]}>
+              <Ionicons
+                name={
+                  instructorProfile.approvalStatus === 'approved'
+                    ? 'checkmark-circle'
+                    : instructorProfile.approvalStatus === 'pending'
+                      ? 'time'
+                      : 'close-circle'
+                }
+                size={14}
+                color={
+                  instructorProfile.approvalStatus === 'approved'
+                    ? theme.colors.success
+                    : instructorProfile.approvalStatus === 'pending'
+                      ? theme.colors.warning
+                      : theme.colors.error
+                }
+              />
+              <Text style={[
+                styles.approvalBadgeText,
+                {
+                  color:
+                    instructorProfile.approvalStatus === 'approved'
+                      ? theme.colors.success
+                      : instructorProfile.approvalStatus === 'pending'
+                        ? theme.colors.warning
+                        : theme.colors.error,
+                },
+              ]}>
+                {instructorProfile.approvalStatus.charAt(0).toUpperCase() +
+                  instructorProfile.approvalStatus.slice(1)}
+              </Text>
+            </View>
+          </View>
+        </View>
 
-        {/* ── Appearance ─────────────────────────────────────────── */}
-        <SectionHeader title="Appearance" theme={theme} />
-        <Card theme={theme}>
-          <View style={s.appearanceRow}>
-            <Text style={s.appearanceLabel}>Theme</Text>
-            <View style={s.segmented}>
-              {APPEARANCE_OPTIONS.map(opt => {
+        {/* ── Appearance ────────────────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Appearance</Text>
+          <View style={styles.themeRow}>
+            <Text style={styles.themeLabel}>Theme</Text>
+            <View style={styles.segmented}>
+              {APPEARANCE_OPTIONS.map((opt) => {
                 const active = colorScheme === opt.value;
                 return (
                   <Pressable
                     key={opt.value}
-                    style={[s.segmentBtn, active && s.segmentBtnActive]}
-                    onPress={() => setColorScheme(opt.value)}>
-                    <Text style={[s.segmentText, active && s.segmentTextActive]}>
+                    style={[styles.segBtn, active && styles.segBtnActive]}
+                    onPress={() => setColorScheme(opt.value)}
+                  >
+                    <Text style={[styles.segText, active && styles.segTextActive]}>
                       {opt.label}
                     </Text>
                   </Pressable>
@@ -325,143 +437,195 @@ const InstructorProfileScreen = () => {
               })}
             </View>
           </View>
-        </Card>
+        </View>
 
-        {/* ── Notifications ──────────────────────────────────────── */}
-        <SectionHeader title="Notifications" theme={theme} />
-        <Card theme={theme}>
-          <ToggleRow
-            label="Lesson Reminders"
-            value={notifLessons}
-            onToggle={setNotifLessons}
-            theme={theme}
-          />
-          <ToggleRow
-            label="Messages"
-            value={notifMessages}
-            onToggle={setNotifMessages}
-            theme={theme}
-          />
-          <ToggleRow
-            label="Student Requests"
-            value={notifRequests}
-            onToggle={setNotifRequests}
-            theme={theme}
-          />
-          <ToggleRow
-            label="Earnings & Payouts"
-            value={notifEarnings}
-            onToggle={setNotifEarnings}
-            last
-            theme={theme}
-          />
-        </Card>
+        {/* ── Notifications ─────────────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Notifications</Text>
+          {[
+            { label: 'Lesson Reminders', val: notifLessons, set: setNotifLessons },
+            { label: 'Messages', val: notifMessages, set: setNotifMessages },
+            { label: 'Student Requests', val: notifRequests, set: setNotifRequests },
+            { label: 'Earnings & Payouts', val: notifEarnings, set: setNotifEarnings },
+          ].map((item, idx, arr) => (
+            <React.Fragment key={item.label}>
+              <View style={styles.toggleRow}>
+                <Text style={styles.toggleLabel}>{item.label}</Text>
+                <Switch
+                  value={item.val}
+                  onValueChange={item.set}
+                  trackColor={{ false: theme.colors.border, true: theme.colors.primaryLight }}
+                  thumbColor={item.val ? theme.colors.primary : theme.colors.textTertiary}
+                />
+              </View>
+              {idx < arr.length - 1 && <View style={styles.divider} />}
+            </React.Fragment>
+          ))}
+        </View>
 
-        {/* ── App Info ───────────────────────────────────────────── */}
-        <SectionHeader title="About" theme={theme} />
-        <Card theme={theme}>
-          <InfoRow label="App Version" value={APP_VERSION} theme={theme} />
-          <ActionRow label="Terms & Conditions" onPress={() => {}} theme={theme} />
-          <ActionRow label="Privacy Policy" onPress={() => {}} theme={theme} />
-          <ActionRow label="Help & Support" onPress={() => {}} last theme={theme} />
-        </Card>
+        {/* ── Sign Out ──────────────────────────── */}
+        <Pressable
+          style={({ pressed }) => [styles.signOutBtn, pressed && { opacity: 0.7 }]}
+          onPress={handleSignOut}
+        >
+          <Ionicons name="log-out-outline" size={18} color={theme.colors.error} />
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </Pressable>
 
-        {/* ── Sign Out ───────────────────────────────────────────── */}
-        <SectionHeader title="Account" theme={theme} />
-        <Card theme={theme}>
-          <ActionRow
-            label="Sign Out"
-            onPress={handleSignOut}
-            destructive
-            last
-            theme={theme}
-          />
-        </Card>
-
-        <View style={{ height: theme.spacing['2xl'] }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
     </ScreenContainer>
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Styles ─────────────────────────────────────────────────────────────────
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
     scroll: { flex: 1 },
-    scrollContent: {
-      paddingBottom: theme.spacing.xl,
-      paddingHorizontal: theme.spacing.xs,
-    },
+    content: { padding: 16, gap: 14 },
 
     // Hero
-    heroSection: {
+    hero: {
       alignItems: 'center',
-      paddingTop: theme.spacing.xl,
-      paddingBottom: theme.spacing.lg,
       backgroundColor: theme.colors.surface,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.border,
-      marginBottom: theme.spacing.xs,
+      borderRadius: theme.borderRadius.xl,
+      paddingVertical: 24,
+      paddingHorizontal: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.divider,
     },
+    avatarWrap: { position: 'relative', marginBottom: 12 },
     avatarRing: {
-      width: 92,
-      height: 92,
-      borderRadius: 46,
+      width: 88,
+      height: 88,
+      borderRadius: 44,
       borderWidth: 3,
       borderColor: theme.colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: theme.spacing.sm,
     },
-    avatar: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
+    avatarCircle: {
+      width: 76,
+      height: 76,
+      borderRadius: 38,
       backgroundColor: theme.colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    avatarInitials: {
-      ...theme.typography.h2,
-      color: theme.colors.textInverse,
+    avatarText: {
+      ...theme.typography.h1,
+      color: '#FFF',
+      fontWeight: '700',
+    },
+    cameraBadge: {
+      position: 'absolute',
+      bottom: 0,
+      right: 0,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: theme.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: theme.colors.surface,
     },
     heroName: {
       ...theme.typography.h3,
       color: theme.colors.textPrimary,
-      marginBottom: theme.spacing.xs,
-    },
-    roleBadge: {
-      backgroundColor: theme.colors.primaryLight,
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: 3,
-      borderRadius: theme.borderRadius.full,
-      marginBottom: theme.spacing.xs,
-    },
-    roleBadgeText: {
-      ...theme.typography.caption,
-      color: theme.colors.primary,
-      fontWeight: '600',
+      fontWeight: '700',
     },
     heroSub: {
       ...theme.typography.bodySmall,
       color: theme.colors.textSecondary,
+      marginTop: 2,
+    },
+    roleBadge: {
+      marginTop: 8,
+      backgroundColor: theme.colors.primaryLight,
+      paddingHorizontal: 14,
+      paddingVertical: 4,
+      borderRadius: theme.borderRadius.full,
+    },
+    roleBadgeText: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+      fontWeight: '700',
     },
 
-    // Stats row
+    // Edit / Action row
+    editBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      borderWidth: 1.5,
+      borderColor: theme.colors.primary,
+      borderRadius: theme.borderRadius.md,
+      paddingVertical: 12,
+      backgroundColor: theme.colors.primaryLight,
+    },
+    editBtnText: {
+      ...theme.typography.buttonMedium,
+      color: theme.colors.primary,
+    },
+    actionRow: { flexDirection: 'row', gap: 10 },
+    cancelBtn: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1.5,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.md,
+      paddingVertical: 12,
+      backgroundColor: theme.colors.surface,
+    },
+    cancelBtnText: {
+      ...theme.typography.buttonMedium,
+      color: theme.colors.textSecondary,
+    },
+    saveBtn: {
+      flex: 2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      borderRadius: theme.borderRadius.md,
+      paddingVertical: 12,
+      backgroundColor: theme.colors.primary,
+    },
+    saveBtnText: {
+      ...theme.typography.buttonMedium,
+      color: '#FFF',
+    },
+
+    // Card
+    card: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.borderRadius.lg,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.divider,
+    },
+    cardTitle: {
+      ...theme.typography.h4,
+      color: theme.colors.textPrimary,
+      fontWeight: '700',
+      marginBottom: 12,
+    },
+
+    // Stats
     statsRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: theme.spacing.md,
-      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: 8,
     },
-    statItem: {
-      flex: 1,
-      alignItems: 'center',
-    },
+    statItem: { flex: 1, alignItems: 'center' },
     statValue: {
       ...theme.typography.h4,
       color: theme.colors.primary,
+      fontWeight: '700',
     },
     statLabel: {
       ...theme.typography.caption,
@@ -474,15 +638,94 @@ const createStyles = (theme: AppTheme) =>
       backgroundColor: theme.colors.border,
     },
 
-    // Appearance segmented control
-    appearanceRow: {
+    // Field rows
+    fieldRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      paddingVertical: 10,
+    },
+    fieldBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.border,
+    },
+    fieldIcon: { width: 28, marginTop: 2 },
+    fieldContent: { flex: 1 },
+    fieldLabel: {
+      ...theme.typography.caption,
+      color: theme.colors.textTertiary,
+      marginBottom: 2,
+    },
+    fieldValue: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textPrimary,
+    },
+    fieldInput: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textPrimary,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.sm,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      backgroundColor: theme.colors.surfaceSecondary,
+    },
+
+    // Badges
+    badgeRow: {
+      flexDirection: 'row',
+      gap: 10,
+      marginBottom: 12,
+    },
+    badgeCard: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 10,
+      borderRadius: theme.borderRadius.md,
+      borderWidth: 1,
+      gap: 6,
+    },
+    badgeTitle: {
+      ...theme.typography.bodySmall,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    badgeStatus: {
+      ...theme.typography.caption,
+      fontWeight: '500',
+    },
+    approvalRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: theme.spacing.sm,
-      paddingHorizontal: theme.spacing.md,
+      paddingTop: 10,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.border,
     },
-    appearanceLabel: {
+    approvalLabel: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textPrimary,
+    },
+    approvalBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: theme.borderRadius.full,
+    },
+    approvalBadgeText: {
+      ...theme.typography.caption,
+      fontWeight: '700',
+    },
+
+    // Theme
+    themeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    themeLabel: {
       ...theme.typography.bodyMedium,
       color: theme.colors.textPrimary,
     },
@@ -492,22 +735,56 @@ const createStyles = (theme: AppTheme) =>
       borderRadius: theme.borderRadius.md,
       padding: 3,
     },
-    segmentBtn: {
-      paddingVertical: 5,
-      paddingHorizontal: theme.spacing.sm,
+    segBtn: {
+      paddingVertical: 6,
+      paddingHorizontal: 14,
       borderRadius: theme.borderRadius.sm,
     },
-    segmentBtnActive: {
+    segBtnActive: {
       backgroundColor: theme.colors.primary,
     },
-    segmentText: {
+    segText: {
       ...theme.typography.caption,
       color: theme.colors.textSecondary,
       fontWeight: '500',
     },
-    segmentTextActive: {
-      color: theme.colors.textInverse,
-      fontWeight: '600',
+    segTextActive: {
+      color: '#FFF',
+      fontWeight: '700',
+    },
+
+    // Toggles
+    toggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 6,
+    },
+    toggleLabel: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textPrimary,
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.colors.border,
+    },
+
+    // Sign Out
+    signOutBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: theme.borderRadius.md,
+      borderWidth: 1.5,
+      borderColor: theme.colors.error,
+      backgroundColor: theme.colors.errorLight,
+    },
+    signOutText: {
+      ...theme.typography.buttonMedium,
+      color: theme.colors.error,
+      fontWeight: '700',
     },
   });
 

@@ -1,18 +1,17 @@
 /**
  * InstructorPendingReviewsScreen
  * ================================
- * Review completed lessons - give ratings and comments.
+ * Review completed lessons — give detailed skill-based feedback.
+ * Uses the shared FeedbackModal component with all 54 driving skills
+ * and 5-level assessment (Introduced → Independent).
  */
 
 import React, { useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
-  Modal,
-  Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import ScreenContainer from '../../components/ScreenContainer';
@@ -26,10 +25,9 @@ import {
   instructorLessons,
   type InstructorLesson,
 } from '../../modules/instructor/mockData';
+import FeedbackModal from '../../components/instructor/FeedbackModal';
 
 type Props = DrawerScreenProps<InstructorTabsParamList, 'Pending Reviews'>;
-
-const RATINGS = [1, 2, 3, 4, 5];
 
 const InstructorPendingReviewsScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
@@ -39,28 +37,20 @@ const InstructorPendingReviewsScreen = ({ navigation }: Props) => {
     instructorLessons.filter((l) => l.status === 'pending_review' && !l.reviewed),
   );
   const [selectedLesson, setSelectedLesson] = useState<InstructorLesson | null>(null);
-  const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleOpenReview = (lesson: InstructorLesson) => {
     setSelectedLesson(lesson);
-    setRating(0);
-    setComment('');
   };
 
-  const handleSubmitReview = () => {
-    if (rating === 0) {
-      Alert.alert('Rating Required', 'Please select a performance rating.');
-      return;
-    }
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+  const handleFeedbackSubmit = (data: { action: string }) => {
+    if (data.action === 'lesson_cancelled') {
       setLessons((prev) => prev.filter((l) => l.id !== selectedLesson?.id));
-      setSelectedLesson(null);
-      Alert.alert('Success', 'Review submitted successfully!');
-    }, 600);
+      Alert.alert('Lesson Cancelled', 'The student has been notified and hours refunded.');
+    } else {
+      setLessons((prev) => prev.filter((l) => l.id !== selectedLesson?.id));
+      Alert.alert('Success', 'Feedback submitted successfully!');
+    }
+    setSelectedLesson(null);
   };
 
   const renderLesson = ({ item }: { item: InstructorLesson }) => (
@@ -112,93 +102,12 @@ const InstructorPendingReviewsScreen = ({ navigation }: Props) => {
         }
       />
 
-      {/* Review Modal */}
-      <Modal
-        visible={selectedLesson !== null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelectedLesson(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Review Lesson</Text>
-            {selectedLesson && (
-              <View style={styles.modalStudentInfo}>
-                <View style={styles.avatarCircle}>
-                  <Text style={styles.avatarText}>
-                    {selectedLesson.studentAvatar}
-                  </Text>
-                </View>
-                <View style={styles.modalStudentDetails}>
-                  <Text style={styles.studentName}>
-                    {selectedLesson.studentName}
-                  </Text>
-                  <Text style={styles.lessonMeta}>
-                    {selectedLesson.date} · {selectedLesson.duration}
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            {/* Rating */}
-            <View style={styles.ratingSection}>
-              <Text style={styles.ratingLabel}>Performance Rating</Text>
-              <View style={styles.starsRow}>
-                {RATINGS.map((star) => (
-                  <Pressable
-                    key={star}
-                    onPress={() => setRating(star)}
-                    style={styles.starButton}
-                  >
-                    <Ionicons
-                      name={star <= rating ? 'star' : 'star-outline'}
-                      size={32}
-                      color={
-                        star <= rating
-                          ? theme.colors.warning
-                          : theme.colors.neutral300
-                      }
-                    />
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-
-            {/* Comment */}
-            <View style={styles.commentSection}>
-              <Text style={styles.ratingLabel}>Comment</Text>
-              <TextInput
-                value={comment}
-                onChangeText={setComment}
-                placeholder="How did the student perform?"
-                placeholderTextColor={theme.colors.placeholder}
-                style={styles.commentInput}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-
-            <View style={styles.modalActions}>
-              <Button
-                title="Cancel"
-                onPress={() => setSelectedLesson(null)}
-                variant="outline"
-                size="md"
-                style={styles.modalActionButton}
-              />
-              <Button
-                title={isSubmitting ? 'Submitting...' : 'Submit Review'}
-                onPress={handleSubmitReview}
-                loading={isSubmitting}
-                variant="primary"
-                size="md"
-                style={styles.modalActionButton}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* Full-screen Feedback Modal */}
+      <FeedbackModal
+        lesson={selectedLesson}
+        onClose={() => setSelectedLesson(null)}
+        onSubmit={handleFeedbackSubmit}
+      />
     </ScreenContainer>
   );
 };
@@ -260,10 +169,6 @@ const createStyles = (theme: AppTheme) =>
       alignItems: 'center',
       paddingVertical: theme.spacing['4xl'],
     },
-    emptyIcon: {
-      fontSize: 48,
-      marginBottom: theme.spacing.md,
-    },
     emptyText: {
       ...theme.typography.h3,
       color: theme.colors.textPrimary,
@@ -272,72 +177,6 @@ const createStyles = (theme: AppTheme) =>
       ...theme.typography.bodyMedium,
       color: theme.colors.textTertiary,
       marginTop: theme.spacing.xxs,
-    },
-    // Modal
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: theme.colors.overlay,
-      justifyContent: 'flex-end',
-    },
-    modalContent: {
-      backgroundColor: theme.colors.surface,
-      borderTopLeftRadius: theme.borderRadius.xl,
-      borderTopRightRadius: theme.borderRadius.xl,
-      padding: theme.spacing.xl,
-      ...theme.shadows.lg,
-    },
-    modalTitle: {
-      ...theme.typography.h2,
-      color: theme.colors.textPrimary,
-      marginBottom: theme.spacing.lg,
-    },
-    modalStudentInfo: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: theme.spacing.xl,
-    },
-    modalStudentDetails: {
-      marginLeft: theme.spacing.sm,
-    },
-    ratingSection: {
-      marginBottom: theme.spacing.lg,
-    },
-    ratingLabel: {
-      ...theme.typography.label,
-      color: theme.colors.textSecondary,
-      marginBottom: theme.spacing.xs,
-    },
-    starsRow: {
-      flexDirection: 'row',
-      gap: theme.spacing.xs,
-    },
-    starButton: {
-      padding: theme.spacing.xxs,
-    },
-    starText: {
-      fontSize: 32,
-    },
-    commentSection: {
-      marginBottom: theme.spacing.xl,
-    },
-    commentInput: {
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: theme.borderRadius.md,
-      paddingHorizontal: theme.spacing.sm + 2,
-      paddingTop: theme.spacing.sm,
-      paddingBottom: theme.spacing.sm,
-      minHeight: 100,
-      ...theme.typography.input,
-      color: theme.colors.textPrimary,
-      backgroundColor: theme.colors.surface,
-    },
-    modalActions: {
-      flexDirection: 'row',
-      gap: theme.spacing.sm,
-    },
-    modalActionButton: {
-      flex: 1,
     },
   });
 

@@ -46,6 +46,8 @@ export const signUpStudent = async (
     role: 'student' as UserRole,
     status: 'active',
     termsAccepted: false,
+    profileComplete: false,
+    profile_completed: false,
     createdAt: serverTimestamp(),
   });
 
@@ -109,7 +111,8 @@ export const getCurrentUser = () => {
 export const getUserProfile = async (uid: string) => {
   const snapshot = await getDoc(doc(collection(db, 'users'), uid));
   if (!snapshot.exists) return null;
-  const profile = { id: snapshot.id, ...snapshot.data() };
+  const data = (snapshot.data() ?? {}) as Record<string, unknown>;
+  const profile = { id: snapshot.id, ...data };
   console.log('[Firebase][READ][AuthService] getUserProfile', {
     uid,
     data: profile,

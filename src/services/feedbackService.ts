@@ -62,7 +62,7 @@ export const getPendingFeedback = async (
   const snap = await db
     .collection(Collections.FEEDBACK_PENDING)
     .where('studentId', '==', studentId)
-    .where('submitted', '==', false)
+    .where('status', '==', 'pending')
     .orderBy('createdAt', 'desc')
     .get();
   return fromQuerySnapshot<FeedbackPending>(snap);
@@ -78,7 +78,7 @@ export const onPendingFeedback = (
   return db
     .collection(Collections.FEEDBACK_PENDING)
     .where('studentId', '==', studentId)
-    .where('submitted', '==', false)
+    .where('status', '==', 'pending')
     .orderBy('createdAt', 'desc')
     .onSnapshot(
       (snap) => callback(fromQuerySnapshot<FeedbackPending>(snap)),
@@ -95,27 +95,47 @@ export const submitFeedback = async (data: {
   instructorId: string;
   bookingId: string;
   rating: number;
-  comment: string;
+  skills?: Array<{ skill: string; rating?: number; notes?: string }>;
+  notes?: string;
+  studentName?: string;
+  instructorName?: string;
+  lessonDate?: string;
+  lessonTime?: string;
+  duration?: number;
+  lessonTitle?: string;
   feedbackPendingId: string;
 }): Promise<string> => {
-  // 1. Write feedback doc
+  // Derive primary skill name from first skill (matches web)
+  const primarySkill = data.skills?.[0]?.skill || '';
+
+  // 1. Write feedback doc — matching web FeedbackModal.tsx structure
   const feedbackRef = await db.collection(Collections.FEEDBACK).add({
     ...withDualIds(data.studentId, data.instructorId),
     bookingId: data.bookingId,
     booking_id: data.bookingId,
+    studentName: data.studentName || '',
+    instructorName: data.instructorName || '',
+    lessonDate: data.lessonDate || '',
+    lessonTime: data.lessonTime || '',
+    duration: data.duration || 0,
+    skills: data.skills || [],
+    notes: data.notes || '',
     rating: data.rating,
-    comment: data.comment,
+    lesson_title: data.lessonTitle || '',
+    skill: primarySkill,
+    status: 'submitted',
+    submittedAt: serverTimestamp(),
     createdAt: serverTimestamp(),
   });
 
-  // 2. Mark feedbackPending as submitted
+  // 2. Mark feedbackPending as completed — matching web status mechanism
   await db
     .collection(Collections.FEEDBACK_PENDING)
     .doc(data.feedbackPendingId)
     .update({
-      submitted: true,
-      feedbackId: feedbackRef.id,
-      submittedAt: serverTimestamp(),
+      status: 'completed',
+      action: 'feedback_submitted',
+      completedAt: serverTimestamp(),
     });
 
   return feedbackRef.id;

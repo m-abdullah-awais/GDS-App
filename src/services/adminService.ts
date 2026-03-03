@@ -49,6 +49,22 @@ export const getPendingInstructorApplications = async (): Promise<UserProfile[]>
 export const approveInstructor = async (instructorId: string): Promise<void> => {
   await db.collection(Collections.USERS).doc(instructorId).update({
     status: 'active',
+    approved: true,
+    // Capability flags (matches web AdminInstructorManagement)
+    canCreatePackages: true,
+    canAcceptBookings: true,
+    canViewStudents: true,
+    canSendMessages: true,
+    canViewEarnings: true,
+    canViewTimetable: true,
+    canViewFeedback: true,
+    canEditProfile: true,
+    canViewDashboard: true,
+    isFullyRegistered: true,
+    profileComplete: true,
+    profile_completed: true,
+    registrationDate: serverTimestamp(),
+    lastActive: serverTimestamp(),
     approvedAt: serverTimestamp(),
     updated_at: serverTimestamp(),
   });
@@ -129,7 +145,7 @@ export const updateCommissionSettings = async (
 export const getAreaSettings = async (): Promise<AreaSettings | null> => {
   const snap = await db
     .collection(Collections.SYSTEM_SETTINGS)
-    .doc('areas')
+    .doc('areaSettings')
     .get();
   return fromSnapshot<AreaSettings>(snap);
 };
@@ -142,7 +158,7 @@ export const updateAreaSettings = async (
 ): Promise<void> => {
   await db
     .collection(Collections.SYSTEM_SETTINGS)
-    .doc('areas')
+    .doc('areaSettings')
     .set(
       { ...data, updatedAt: serverTimestamp() },
       { merge: true },
@@ -170,7 +186,7 @@ export const getAllTransactions = async (
 ): Promise<Transaction[]> => {
   const snap = await db
     .collection(Collections.TRANSACTIONS)
-    .orderBy('createdAt', 'desc')
+    .orderBy('created_at', 'desc')
     .limit(limit)
     .get();
   return fromQuerySnapshot<Transaction>(snap);
@@ -349,6 +365,12 @@ export const approvePendingPackage = async (packageId: string): Promise<void> =>
   if (!snap.exists) {throw new Error('Pending package not found');}
   const data = snap.data()!;
 
+  // Calculate commission fields (matches web AdminPackageManagement)
+  const commissionRate = data.commissionRate ?? 20; // default 20%
+  const price = data.price ?? 0;
+  const commissionAmount = (price * commissionRate) / 100;
+  const instructorEarnings = price - commissionAmount;
+
   // Update the pending package status
   await db.collection(Collections.PENDING_PACKAGES).doc(packageId).update({
     status: 'approved',
@@ -362,24 +384,54 @@ export const approvePendingPackage = async (packageId: string): Promise<void> =>
       description: data.description,
       number_of_lessons: data.number_of_lessons,
       price: data.price,
+      commission_rate: commissionRate,
+      commission_amount: commissionAmount,
+      instructor_earnings: instructorEarnings,
       status: 'approved',
       updatedAt: serverTimestamp(),
     });
   } else {
     // New package → create in availablePackages
-    await db.collection(Collections.AVAILABLE_PACKAGES).add({
+    const availRef = await db.collection(Collections.AVAILABLE_PACKAGES).add({
       instructorId: data.instructorId,
+      instructor_id: data.instructorId || data.instructor_id || '',
       instructorName: data.instructorName || '',
       title: data.title,
       description: data.description,
       number_of_lessons: data.number_of_lessons,
       price: data.price,
+      commission_rate: commissionRate,
+      commission_amount: commissionAmount,
+      instructor_earnings: instructorEarnings,
       status: 'approved',
       available: true,
       approvedAt: serverTimestamp(),
+      createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+
+    // Also create in `packages` collection (matches web)
+    await db.collection(Collections.PACKAGES).add({
+      instructorId: data.instructorId,
+      instructor_id: data.instructorId || data.instructor_id || '',
+      instructorName: data.instructorName || '',
+      title: data.title,
+      description: data.description,
+      number_of_lessons: data.number_of_lessons,
+      price: data.price,
+      commission_rate: commissionRate,
+      commission_amount: commissionAmount,
+      instructor_earnings: instructorEarnings,
+      availablePackageId: availRef.id,
+      status: 'approved',
+      available: true,
+      approvedAt: serverTimestamp(),
+      createdAt: serverTimestamp(),
+    });
   }
+
+  // Delete the processed pending package (matches web flow)
+  await db.collection(Collections.PENDING_PACKAGES).doc(packageId).delete();
 };
 
 /**

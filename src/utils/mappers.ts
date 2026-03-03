@@ -396,6 +396,7 @@ export const mapBookingToBookedLesson = (
 
 /**
  * Map a Timetable (Firestore) to AvailableSlot[] (student store).
+ * Updated to read web's `timeBlocks` format instead of legacy `slots`.
  */
 export const mapTimetableToAvailableSlots = (
   timetable: Timetable,
@@ -403,34 +404,84 @@ export const mapTimetableToAvailableSlots = (
   bookedSlots?: Array<{ date: string; startTime: string }>,
 ): AvailableSlot[] => {
   const slots: AvailableSlot[] = [];
-  if (!timetable.slots) {return slots;}
 
-  // Generate slots for the next 14 days based on timetable patterns
-  const today = new Date();
-  for (let i = 0; i < 14; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-    const dateStr = date.toISOString().split('T')[0];
+  const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
-    const daySlots = timetable.slots.filter(
-      s => s.day.toLowerCase() === dayName && s.available !== false,
-    );
+  // Web format: timeBlocks array
+  if (timetable.timeBlocks && Array.isArray(timetable.timeBlocks) && timetable.timeBlocks.length > 0) {
+    const today = new Date();
+    for (let i = 0; i < 14; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      const dayOfWeek = date.getDay(); // 0=Sun, 1=Mon, ...
+      // Convert to DAYS index: 0=Mon, 1=Tue, ..., 6=Sun
+      const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const dateStr = date.toISOString().split('T')[0];
 
-    for (const slot of daySlots) {
-      const isBooked = bookedSlots?.some(
-        b => b.date === dateStr && b.startTime === slot.startTime,
-      ) || false;
+      // Find timeBlocks for this day
+      const dayBlocks = timetable.timeBlocks.filter(
+        b => b.day === dayIndex && (!b.status || b.status === 'available'),
+      );
 
-      slots.push({
-        id: `${instructorId}_${dateStr}_${slot.startTime}`,
-        instructorId,
-        date: dateStr,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        duration: '1h',
-        booked: isBooked,
-      });
+      for (const block of dayBlocks) {
+        // Calculate endTime from startTime + duration
+        const [sh, sm] = block.startTime.split(':').map(Number);
+        const totalMinutes = sh * 60 + sm + (block.duration * 60);
+        const eh = Math.floor(totalMinutes / 60);
+        const em = totalMinutes % 60;
+        const endTime = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+
+        const isBooked = bookedSlots?.some(
+          b => b.date === dateStr && b.startTime === block.startTime,
+        ) || false;
+
+        slots.push({
+          id: `${instructorId}_${dateStr}_${block.startTime}`,
+          instructorId,
+          date: dateStr,
+          startTime: block.startTime,
+          endTime,
+          duration: `${block.duration}h`,
+          booked: isBooked,
+        });
+      }
+    }
+    return slots;
+  }
+
+  // Fallback: availability lookup format { Mon: ["09:00", ...] }
+  if (timetable.availability && typeof timetable.availability === 'object') {
+    const today = new Date();
+    for (let i = 0; i < 14; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      const dayOfWeek = date.getDay();
+      const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const dayName = DAYS[dayIndex];
+      const dateStr = date.toISOString().split('T')[0];
+
+      const times = (timetable.availability as Record<string, string[]>)[dayName] || [];
+      for (const startTime of times) {
+        const [sh, sm] = startTime.split(':').map(Number);
+        const endMinutes = sh * 60 + sm + 60; // default 1h
+        const eh = Math.floor(endMinutes / 60);
+        const em = endMinutes % 60;
+        const endTime = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+
+        const isBooked = bookedSlots?.some(
+          b => b.date === dateStr && b.startTime === startTime,
+        ) || false;
+
+        slots.push({
+          id: `${instructorId}_${dateStr}_${startTime}`,
+          instructorId,
+          date: dateStr,
+          startTime,
+          endTime,
+          duration: '1h',
+          booked: isBooked,
+        });
+      }
     }
   }
 

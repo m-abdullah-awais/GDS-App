@@ -29,7 +29,7 @@ import { useToast } from '../../components/admin';
 import { useConfirmation } from '../../components/common';
 import type { AvailabilitySlot } from '../../types/instructor-views';
 import { useSelector } from 'react-redux';
-import { timetableService } from '../../services';
+import * as timetableService from '../../services/timetableService';
 
 type Props = DrawerScreenProps<InstructorTabsParamList, 'Availability'>;
 
@@ -330,7 +330,7 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
           if (!days[dayKey]) days[dayKey] = [];
           days[dayKey].push({ startTime: slot.startTime, endTime: slot.endTime, available: true });
         }
-        await timetableService.saveInstructorTimetable(authProfile.uid, days);
+        await timetableService.saveInstructorTimetableFromDays(authProfile.uid, days);
       }
       showToast('success', 'Availability saved successfully!');
     } catch (e) {

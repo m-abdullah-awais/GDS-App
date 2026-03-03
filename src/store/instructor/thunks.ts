@@ -83,7 +83,7 @@ export const saveAvailabilityThunk = (
 ) => async (dispatch: Dispatch) => {
   try {
     dispatch(setInstructorLoading(true));
-    await timetableService.saveInstructorTimetable(instructorId, days);
+    await timetableService.saveInstructorTimetableFromDays(instructorId, days);
     // Re-fetch to get server-updated version
     const updated = await timetableService.getInstructorTimetable(instructorId);
     dispatch(setTimetable(updated));
@@ -137,7 +137,7 @@ export const confirmBookingRequestThunk = (
   requestId: string,
 ) => async (dispatch: Dispatch) => {
   try {
-    await bookingService.updateBookingRequestStatus(requestId, 'approved');
+    await bookingService.updateBookingRequestStatus(requestId, 'accepted');
   } catch (error) {
     console.error('Failed to confirm booking:', error);
     throw error;
@@ -151,7 +151,7 @@ export const rejectBookingRequestThunk = (
   requestId: string,
 ) => async (dispatch: Dispatch) => {
   try {
-    await bookingService.updateBookingRequestStatus(requestId, 'rejected');
+    await bookingService.updateBookingRequestStatus(requestId, 'declined');
   } catch (error) {
     console.error('Failed to reject booking:', error);
     throw error;

@@ -24,6 +24,8 @@ export const createStudentInstructorRequest = async (data: {
   studentEmail?: string;
   studentPostcode?: string;
   studentTransmission?: string;
+  instructorName?: string;
+  message?: string;
 }): Promise<string> => {
   const ref = await addDoc(collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS), {
     ...withDualIds(data.studentId, data.instructorId),
@@ -31,6 +33,8 @@ export const createStudentInstructorRequest = async (data: {
     studentEmail: data.studentEmail ?? '',
     studentPostcode: data.studentPostcode,
     studentTransmission: data.studentTransmission,
+    instructorName: data.instructorName ?? '',
+    message: data.message ?? '',
     initiatedBy: 'student',
     status: 'pending',
     createdAt: serverTimestamp(),
@@ -51,7 +55,7 @@ export const updateRequestStatus = async (
   } else {
     updateData.rejectedAt = serverTimestamp();
   }
-  await updateDoc(doc(collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS), requestId), updateData);
+  await updateDoc(doc(collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS), requestId), updateData as Record<string, any>);
 };
 
 /**

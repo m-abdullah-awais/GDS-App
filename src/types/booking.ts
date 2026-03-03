@@ -30,6 +30,10 @@ export interface BookingRequest {
   endTime?: string;
   duration?: number;
 
+  // Timetable position (matches web)
+  week?: number;
+  day?: number;
+
   // Request metadata
   requestedBy?: 'student' | 'instructor';
   status: BookingRequestStatus;

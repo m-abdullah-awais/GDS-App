@@ -64,7 +64,10 @@ export const getMessagesForUser = async (userId: string): Promise<Message[]> => 
   const map = new Map<string, Message>();
   for (const doc of [...sentSnapshot.docs, ...receivedSnapshot.docs]) {
     if (!map.has(doc.id)) {
-      map.set(doc.id, { id: doc.id, ...doc.data() } as Message);
+      const data = { id: doc.id, ...doc.data() } as Message;
+      // Filter out archived messages (matches web)
+      if (data.archived === true) {continue;}
+      map.set(doc.id, data);
     }
   }
 
@@ -147,6 +150,16 @@ export const sendMessage = async (data: {
 export const markMessageRead = async (messageId: string): Promise<void> => {
   await db.collection(Collections.MESSAGES).doc(messageId).update({
     read: true,
+    updated_at: serverTimestamp(),
+  });
+};
+
+/**
+ * Archive a message (matches web archived field).
+ */
+export const archiveMessage = async (messageId: string): Promise<void> => {
+  await db.collection(Collections.MESSAGES).doc(messageId).update({
+    archived: true,
     updated_at: serverTimestamp(),
   });
 };

@@ -38,6 +38,11 @@ export const createBookingRequest = async (data: {
   endTime: string;
   duration: string;
   notes?: string;
+  studentName?: string;
+  instructorName?: string;
+  week?: number;
+  day?: number;
+  requestedBy?: 'student' | 'instructor';
 }): Promise<string> => {
   const ref = await addDoc(collection(db, Collections.BOOKING_REQUESTS), {
     ...withDualIds(data.studentId, data.instructorId),
@@ -48,6 +53,11 @@ export const createBookingRequest = async (data: {
     endTime: data.endTime,
     duration: data.duration,
     notes: data.notes || '',
+    studentName: data.studentName || '',
+    instructorName: data.instructorName || '',
+    week: data.week ?? 0,
+    day: data.day ?? 0,
+    requestedBy: data.requestedBy || 'student',
     status: 'pending',
     createdAt: serverTimestamp(),
   });
@@ -123,14 +133,24 @@ export const onStudentBookingRequests = (
  */
 export const updateBookingRequestStatus = async (
   requestId: string,
-  status: 'approved' | 'rejected' | 'cancelled',
+  status: 'accepted' | 'declined' | 'cancelled' | 'amendment_pending' | 'completed',
   extras: Record<string, unknown> = {},
 ): Promise<void> => {
-  await updateDoc(doc(collection(db, Collections.BOOKING_REQUESTS), requestId), {
+  const updateData: Record<string, unknown> = {
     status,
     ...extras,
-    updatedAt: serverTimestamp(),
-  });
+  };
+  // Add the appropriate timestamp based on status (matches web)
+  if (status === 'accepted') {
+    updateData.respondedAt = serverTimestamp();
+  } else if (status === 'declined') {
+    updateData.declinedAt = serverTimestamp();
+  } else if (status === 'completed') {
+    updateData.completedAt = serverTimestamp();
+  }
+  updateData.updatedAt = serverTimestamp();
+
+  await updateDoc(doc(collection(db, Collections.BOOKING_REQUESTS), requestId), updateData as Record<string, any>);
 };
 
 // ─── Confirmed Bookings ──────────────────────────────────────────────────────

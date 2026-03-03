@@ -22,8 +22,17 @@ export interface Feedback {
   instructor_id?: string;
 
   studentName?: string;
+  instructorName?: string;
+  lessonDate?: string;
+  lessonTime?: string;
+  duration?: number;
+  lesson_title?: string;
+  skill?: string;
   skills?: Array<{ skill: string; rating?: number; notes?: string }>;
+  notes?: string;
   rating?: number;
+  status?: 'submitted' | 'reviewed';
+  submittedAt?: FirebaseFirestoreTypes.Timestamp;
   createdAt?: FirebaseFirestoreTypes.Timestamp;
 }
 
@@ -44,9 +53,9 @@ export interface FeedbackPending {
   lessonTime?: string;
   duration?: number;
 
-  submitted: boolean;
-  feedbackId?: string;
-  submittedAt?: FirebaseFirestoreTypes.Timestamp;
+  status: 'pending' | 'completed';
+  action?: string;
+  completedAt?: FirebaseFirestoreTypes.Timestamp;
   createdAt?: FirebaseFirestoreTypes.Timestamp;
 }
 

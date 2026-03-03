@@ -44,15 +44,25 @@ export interface InstructorApplication {
   admin_notes?: string;
 }
 
-/** `timetables` collection. */
+/** `timetables` collection — matches web AdvancedDragDropTimetable format. */
 export interface Timetable {
   id: string; // typically instructorId
-  slots?: Array<{
-    day: string;
+  instructorId?: string;
+  availability?: Record<string, string[]>;
+  timeBlocks?: Array<{
+    id: string;
+    duration: number;
     startTime: string;
-    endTime: string;
-    available: boolean;
+    day: number;
+    color: string;
+    label: string;
+    rowSpan: number;
+    week: number;
+    studentId?: string;
+    studentName?: string;
+    status?: string;
   }>;
+  updatedAt?: unknown;
   [key: string]: unknown;
 }
 

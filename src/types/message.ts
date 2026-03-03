@@ -18,6 +18,7 @@ export interface Message {
   subject?: string;
   content: string;
   read: boolean;
+  archived?: boolean;
   createdAt?: FirebaseFirestoreTypes.Timestamp;
   updated_at?: FirebaseFirestoreTypes.Timestamp;
 }

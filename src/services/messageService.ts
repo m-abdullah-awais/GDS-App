@@ -11,6 +11,40 @@ import { db } from '../config/firebase';
 import { Collections, fromQuerySnapshot, serverTimestamp } from '../utils/mappers';
 import type { Message } from '../types';
 
+const toMillis = (value: unknown): number => {
+  if (!value) {
+    return 0;
+  }
+
+  const maybeTimestamp = value as { toMillis?: () => number; toDate?: () => Date };
+  if (typeof maybeTimestamp.toMillis === 'function') {
+    return maybeTimestamp.toMillis();
+  }
+
+  if (typeof maybeTimestamp.toDate === 'function') {
+    return maybeTimestamp.toDate().getTime();
+  }
+
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  return 0;
+};
+
+const sortByCreatedAtDesc = (messages: Message[]): Message[] => {
+  return [...messages].sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+};
+
+const sortByCreatedAtAsc = (messages: Message[]): Message[] => {
+  return [...messages].sort((a, b) => toMillis(a.createdAt) - toMillis(b.createdAt));
+};
+
 /**
  * Get messages where current user is participant (sender or receiver).
  * Performs two queries due to security rule constraints.
@@ -20,12 +54,10 @@ export const getMessagesForUser = async (userId: string): Promise<Message[]> => 
     db
       .collection(Collections.MESSAGES)
       .where('sender_id', '==', userId)
-      .orderBy('createdAt', 'desc')
       .get(),
     db
       .collection(Collections.MESSAGES)
       .where('receiver_id', '==', userId)
-      .orderBy('createdAt', 'desc')
       .get(),
   ]);
 
@@ -36,11 +68,7 @@ export const getMessagesForUser = async (userId: string): Promise<Message[]> => 
     }
   }
 
-  return Array.from(map.values()).sort((a, b) => {
-    const aTime = (a.createdAt as any)?.toMillis?.() ?? 0;
-    const bTime = (b.createdAt as any)?.toMillis?.() ?? 0;
-    return bTime - aTime;
-  });
+  return sortByCreatedAtDesc(Array.from(map.values()));
 };
 
 /**
@@ -55,7 +83,6 @@ export const getConversation = async (
     .collection(Collections.MESSAGES)
     .where('sender_id', '==', userId1)
     .where('receiver_id', '==', userId2)
-    .orderBy('createdAt', 'asc')
     .get();
 
   // Messages sent by user2 to user1
@@ -63,7 +90,6 @@ export const getConversation = async (
     .collection(Collections.MESSAGES)
     .where('sender_id', '==', userId2)
     .where('receiver_id', '==', userId1)
-    .orderBy('createdAt', 'asc')
     .get();
 
   const all = [
@@ -71,11 +97,7 @@ export const getConversation = async (
     ...fromQuerySnapshot<Message>(received),
   ];
 
-  return all.sort((a, b) => {
-    const aTime = (a.createdAt as any)?.toMillis?.() ?? 0;
-    const bTime = (b.createdAt as any)?.toMillis?.() ?? 0;
-    return aTime - bTime;
-  });
+  return sortByCreatedAtAsc(all);
 };
 
 /**
@@ -127,9 +149,8 @@ export const onReceivedMessages = (
   return db
     .collection(Collections.MESSAGES)
     .where('receiver_id', '==', userId)
-    .orderBy('createdAt', 'desc')
     .onSnapshot(
-      (snapshot) => callback(fromQuerySnapshot<Message>(snapshot)),
+      (snapshot) => callback(sortByCreatedAtDesc(fromQuerySnapshot<Message>(snapshot))),
     );
 };
 
@@ -146,7 +167,6 @@ export const onConversation = (
     .collection(Collections.MESSAGES)
     .where('sender_id', '==', currentUserId)
     .where('receiver_id', '==', otherUserId)
-    .orderBy('createdAt', 'asc')
     .onSnapshot((snapshot) => {
       // Re-fetch full conversation on any change
       getConversation(currentUserId, otherUserId).then(callback);
@@ -156,7 +176,6 @@ export const onConversation = (
     .collection(Collections.MESSAGES)
     .where('sender_id', '==', otherUserId)
     .where('receiver_id', '==', currentUserId)
-    .orderBy('createdAt', 'asc')
     .onSnapshot(() => {
       getConversation(currentUserId, otherUserId).then(callback);
     });

@@ -7,13 +7,14 @@
 import { db } from '../config/firebase';
 import { firebaseStorage } from '../config/firebase';
 import { Collections, fromSnapshot, fromQuerySnapshot, serverTimestamp } from '../utils/mappers';
+import { collection, doc, getDoc, query, where, getDocs, updateDoc, onSnapshot } from '@react-native-firebase/firestore';
 import type { UserProfile, UserDoc } from '../types';
 
 /**
  * Get a user profile by UID.
  */
 export const getUserById = async (uid: string): Promise<UserDoc | null> => {
-  const snapshot = await db.collection(Collections.USERS).doc(uid).get();
+  const snapshot = await getDoc(doc(collection(db, Collections.USERS), uid));
   return fromSnapshot<UserDoc>(snapshot);
 };
 
@@ -34,7 +35,7 @@ export const updateUserProfile = async (
     ...safeData
   } = data as any;
 
-  await db.collection(Collections.USERS).doc(uid).update({
+  await updateDoc(doc(collection(db, Collections.USERS), uid), {
     ...safeData,
     updated_at: serverTimestamp(),
   });
@@ -44,12 +45,13 @@ export const updateUserProfile = async (
  * Query active instructors (for student discovery).
  */
 export const getActiveInstructors = async (): Promise<UserDoc[]> => {
-  const snapshot = await db
-    .collection(Collections.USERS)
-    .where('role', '==', 'instructor')
-    .where('status', '==', 'active')
-    .where('approved', '==', true)
-    .get();
+  const q = query(
+    collection(db, Collections.USERS),
+    where('role', '==', 'instructor'),
+    where('status', '==', 'active'),
+    where('approved', '==', true)
+  );
+  const snapshot = await getDocs(q);
   return fromQuerySnapshot<UserDoc>(snapshot);
 };
 
@@ -57,10 +59,8 @@ export const getActiveInstructors = async (): Promise<UserDoc[]> => {
  * Query users by role.
  */
 export const getUsersByRole = async (role: string): Promise<UserDoc[]> => {
-  const snapshot = await db
-    .collection(Collections.USERS)
-    .where('role', '==', role)
-    .get();
+  const q = query(collection(db, Collections.USERS), where('role', '==', role));
+  const snapshot = await getDocs(q);
   return fromQuerySnapshot<UserDoc>(snapshot);
 };
 
@@ -73,7 +73,8 @@ export const onUserProfile = (
   callback: (profile: UserDoc | null) => void,
   onError?: (error: Error) => void,
 ): (() => void) => {
-  return db.collection(Collections.USERS).doc(uid).onSnapshot(
+  return onSnapshot(
+    doc(collection(db, Collections.USERS), uid),
     (snapshot) => callback(fromSnapshot<UserDoc>(snapshot)),
     (error) => onError?.(error as Error),
   );
@@ -98,7 +99,7 @@ export const completeInstructorProfile = async (
     profile_picture_url?: string;
   },
 ): Promise<void> => {
-  await db.collection(Collections.USERS).doc(uid).update({
+  await updateDoc(doc(collection(db, Collections.USERS), uid), {
     ...data,
     profileComplete: true,
     profile_completed: true,
@@ -118,7 +119,7 @@ export const uploadProfileImage = async (
   const ref = firebaseStorage.ref(`profileImages/${uid}`);
   await ref.putFile(imageUri);
   const downloadUrl = await ref.getDownloadURL();
-  await db.collection(Collections.USERS).doc(uid).update({
+  await updateDoc(doc(collection(db, Collections.USERS), uid), {
     profileImage: downloadUrl,
     profile_picture_url: downloadUrl,
     updated_at: serverTimestamp(),
@@ -151,7 +152,7 @@ export const uploadInstructorDocuments = async (
     updates.insurance_url = results.insuranceUrl;
   }
 
-  await db.collection(Collections.USERS).doc(uid).update(updates);
+  await updateDoc(doc(collection(db, Collections.USERS), uid), updates);
   return results;
 };
 

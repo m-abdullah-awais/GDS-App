@@ -7,6 +7,7 @@
 
 import { db } from '../config/firebase';
 import { Collections, fromQuerySnapshot } from '../utils/mappers';
+import { collection, query, where, getDocs } from '@react-native-firebase/firestore';
 import type { Assignment } from '../types';
 
 /**
@@ -14,15 +15,11 @@ import type { Assignment } from '../types';
  */
 export const getStudentAssignments = async (studentId: string): Promise<Assignment[]> => {
   // Query both field name variants
-  const snapshot1 = await db
-    .collection(Collections.ASSIGNMENTS)
-    .where('studentId', '==', studentId)
-    .get();
+  const q1 = query(collection(db, Collections.ASSIGNMENTS), where('studentId', '==', studentId));
+  const snapshot1 = await getDocs(q1);
 
-  const snapshot2 = await db
-    .collection(Collections.ASSIGNMENTS)
-    .where('student_id', '==', studentId)
-    .get();
+  const q2 = query(collection(db, Collections.ASSIGNMENTS), where('student_id', '==', studentId));
+  const snapshot2 = await getDocs(q2);
 
   const map = new Map<string, Assignment>();
   for (const doc of [...snapshot1.docs, ...snapshot2.docs]) {

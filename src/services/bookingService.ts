@@ -13,7 +13,16 @@ import {
   serverTimestamp,
   withDualIds,
 } from '../utils/mappers';
+import { collection, query, where, getDocs, orderBy, addDoc, updateDoc, onSnapshot, doc, getDoc } from '@react-native-firebase/firestore';
 import type { BookingRequest, Booking } from '../types';
+
+const sortBookingsByDateDesc = (bookings: Booking[]): Booking[] => {
+  return [...bookings].sort((a, b) => {
+    const aTime = new Date(a.date).getTime();
+    const bTime = new Date(b.date).getTime();
+    return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
+  });
+};
 
 // ─── Booking Requests (student → instructor) ─────────────────────────────────
 
@@ -30,7 +39,7 @@ export const createBookingRequest = async (data: {
   duration: string;
   notes?: string;
 }): Promise<string> => {
-  const ref = await db.collection(Collections.BOOKING_REQUESTS).add({
+  const ref = await addDoc(collection(db, Collections.BOOKING_REQUESTS), {
     ...withDualIds(data.studentId, data.instructorId),
     packageId: data.packageId,
     package_id: data.packageId,
@@ -51,11 +60,12 @@ export const createBookingRequest = async (data: {
 export const getStudentBookingRequests = async (
   studentId: string,
 ): Promise<BookingRequest[]> => {
-  const snap = await db
-    .collection(Collections.BOOKING_REQUESTS)
-    .where('studentId', '==', studentId)
-    .orderBy('createdAt', 'desc')
-    .get();
+  const q = query(
+    collection(db, Collections.BOOKING_REQUESTS),
+    where('studentId', '==', studentId),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
   return fromQuerySnapshot<BookingRequest>(snap);
 };
 
@@ -65,11 +75,12 @@ export const getStudentBookingRequests = async (
 export const getInstructorBookingRequests = async (
   instructorId: string,
 ): Promise<BookingRequest[]> => {
-  const snap = await db
-    .collection(Collections.BOOKING_REQUESTS)
-    .where('instructorId', '==', instructorId)
-    .orderBy('createdAt', 'desc')
-    .get();
+  const q = query(
+    collection(db, Collections.BOOKING_REQUESTS),
+    where('instructorId', '==', instructorId),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
   return fromQuerySnapshot<BookingRequest>(snap);
 };
 
@@ -80,13 +91,14 @@ export const onInstructorBookingRequests = (
   instructorId: string,
   callback: (requests: BookingRequest[]) => void,
 ): (() => void) => {
-  return db
-    .collection(Collections.BOOKING_REQUESTS)
-    .where('instructorId', '==', instructorId)
-    .orderBy('createdAt', 'desc')
-    .onSnapshot(
-      (snap) => callback(fromQuerySnapshot<BookingRequest>(snap)),
-    );
+  return onSnapshot(
+    query(
+      collection(db, Collections.BOOKING_REQUESTS),
+      where('instructorId', '==', instructorId),
+      orderBy('createdAt', 'desc')
+    ),
+    (snap) => callback(fromQuerySnapshot<BookingRequest>(snap)),
+  );
 };
 
 /**
@@ -96,13 +108,14 @@ export const onStudentBookingRequests = (
   studentId: string,
   callback: (requests: BookingRequest[]) => void,
 ): (() => void) => {
-  return db
-    .collection(Collections.BOOKING_REQUESTS)
-    .where('studentId', '==', studentId)
-    .orderBy('createdAt', 'desc')
-    .onSnapshot(
-      (snap) => callback(fromQuerySnapshot<BookingRequest>(snap)),
-    );
+  return onSnapshot(
+    query(
+      collection(db, Collections.BOOKING_REQUESTS),
+      where('studentId', '==', studentId),
+      orderBy('createdAt', 'desc')
+    ),
+    (snap) => callback(fromQuerySnapshot<BookingRequest>(snap)),
+  );
 };
 
 /**
@@ -113,7 +126,7 @@ export const updateBookingRequestStatus = async (
   status: 'approved' | 'rejected' | 'cancelled',
   extras: Record<string, unknown> = {},
 ): Promise<void> => {
-  await db.collection(Collections.BOOKING_REQUESTS).doc(requestId).update({
+  await updateDoc(doc(collection(db, Collections.BOOKING_REQUESTS), requestId), {
     status,
     ...extras,
     updatedAt: serverTimestamp(),
@@ -128,12 +141,12 @@ export const updateBookingRequestStatus = async (
 export const getStudentBookings = async (
   studentId: string,
 ): Promise<Booking[]> => {
-  const snap = await db
-    .collection(Collections.BOOKINGS)
-    .where('studentId', '==', studentId)
-    .orderBy('date', 'desc')
-    .get();
-  return fromQuerySnapshot<Booking>(snap);
+  const q = query(
+    collection(db, Collections.BOOKINGS),
+    where('studentId', '==', studentId)
+  );
+  const snap = await getDocs(q);
+  return sortBookingsByDateDesc(fromQuerySnapshot<Booking>(snap));
 };
 
 /**
@@ -142,12 +155,12 @@ export const getStudentBookings = async (
 export const getInstructorBookings = async (
   instructorId: string,
 ): Promise<Booking[]> => {
-  const snap = await db
-    .collection(Collections.BOOKINGS)
-    .where('instructorId', '==', instructorId)
-    .orderBy('date', 'desc')
-    .get();
-  return fromQuerySnapshot<Booking>(snap);
+  const q = query(
+    collection(db, Collections.BOOKINGS),
+    where('instructorId', '==', instructorId)
+  );
+  const snap = await getDocs(q);
+  return sortBookingsByDateDesc(fromQuerySnapshot<Booking>(snap));
 };
 
 /**
@@ -157,13 +170,10 @@ export const onStudentBookings = (
   studentId: string,
   callback: (bookings: Booking[]) => void,
 ): (() => void) => {
-  return db
-    .collection(Collections.BOOKINGS)
-    .where('studentId', '==', studentId)
-    .orderBy('date', 'desc')
-    .onSnapshot(
-      (snap) => callback(fromQuerySnapshot<Booking>(snap)),
-    );
+  return onSnapshot(
+    query(collection(db, Collections.BOOKINGS), where('studentId', '==', studentId)),
+    (snap) => callback(sortBookingsByDateDesc(fromQuerySnapshot<Booking>(snap))),
+  );
 };
 
 /**
@@ -173,20 +183,17 @@ export const onInstructorBookings = (
   instructorId: string,
   callback: (bookings: Booking[]) => void,
 ): (() => void) => {
-  return db
-    .collection(Collections.BOOKINGS)
-    .where('instructorId', '==', instructorId)
-    .orderBy('date', 'desc')
-    .onSnapshot(
-      (snap) => callback(fromQuerySnapshot<Booking>(snap)),
-    );
+  return onSnapshot(
+    query(collection(db, Collections.BOOKINGS), where('instructorId', '==', instructorId)),
+    (snap) => callback(sortBookingsByDateDesc(fromQuerySnapshot<Booking>(snap))),
+  );
 };
 
 /**
  * Get a single booking by ID.
  */
 export const getBooking = async (bookingId: string): Promise<Booking | null> => {
-  const snap = await db.collection(Collections.BOOKINGS).doc(bookingId).get();
+  const snap = await getDoc(doc(collection(db, Collections.BOOKINGS), bookingId));
   return fromSnapshot<Booking>(snap);
 };
 
@@ -198,7 +205,7 @@ export const cancelBooking = async (
   cancelledBy: 'student' | 'instructor',
   reason?: string,
 ): Promise<void> => {
-  await db.collection(Collections.BOOKINGS).doc(bookingId).update({
+  await updateDoc(doc(collection(db, Collections.BOOKINGS), bookingId), {
     status: 'cancelled',
     cancelledBy,
     cancellationReason: reason || '',
@@ -228,4 +235,15 @@ export const filterBookings = (
     default:
       return bookings;
   }
+};
+
+// Backward-compatible aliases used by existing screens
+export const filterLessons = filterBookings;
+
+export const cancelLessonBooking = async (
+  bookingId: string,
+  cancelledBy: 'student' | 'instructor',
+  _dispatch?: unknown,
+): Promise<void> => {
+  await cancelBooking(bookingId, cancelledBy);
 };

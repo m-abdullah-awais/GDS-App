@@ -90,6 +90,9 @@ const StudentProfileScreen = () => {
   const { confirm, notify } = useConfirmation();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const authProfile = useSelector((state: RootState) => state.auth.profile);
+  const myInstructors = useSelector((state: RootState) => state.student.myInstructors);
+  const purchasedPackages = useSelector((state: RootState) => state.student.purchasedPackages);
+  const lessons = useSelector((state: RootState) => state.student.lessons);
 
   const [profile, setProfile] = useState<ProfileData>(INITIAL_PROFILE);
   const [draft, setDraft] = useState<ProfileData>(INITIAL_PROFILE);
@@ -119,8 +122,23 @@ const StudentProfileScreen = () => {
   const [notifBookings, setNotifBookings] = useState(false);
   const [notifPromotions, setNotifPromotions] = useState(false);
 
-  const hoursUsed = studentProfile.totalHours - studentProfile.remainingHours;
-  const progressPercent = Math.round((hoursUsed / studentProfile.totalHours) * 100);
+  const activePackage = useMemo(
+    () => purchasedPackages.find((pkg) => pkg.status === 'active') ?? purchasedPackages[0] ?? null,
+    [purchasedPackages],
+  );
+
+  const activeInstructor = useMemo(
+    () => myInstructors.find((instructor) => instructor.id === activePackage?.instructorId),
+    [myInstructors, activePackage],
+  );
+
+  const totalHours = activePackage?.totalLessons ?? 0;
+  const hoursUsed = Math.min(activePackage?.lessonsUsed ?? 0, totalHours);
+  const remainingHours = Math.max(totalHours - hoursUsed, 0);
+  const completedLessons = lessons.filter((lesson) => lesson.status === 'completed').length;
+  const progressPercent = totalHours > 0 ? Math.round((hoursUsed / totalHours) * 100) : 0;
+  const activeInstructorName = activeInstructor?.name ?? 'No instructor assigned';
+  const activeInstructorAvatar = activeInstructor?.avatar ?? getInitials(activeInstructorName);
 
   const handleEdit = () => {
     setDraft(profile);
@@ -277,12 +295,12 @@ const StudentProfileScreen = () => {
               <View style={styles.packageInstructorRow}>
                 <View style={styles.packageInstructorAvatar}>
                   <Text style={styles.packageInstructorInitials}>
-                    {studentProfile.activeInstructorAvatar ?? 'JM'}
+                    {activeInstructorAvatar}
                   </Text>
                 </View>
                 <View>
                   <Text style={styles.packageInstructorName}>
-                    {studentProfile.activeInstructor}
+                    {activeInstructorName}
                   </Text>
                   <Text style={styles.packageInstructorLabel}>Your instructor</Text>
                 </View>
@@ -294,9 +312,9 @@ const StudentProfileScreen = () => {
           <View style={styles.statsRow}>
             {[
               { value: `${hoursUsed}`, label: 'Hrs Done' },
-              { value: `${studentProfile.remainingHours}`, label: 'Hrs Left' },
-              { value: `${studentProfile.totalHours}`, label: 'Total' },
-              { value: `${studentProfile.completedLessons}`, label: 'Lessons' },
+              { value: `${remainingHours}`, label: 'Hrs Left' },
+              { value: `${totalHours}`, label: 'Total' },
+              { value: `${completedLessons}`, label: 'Lessons' },
             ].map((stat, idx) => (
               <React.Fragment key={stat.label}>
                 {idx > 0 && <View style={styles.statDivider} />}

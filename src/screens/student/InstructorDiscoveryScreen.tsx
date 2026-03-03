@@ -32,9 +32,9 @@ import { InstructorCard } from '../../components/student';
 import {
   searchInstructors,
   getInstructorCities,
-  sendInstructorRequest,
   getRequestStatus,
 } from '../../services/instructorService';
+import { sendInstructorRequestThunk } from '../../store/student/thunks';
 import { getActivePackagesForInstructor } from '../../services/packageService';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { InstructorRequestStatus } from '../../store/student/types';
@@ -51,6 +51,9 @@ const InstructorDiscoveryScreen = () => {
   const instructors = useSelector((state: RootState) => state.student.instructors);
   const requests = useSelector((state: RootState) => state.student.requests);
   const purchasedPackages = useSelector((state: RootState) => state.student.purchasedPackages);
+  const studentId = useSelector((state: RootState) => state.auth.profile?.id);
+  const studentName = useSelector((state: RootState) => state.auth.profile?.full_name);
+  const studentEmail = useSelector((state: RootState) => state.auth.profile?.email);
 
   // Local state ───────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,11 +89,12 @@ const InstructorDiscoveryScreen = () => {
 
   const handleSendRequest = useCallback(
     async (instructorId: string) => {
+      if (!studentId) return;
       setSendingId(instructorId);
-      await sendInstructorRequest(instructorId, dispatch);
+      await dispatch(sendInstructorRequestThunk(studentId, instructorId, studentName, studentEmail));
       setSendingId(null);
     },
-    [dispatch],
+    [dispatch, studentId, studentName, studentEmail],
   );
 
   // Render ────────────────────────────────────────────────

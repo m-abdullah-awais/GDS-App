@@ -11,6 +11,7 @@ import {
   withDualIds,
   serverTimestamp,
 } from '../utils/mappers';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, onSnapshot } from '@react-native-firebase/firestore';
 import type { StudentInstructorRequest } from '../types';
 
 /**
@@ -24,7 +25,7 @@ export const createStudentInstructorRequest = async (data: {
   studentPostcode?: string;
   studentTransmission?: string;
 }): Promise<string> => {
-  const ref = await db.collection(Collections.STUDENT_INSTRUCTOR_REQUESTS).add({
+  const ref = await addDoc(collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS), {
     ...withDualIds(data.studentId, data.instructorId),
     studentName: data.studentName ?? '',
     studentEmail: data.studentEmail ?? '',
@@ -50,7 +51,7 @@ export const updateRequestStatus = async (
   } else {
     updateData.rejectedAt = serverTimestamp();
   }
-  await db.collection(Collections.STUDENT_INSTRUCTOR_REQUESTS).doc(requestId).update(updateData);
+  await updateDoc(doc(collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS), requestId), updateData);
 };
 
 /**
@@ -60,15 +61,17 @@ export const getStudentRequests = async (
   studentId: string,
 ): Promise<StudentInstructorRequest[]> => {
   // Query both field variants
-  const snapshot1 = await db
-    .collection(Collections.STUDENT_INSTRUCTOR_REQUESTS)
-    .where('studentId', '==', studentId)
-    .get();
+  const q1 = query(
+    collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS),
+    where('studentId', '==', studentId)
+  );
+  const snapshot1 = await getDocs(q1);
 
-  const snapshot2 = await db
-    .collection(Collections.STUDENT_INSTRUCTOR_REQUESTS)
-    .where('student_id', '==', studentId)
-    .get();
+  const q2 = query(
+    collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS),
+    where('student_id', '==', studentId)
+  );
+  const snapshot2 = await getDocs(q2);
 
   // Deduplicate by doc ID
   const map = new Map<string, StudentInstructorRequest>();
@@ -86,15 +89,17 @@ export const getStudentRequests = async (
 export const getInstructorRequests = async (
   instructorId: string,
 ): Promise<StudentInstructorRequest[]> => {
-  const snapshot1 = await db
-    .collection(Collections.STUDENT_INSTRUCTOR_REQUESTS)
-    .where('instructorId', '==', instructorId)
-    .get();
+  const q1 = query(
+    collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS),
+    where('instructorId', '==', instructorId)
+  );
+  const snapshot1 = await getDocs(q1);
 
-  const snapshot2 = await db
-    .collection(Collections.STUDENT_INSTRUCTOR_REQUESTS)
-    .where('instructor_id', '==', instructorId)
-    .get();
+  const q2 = query(
+    collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS),
+    where('instructor_id', '==', instructorId)
+  );
+  const snapshot2 = await getDocs(q2);
 
   const map = new Map<string, StudentInstructorRequest>();
   for (const doc of [...snapshot1.docs, ...snapshot2.docs]) {
@@ -112,12 +117,10 @@ export const onStudentRequests = (
   studentId: string,
   callback: (requests: StudentInstructorRequest[]) => void,
 ): (() => void) => {
-  return db
-    .collection(Collections.STUDENT_INSTRUCTOR_REQUESTS)
-    .where('studentId', '==', studentId)
-    .onSnapshot(
-      (snapshot) => callback(fromQuerySnapshot<StudentInstructorRequest>(snapshot)),
-    );
+  return onSnapshot(
+    query(collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS), where('studentId', '==', studentId)),
+    (snapshot) => callback(fromQuerySnapshot<StudentInstructorRequest>(snapshot)),
+  );
 };
 
 /**
@@ -127,10 +130,8 @@ export const onInstructorRequests = (
   instructorId: string,
   callback: (requests: StudentInstructorRequest[]) => void,
 ): (() => void) => {
-  return db
-    .collection(Collections.STUDENT_INSTRUCTOR_REQUESTS)
-    .where('instructorId', '==', instructorId)
-    .onSnapshot(
-      (snapshot) => callback(fromQuerySnapshot<StudentInstructorRequest>(snapshot)),
-    );
+  return onSnapshot(
+    query(collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS), where('instructorId', '==', instructorId)),
+    (snapshot) => callback(fromQuerySnapshot<StudentInstructorRequest>(snapshot)),
+  );
 };

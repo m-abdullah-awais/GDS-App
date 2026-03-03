@@ -7,6 +7,13 @@
  */
 
 import { firebaseAuth, db } from '../config/firebase';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut as signOutAuth,
+  sendPasswordResetEmail,
+} from '@react-native-firebase/auth';
+import { collection, doc, setDoc, getDoc } from '@react-native-firebase/firestore';
 import { serverTimestamp } from '../utils/mappers';
 import type { UserRole } from '../types';
 
@@ -15,7 +22,7 @@ import type { UserRole } from '../types';
  * Returns the Firebase User on success.
  */
 export const signInWithEmail = async (email: string, password: string) => {
-  const credential = await firebaseAuth.signInWithEmailAndPassword(email, password);
+  const credential = await signInWithEmailAndPassword(firebaseAuth, email, password);
   return credential.user;
 };
 
@@ -28,11 +35,11 @@ export const signUpStudent = async (
   password: string,
   fullName: string,
 ) => {
-  const credential = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+  const credential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
   const { uid } = credential.user;
 
   // Create Firestore user profile
-  await db.collection('users').doc(uid).set({
+  await setDoc(doc(collection(db, 'users'), uid), {
     uid,
     email,
     full_name: fullName,
@@ -55,11 +62,11 @@ export const signUpInstructor = async (
   password: string,
   fullName: string,
 ) => {
-  const credential = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+  const credential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
   const { uid } = credential.user;
 
   // Create Firestore user profile with instructor onboarding state
-  await db.collection('users').doc(uid).set({
+  await setDoc(doc(collection(db, 'users'), uid), {
     uid,
     email,
     full_name: fullName,
@@ -78,7 +85,7 @@ export const signUpInstructor = async (
  * Sign out the current user.
  */
 export const signOut = async () => {
-  await firebaseAuth.signOut();
+  await signOutAuth(firebaseAuth);
 };
 
 /**
@@ -86,7 +93,7 @@ export const signOut = async () => {
  * (Not implemented in current web source, but the Firebase API supports it.)
  */
 export const sendPasswordReset = async (email: string) => {
-  await firebaseAuth.sendPasswordResetEmail(email);
+  await sendPasswordResetEmail(firebaseAuth, email);
 };
 
 /**
@@ -100,7 +107,7 @@ export const getCurrentUser = () => {
  * Fetch a user's Firestore profile document.
  */
 export const getUserProfile = async (uid: string) => {
-  const snapshot = await db.collection('users').doc(uid).get();
+  const snapshot = await getDoc(doc(collection(db, 'users'), uid));
   if (!snapshot.exists) return null;
   return { id: snapshot.id, ...snapshot.data() };
 };

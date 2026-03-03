@@ -48,17 +48,24 @@ export const loadStudentData = (studentId: string) => async (dispatch: Dispatch)
   try {
     dispatch(setLoading('searchLoading', true));
 
-    // Fetch in parallel
-    const [
-      activeInstructors,
-      studentRequests,
-      studentAssignments,
-      studentBookings,
-    ] = await Promise.all([
-      userService.getActiveInstructors(),
-      requestService.getStudentRequests(studentId),
-      assignmentService.getStudentAssignments(studentId),
-      bookingService.getStudentBookings(studentId),
+    const readOrFallback = async <T>(reader: () => Promise<T>, fallback: T): Promise<T> => {
+      try {
+        return await reader();
+      } catch (error: any) {
+        if (error?.code === 'firestore/permission-denied') {
+          console.warn('[Student] Firestore permission denied for one query, using fallback data.');
+          return fallback;
+        }
+        throw error;
+      }
+    };
+
+    // Fetch in parallel with per-query fallback so one denied collection doesn't block the dashboard
+    const [activeInstructors, studentRequests, studentAssignments, studentBookings] = await Promise.all([
+      readOrFallback(() => userService.getActiveInstructors(), []),
+      readOrFallback(() => requestService.getStudentRequests(studentId), []),
+      readOrFallback(() => assignmentService.getStudentAssignments(studentId), []),
+      readOrFallback(() => bookingService.getStudentBookings(studentId), []),
     ]);
 
     // Map instructors to view model

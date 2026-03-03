@@ -27,7 +27,7 @@ export interface InstructorFilters {
   transmission?: string;
 }
 
-export const filterInstructors = (
+export const searchInstructors = (
   instructors: UserProfile[],
   filters: InstructorFilters,
 ): UserProfile[] => {
@@ -64,7 +64,7 @@ export const filterInstructors = (
 
 // ─── Get unique postcodes (used as "city" filter) ────────────────────────────
 
-export const getInstructorPostcodes = (instructors: UserProfile[]): string[] => {
+export const getInstructorCities = (instructors: UserProfile[]): string[] => {
   const postcodes = new Set(
     instructors
       .map(i => i.postcode || '')

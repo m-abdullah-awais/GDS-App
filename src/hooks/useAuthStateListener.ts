@@ -16,6 +16,8 @@
 import { useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import { firebaseAuth, db } from '../config/firebase';
+import { onAuthStateChanged, signOut } from '@react-native-firebase/auth';
+import { collection, doc, onSnapshot } from '@react-native-firebase/firestore';
 import {
   setUser,
   setProfile,
@@ -25,6 +27,34 @@ import {
 } from '../store/auth';
 import type { AuthUser } from '../store/auth';
 import type { UserProfile } from '../types';
+
+const toSerializable = (value: unknown): unknown => {
+  if (value == null) {
+    return value;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(toSerializable);
+  }
+
+  if (typeof value === 'object') {
+    const maybeTimestamp = value as { toDate?: () => Date };
+    if (typeof maybeTimestamp.toDate === 'function') {
+      return maybeTimestamp.toDate().toISOString();
+    }
+
+    const entries = Object.entries(value as Record<string, unknown>).map(
+      ([key, nestedValue]) => [key, toSerializable(nestedValue)],
+    );
+    return Object.fromEntries(entries);
+  }
+
+  return value;
+};
 
 const useAuthStateListener = () => {
   const dispatch = useDispatch();
@@ -39,7 +69,8 @@ const useAuthStateListener = () => {
       }
     };
 
-    const unsubscribeAuth = firebaseAuth.onAuthStateChanged(
+    const unsubscribeAuth = onAuthStateChanged(
+      firebaseAuth,
       async (firebaseUser) => {
         try {
           if (firebaseUser) {
@@ -56,21 +87,20 @@ const useAuthStateListener = () => {
             cleanupProfileSub();
 
             // Real-time subscribe to Firestore user profile
-            profileUnsubRef.current = db
-              .collection('users')
-              .doc(firebaseUser.uid)
-              .onSnapshot(
-                (snapshot) => {
+            profileUnsubRef.current = onSnapshot(
+              doc(collection(db, 'users'), firebaseUser.uid),
+              (snapshot) => {
                   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                   if ((snapshot as any).exists) {
                     const data = snapshot.data() || {};
+                    const serializableData = toSerializable(data) as Record<string, unknown>;
                     const profileData: UserProfile = {
                       id: snapshot.id,
                       uid: firebaseUser.uid,
                       email: firebaseUser.email || '',
                       full_name: '',
                       role: 'student',
-                      ...data,
+                      ...serializableData,
                     };
                     dispatch(setProfile(profileData));
                   } else {
@@ -79,7 +109,7 @@ const useAuthStateListener = () => {
                       '[Auth] User profile missing in Firestore, signing out:',
                       firebaseUser.uid,
                     );
-                    firebaseAuth.signOut();
+                    signOut(firebaseAuth);
                   }
                 },
                 (error) => {

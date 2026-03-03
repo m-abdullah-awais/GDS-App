@@ -24,7 +24,7 @@ import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useSelector } from 'react-redux';
-import { messageService } from '../../services';
+import * as messageService from '../../services/messageService';
 
 interface InstructorChatMessage {
   id: string;

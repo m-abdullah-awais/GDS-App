@@ -3,6 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "generate:google-services": "node scripts/generate-google-services.js",
+    "preandroid": "npm run generate:google-services",
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "lint": "eslint .",

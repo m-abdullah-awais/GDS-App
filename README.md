@@ -32,6 +32,27 @@ npm run android
 yarn android
 ```
 
+### Firebase Android config from `.env`
+
+Android Firebase config is generated from root `.env` into `android/app/google-services.json`.
+
+Required keys:
+
+- `FIREBASE_PROJECT_NUMBER`
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_STORAGE_BUCKET`
+- `FIREBASE_ANDROID_MOBILESDK_APP_ID`
+- `FIREBASE_ANDROID_API_KEY`
+- `FIREBASE_ANDROID_PACKAGE_NAME`
+
+Generate manually (optional):
+
+```sh
+npm run generate:google-services
+```
+
+This also runs automatically before `npm run android` and during Android `preBuild`.
+
 ### iOS
 
 For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).

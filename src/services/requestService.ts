@@ -80,7 +80,13 @@ export const getStudentRequests = async (
       map.set(doc.id, { id: doc.id, ...doc.data() } as StudentInstructorRequest);
     }
   }
-  return Array.from(map.values());
+  const requests = Array.from(map.values());
+  console.log('[Firebase][READ][RequestService] getStudentRequests', {
+    studentId,
+    count: requests.length,
+    data: requests,
+  });
+  return requests;
 };
 
 /**
@@ -107,7 +113,13 @@ export const getInstructorRequests = async (
       map.set(doc.id, { id: doc.id, ...doc.data() } as StudentInstructorRequest);
     }
   }
-  return Array.from(map.values());
+  const requests = Array.from(map.values());
+  console.log('[Firebase][READ][RequestService] getInstructorRequests', {
+    instructorId,
+    count: requests.length,
+    data: requests,
+  });
+  return requests;
 };
 
 /**
@@ -117,10 +129,43 @@ export const onStudentRequests = (
   studentId: string,
   callback: (requests: StudentInstructorRequest[]) => void,
 ): (() => void) => {
-  return onSnapshot(
-    query(collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS), where('studentId', '==', studentId)),
-    (snapshot) => callback(fromQuerySnapshot<StudentInstructorRequest>(snapshot)),
-  );
+  const emitMerged = async () => {
+    const requests = await getStudentRequests(studentId);
+    callback(requests);
+  };
+
+  const unsubscribers = [
+    onSnapshot(
+      query(collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS), where('studentId', '==', studentId)),
+      () => {
+        emitMerged().catch(error => {
+          console.error('[Firebase][RequestService] Error output: onStudentRequests(camel)', { studentId, error });
+        });
+      },
+      (error) => {
+        console.error('[Firebase][RequestService] Error output: onStudentRequests(camel snapshot)', { studentId, error });
+      },
+    ),
+    onSnapshot(
+      query(collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS), where('student_id', '==', studentId)),
+      () => {
+        emitMerged().catch(error => {
+          console.error('[Firebase][RequestService] Error output: onStudentRequests(snake)', { studentId, error });
+        });
+      },
+      (error) => {
+        console.error('[Firebase][RequestService] Error output: onStudentRequests(snake snapshot)', { studentId, error });
+      },
+    ),
+  ];
+
+  emitMerged().catch(error => {
+    console.error('[Firebase][RequestService] Error output: onStudentRequests(initial)', { studentId, error });
+  });
+
+  return () => {
+    unsubscribers.forEach(unsub => unsub());
+  };
 };
 
 /**
@@ -130,8 +175,41 @@ export const onInstructorRequests = (
   instructorId: string,
   callback: (requests: StudentInstructorRequest[]) => void,
 ): (() => void) => {
-  return onSnapshot(
-    query(collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS), where('instructorId', '==', instructorId)),
-    (snapshot) => callback(fromQuerySnapshot<StudentInstructorRequest>(snapshot)),
-  );
+  const emitMerged = async () => {
+    const requests = await getInstructorRequests(instructorId);
+    callback(requests);
+  };
+
+  const unsubscribers = [
+    onSnapshot(
+      query(collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS), where('instructorId', '==', instructorId)),
+      () => {
+        emitMerged().catch(error => {
+          console.error('[Firebase][RequestService] Error output: onInstructorRequests(camel)', { instructorId, error });
+        });
+      },
+      (error) => {
+        console.error('[Firebase][RequestService] Error output: onInstructorRequests(camel snapshot)', { instructorId, error });
+      },
+    ),
+    onSnapshot(
+      query(collection(db, Collections.STUDENT_INSTRUCTOR_REQUESTS), where('instructor_id', '==', instructorId)),
+      () => {
+        emitMerged().catch(error => {
+          console.error('[Firebase][RequestService] Error output: onInstructorRequests(snake)', { instructorId, error });
+        });
+      },
+      (error) => {
+        console.error('[Firebase][RequestService] Error output: onInstructorRequests(snake snapshot)', { instructorId, error });
+      },
+    ),
+  ];
+
+  emitMerged().catch(error => {
+    console.error('[Firebase][RequestService] Error output: onInstructorRequests(initial)', { instructorId, error });
+  });
+
+  return () => {
+    unsubscribers.forEach(unsub => unsub());
+  };
 };

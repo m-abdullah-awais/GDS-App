@@ -4,7 +4,7 @@
  * Firestore CRUD for the `users` collection.
  */
 
-import { db } from '../config/firebase';
+import { db, firebaseAuth } from '../config/firebase';
 import { firebaseStorage } from '../config/firebase';
 import { Collections, fromSnapshot, fromQuerySnapshot, serverTimestamp } from '../utils/mappers';
 import { collection, doc, getDoc, query, where, getDocs, updateDoc, onSnapshot } from '@react-native-firebase/firestore';
@@ -45,14 +45,58 @@ export const updateUserProfile = async (
  * Query active instructors (for student discovery).
  */
 export const getActiveInstructors = async (): Promise<UserDoc[]> => {
-  const q = query(
-    collection(db, Collections.USERS),
-    where('role', '==', 'instructor'),
-    where('status', '==', 'active'),
-    where('approved', '==', true)
-  );
-  const snapshot = await getDocs(q);
-  return fromQuerySnapshot<UserDoc>(snapshot);
+  const currentUser = firebaseAuth.currentUser;
+  if (!currentUser) {
+    throw new Error('[Firebase][UserService] User not authenticated before getActiveInstructors');
+  }
+
+  console.log('[Firebase][UserService] Data request triggered: getActiveInstructors', {
+    currentUserId: currentUser.uid,
+  });
+
+  try {
+    const [isActiveQuery, approvedQuery, statusApprovedQuery] = await Promise.all([
+      getDocs(
+        query(
+          collection(db, Collections.USERS),
+          where('role', '==', 'instructor'),
+          where('isActive', '==', true),
+        ),
+      ),
+      getDocs(
+        query(
+          collection(db, Collections.USERS),
+          where('role', '==', 'instructor'),
+          where('approved', '==', true),
+        ),
+      ),
+      getDocs(
+        query(
+          collection(db, Collections.USERS),
+          where('role', '==', 'instructor'),
+          where('status', '==', 'active'),
+          where('approved', '==', true),
+        ),
+      ),
+    ]);
+
+    const merged = new Map<string, UserDoc>();
+    for (const snapshot of [isActiveQuery, approvedQuery, statusApprovedQuery]) {
+      for (const userDoc of fromQuerySnapshot<UserDoc>(snapshot)) {
+        merged.set(userDoc.id, userDoc);
+      }
+    }
+
+    const instructors = Array.from(merged.values());
+    console.log('[Firebase][UserService] Data received: getActiveInstructors', {
+      count: instructors.length,
+    });
+
+    return instructors;
+  } catch (error) {
+    console.error('[Firebase][UserService] Error output: getActiveInstructors', error);
+    throw error;
+  }
 };
 
 /**

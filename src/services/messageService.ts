@@ -68,7 +68,13 @@ export const getMessagesForUser = async (userId: string): Promise<Message[]> => 
     }
   }
 
-  return sortByCreatedAtDesc(Array.from(map.values()));
+  const messages = sortByCreatedAtDesc(Array.from(map.values()));
+  console.log('[Firebase][READ][MessageService] getMessagesForUser', {
+    userId,
+    count: messages.length,
+    data: messages,
+  });
+  return messages;
 };
 
 /**
@@ -97,7 +103,14 @@ export const getConversation = async (
     ...fromQuerySnapshot<Message>(received),
   ];
 
-  return sortByCreatedAtAsc(all);
+  const messages = sortByCreatedAtAsc(all);
+  console.log('[Firebase][READ][MessageService] getConversation', {
+    userId1,
+    userId2,
+    count: messages.length,
+    data: messages,
+  });
+  return messages;
 };
 
 /**

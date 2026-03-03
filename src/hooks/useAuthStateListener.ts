@@ -74,6 +74,11 @@ const useAuthStateListener = () => {
       async (firebaseUser) => {
         try {
           if (firebaseUser) {
+            console.log('[Firebase] User authenticated', {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+            });
+
             // Map Firebase user to serializable shape
             const authUser: AuthUser = {
               uid: firebaseUser.uid,
@@ -90,8 +95,7 @@ const useAuthStateListener = () => {
             profileUnsubRef.current = onSnapshot(
               doc(collection(db, 'users'), firebaseUser.uid),
               (snapshot) => {
-                  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-                  if ((snapshot as any).exists) {
+                  if (snapshot.exists()) {
                     const data = snapshot.data() || {};
                     const serializableData = toSerializable(data) as Record<string, unknown>;
                     const profileData: UserProfile = {
@@ -102,6 +106,10 @@ const useAuthStateListener = () => {
                       role: 'student',
                       ...serializableData,
                     };
+                    console.log('[Firebase] Data received: user profile', {
+                      uid: firebaseUser.uid,
+                      role: profileData.role,
+                    });
                     dispatch(setProfile(profileData));
                   } else {
                     // Auth user exists but no Firestore profile → sign out
@@ -113,17 +121,18 @@ const useAuthStateListener = () => {
                   }
                 },
                 (error) => {
-                  console.error('[Auth] Profile snapshot error:', error);
+                  console.error('[Firebase] Error output: profile snapshot', error);
                   dispatch(setError('Failed to load user profile'));
                 },
               );
           } else {
             // No authenticated user
+            console.log('[Firebase] User authenticated: none');
             cleanupProfileSub();
             dispatch(clearAuth());
           }
         } catch (error: any) {
-          console.error('[Auth] Auth state error:', error);
+          console.error('[Firebase] Error output: auth state', error);
           dispatch(setError(error.message ?? 'Authentication error'));
         } finally {
           dispatch(setInitialized());

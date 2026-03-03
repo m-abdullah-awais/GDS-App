@@ -47,6 +47,7 @@ import type { RootState } from '../index';
 export const loadStudentData = (studentId: string) => async (dispatch: Dispatch) => {
   try {
     dispatch(setLoading('searchLoading', true));
+    console.log('[Firebase][StudentThunk] Data request triggered: loadStudentData', { studentId });
 
     const readOrFallback = async <T>(reader: () => Promise<T>, fallback: T): Promise<T> => {
       try {
@@ -67,6 +68,14 @@ export const loadStudentData = (studentId: string) => async (dispatch: Dispatch)
       readOrFallback(() => assignmentService.getStudentAssignments(studentId), []),
       readOrFallback(() => bookingService.getStudentBookings(studentId), []),
     ]);
+
+    console.log('[Firebase][StudentThunk] Data received: loadStudentData', {
+      studentId,
+      instructors: activeInstructors.length,
+      requests: studentRequests.length,
+      assignments: studentAssignments.length,
+      bookings: studentBookings.length,
+    });
 
     // Map instructors to view model
     const instructorVMs = activeInstructors.map(u => mapUserToStudentInstructor(u));
@@ -112,7 +121,7 @@ export const loadStudentData = (studentId: string) => async (dispatch: Dispatch)
       }
     }
   } catch (error) {
-    console.error('Failed to load student data:', error);
+    console.error('[Firebase][StudentThunk] Error output: loadStudentData', { studentId, error });
   } finally {
     dispatch(setLoading('searchLoading', false));
   }

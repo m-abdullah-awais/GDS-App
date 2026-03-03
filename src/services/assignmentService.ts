@@ -27,7 +27,13 @@ export const getStudentAssignments = async (studentId: string): Promise<Assignme
       map.set(doc.id, { id: doc.id, ...doc.data() } as Assignment);
     }
   }
-  return Array.from(map.values());
+  const assignments = Array.from(map.values());
+  console.log('[Firebase][READ][AssignmentService] getStudentAssignments', {
+    studentId,
+    count: assignments.length,
+    data: assignments,
+  });
+  return assignments;
 };
 
 /**
@@ -50,7 +56,13 @@ export const getInstructorAssignments = async (instructorId: string): Promise<As
       map.set(doc.id, { id: doc.id, ...doc.data() } as Assignment);
     }
   }
-  return Array.from(map.values());
+  const assignments = Array.from(map.values());
+  console.log('[Firebase][READ][AssignmentService] getInstructorAssignments', {
+    instructorId,
+    count: assignments.length,
+    data: assignments,
+  });
+  return assignments;
 };
 
 /**
@@ -78,9 +90,21 @@ export const getAssignment = async (
 
     if (snapshot2.empty) return null;
     const doc = snapshot2.docs[0];
-    return { id: doc.id, ...doc.data() } as Assignment;
+    const assignment = { id: doc.id, ...doc.data() } as Assignment;
+    console.log('[Firebase][READ][AssignmentService] getAssignment(legacy)', {
+      studentId,
+      instructorId,
+      data: assignment,
+    });
+    return assignment;
   }
 
   const doc = snapshot.docs[0];
-  return { id: doc.id, ...doc.data() } as Assignment;
+  const assignment = { id: doc.id, ...doc.data() } as Assignment;
+  console.log('[Firebase][READ][AssignmentService] getAssignment', {
+    studentId,
+    instructorId,
+    data: assignment,
+  });
+  return assignment;
 };

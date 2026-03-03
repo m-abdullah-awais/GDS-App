@@ -109,5 +109,10 @@ export const getCurrentUser = () => {
 export const getUserProfile = async (uid: string) => {
   const snapshot = await getDoc(doc(collection(db, 'users'), uid));
   if (!snapshot.exists) return null;
-  return { id: snapshot.id, ...snapshot.data() };
+  const profile = { id: snapshot.id, ...snapshot.data() };
+  console.log('[Firebase][READ][AuthService] getUserProfile', {
+    uid,
+    data: profile,
+  });
+  return profile;
 };

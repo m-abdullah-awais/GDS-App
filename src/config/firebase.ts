@@ -28,6 +28,20 @@ export const db: FirebaseFirestoreTypes.Module = getFirestore();
 export const cloudFunctions: FirebaseFunctionsTypes.Module = getFunctions();
 export const firebaseStorage: FirebaseStorageTypes.Module = getStorage();
 
+const firebaseOptions = firebaseApp.options || {};
+console.log('[Firebase] Initialized', {
+  projectId: firebaseOptions.projectId,
+  appId: firebaseOptions.appId,
+  storageBucket: firebaseOptions.storageBucket,
+});
+
+if (
+  !firebaseOptions.appId ||
+  String(firebaseOptions.appId).startsWith('YOUR_')
+) {
+  console.warn('[Firebase] Native config issue: appId appears to be a placeholder. Verify google-services.json / GoogleService-Info.plist.');
+}
+
 /**
  * Get a callable Cloud Function reference bound to europe-west2.
  * Usage: const result = await callable('createCheckoutSession')({ packageId, instructorId });

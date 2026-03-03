@@ -141,12 +141,35 @@ export const updateBookingRequestStatus = async (
 export const getStudentBookings = async (
   studentId: string,
 ): Promise<Booking[]> => {
-  const q = query(
-    collection(db, Collections.BOOKINGS),
-    where('studentId', '==', studentId)
-  );
-  const snap = await getDocs(q);
-  return sortBookingsByDateDesc(fromQuerySnapshot<Booking>(snap));
+  try {
+    const [camelSnap, snakeSnap] = await Promise.all([
+      getDocs(
+        query(
+          collection(db, Collections.BOOKINGS),
+          where('studentId', '==', studentId),
+        ),
+      ),
+      getDocs(
+        query(
+          collection(db, Collections.BOOKINGS),
+          where('student_id', '==', studentId),
+        ),
+      ),
+    ]);
+
+    const merged = new Map<string, Booking>();
+    for (const item of [
+      ...fromQuerySnapshot<Booking>(camelSnap),
+      ...fromQuerySnapshot<Booking>(snakeSnap),
+    ]) {
+      merged.set(item.id, item);
+    }
+
+    return sortBookingsByDateDesc(Array.from(merged.values()));
+  } catch (error) {
+    console.error('[Firebase][BookingService] Error output: getStudentBookings', { studentId, error });
+    throw error;
+  }
 };
 
 /**
@@ -155,12 +178,35 @@ export const getStudentBookings = async (
 export const getInstructorBookings = async (
   instructorId: string,
 ): Promise<Booking[]> => {
-  const q = query(
-    collection(db, Collections.BOOKINGS),
-    where('instructorId', '==', instructorId)
-  );
-  const snap = await getDocs(q);
-  return sortBookingsByDateDesc(fromQuerySnapshot<Booking>(snap));
+  try {
+    const [camelSnap, snakeSnap] = await Promise.all([
+      getDocs(
+        query(
+          collection(db, Collections.BOOKINGS),
+          where('instructorId', '==', instructorId),
+        ),
+      ),
+      getDocs(
+        query(
+          collection(db, Collections.BOOKINGS),
+          where('instructor_id', '==', instructorId),
+        ),
+      ),
+    ]);
+
+    const merged = new Map<string, Booking>();
+    for (const item of [
+      ...fromQuerySnapshot<Booking>(camelSnap),
+      ...fromQuerySnapshot<Booking>(snakeSnap),
+    ]) {
+      merged.set(item.id, item);
+    }
+
+    return sortBookingsByDateDesc(Array.from(merged.values()));
+  } catch (error) {
+    console.error('[Firebase][BookingService] Error output: getInstructorBookings', { instructorId, error });
+    throw error;
+  }
 };
 
 /**
@@ -170,10 +216,43 @@ export const onStudentBookings = (
   studentId: string,
   callback: (bookings: Booking[]) => void,
 ): (() => void) => {
-  return onSnapshot(
-    query(collection(db, Collections.BOOKINGS), where('studentId', '==', studentId)),
-    (snap) => callback(sortBookingsByDateDesc(fromQuerySnapshot<Booking>(snap))),
-  );
+  const emitMerged = async () => {
+    const bookings = await getStudentBookings(studentId);
+    callback(bookings);
+  };
+
+  const unsubscribers = [
+    onSnapshot(
+      query(collection(db, Collections.BOOKINGS), where('studentId', '==', studentId)),
+      () => {
+        emitMerged().catch(error => {
+          console.error('[Firebase][BookingService] Error output: onStudentBookings(camel)', { studentId, error });
+        });
+      },
+      (error) => {
+        console.error('[Firebase][BookingService] Error output: onStudentBookings(camel snapshot)', { studentId, error });
+      },
+    ),
+    onSnapshot(
+      query(collection(db, Collections.BOOKINGS), where('student_id', '==', studentId)),
+      () => {
+        emitMerged().catch(error => {
+          console.error('[Firebase][BookingService] Error output: onStudentBookings(snake)', { studentId, error });
+        });
+      },
+      (error) => {
+        console.error('[Firebase][BookingService] Error output: onStudentBookings(snake snapshot)', { studentId, error });
+      },
+    ),
+  ];
+
+  emitMerged().catch(error => {
+    console.error('[Firebase][BookingService] Error output: onStudentBookings(initial)', { studentId, error });
+  });
+
+  return () => {
+    unsubscribers.forEach(unsub => unsub());
+  };
 };
 
 /**
@@ -183,10 +262,43 @@ export const onInstructorBookings = (
   instructorId: string,
   callback: (bookings: Booking[]) => void,
 ): (() => void) => {
-  return onSnapshot(
-    query(collection(db, Collections.BOOKINGS), where('instructorId', '==', instructorId)),
-    (snap) => callback(sortBookingsByDateDesc(fromQuerySnapshot<Booking>(snap))),
-  );
+  const emitMerged = async () => {
+    const bookings = await getInstructorBookings(instructorId);
+    callback(bookings);
+  };
+
+  const unsubscribers = [
+    onSnapshot(
+      query(collection(db, Collections.BOOKINGS), where('instructorId', '==', instructorId)),
+      () => {
+        emitMerged().catch(error => {
+          console.error('[Firebase][BookingService] Error output: onInstructorBookings(camel)', { instructorId, error });
+        });
+      },
+      (error) => {
+        console.error('[Firebase][BookingService] Error output: onInstructorBookings(camel snapshot)', { instructorId, error });
+      },
+    ),
+    onSnapshot(
+      query(collection(db, Collections.BOOKINGS), where('instructor_id', '==', instructorId)),
+      () => {
+        emitMerged().catch(error => {
+          console.error('[Firebase][BookingService] Error output: onInstructorBookings(snake)', { instructorId, error });
+        });
+      },
+      (error) => {
+        console.error('[Firebase][BookingService] Error output: onInstructorBookings(snake snapshot)', { instructorId, error });
+      },
+    ),
+  ];
+
+  emitMerged().catch(error => {
+    console.error('[Firebase][BookingService] Error output: onInstructorBookings(initial)', { instructorId, error });
+  });
+
+  return () => {
+    unsubscribers.forEach(unsub => unsub());
+  };
 };
 
 /**

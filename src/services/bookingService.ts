@@ -24,6 +24,26 @@ const sortBookingsByDateDesc = (bookings: Booking[]): Booking[] => {
   });
 };
 
+const toMillis = (value: unknown): number => {
+  if (!value) return 0;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'string') {
+    const ms = new Date(value).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
+  }
+
+  const maybeTimestamp = value as { toDate?: () => Date };
+  if (typeof maybeTimestamp.toDate === 'function') {
+    return maybeTimestamp.toDate().getTime();
+  }
+
+  return 0;
+};
+
+const sortBookingRequestsByCreatedAtDesc = (requests: BookingRequest[]): BookingRequest[] => {
+  return [...requests].sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+};
+
 // ─── Booking Requests (student → instructor) ─────────────────────────────────
 
 /**
@@ -85,13 +105,35 @@ export const getStudentBookingRequests = async (
 export const getInstructorBookingRequests = async (
   instructorId: string,
 ): Promise<BookingRequest[]> => {
-  const q = query(
-    collection(db, Collections.BOOKING_REQUESTS),
-    where('instructorId', '==', instructorId),
-    orderBy('createdAt', 'desc')
-  );
-  const snap = await getDocs(q);
-  return fromQuerySnapshot<BookingRequest>(snap);
+  try {
+    const [camelSnap, snakeSnap] = await Promise.all([
+      getDocs(
+        query(
+          collection(db, Collections.BOOKING_REQUESTS),
+          where('instructorId', '==', instructorId),
+        ),
+      ),
+      getDocs(
+        query(
+          collection(db, Collections.BOOKING_REQUESTS),
+          where('instructor_id', '==', instructorId),
+        ),
+      ),
+    ]);
+
+    const merged = new Map<string, BookingRequest>();
+    for (const item of [
+      ...fromQuerySnapshot<BookingRequest>(camelSnap),
+      ...fromQuerySnapshot<BookingRequest>(snakeSnap),
+    ]) {
+      merged.set(item.id, item);
+    }
+
+    return sortBookingRequestsByCreatedAtDesc(Array.from(merged.values()));
+  } catch (error) {
+    console.error('[Firebase][BookingService] Error output: getInstructorBookingRequests', { instructorId, error });
+    throw error;
+  }
 };
 
 /**
@@ -101,14 +143,43 @@ export const onInstructorBookingRequests = (
   instructorId: string,
   callback: (requests: BookingRequest[]) => void,
 ): (() => void) => {
-  return onSnapshot(
-    query(
-      collection(db, Collections.BOOKING_REQUESTS),
-      where('instructorId', '==', instructorId),
-      orderBy('createdAt', 'desc')
+  const emitMerged = async () => {
+    const requests = await getInstructorBookingRequests(instructorId);
+    callback(requests);
+  };
+
+  const unsubscribers = [
+    onSnapshot(
+      query(collection(db, Collections.BOOKING_REQUESTS), where('instructorId', '==', instructorId)),
+      () => {
+        emitMerged().catch(error => {
+          console.error('[Firebase][BookingService] Error output: onInstructorBookingRequests(camel)', { instructorId, error });
+        });
+      },
+      (error) => {
+        console.error('[Firebase][BookingService] Error output: onInstructorBookingRequests(camel snapshot)', { instructorId, error });
+      },
     ),
-    (snap) => callback(fromQuerySnapshot<BookingRequest>(snap)),
-  );
+    onSnapshot(
+      query(collection(db, Collections.BOOKING_REQUESTS), where('instructor_id', '==', instructorId)),
+      () => {
+        emitMerged().catch(error => {
+          console.error('[Firebase][BookingService] Error output: onInstructorBookingRequests(snake)', { instructorId, error });
+        });
+      },
+      (error) => {
+        console.error('[Firebase][BookingService] Error output: onInstructorBookingRequests(snake snapshot)', { instructorId, error });
+      },
+    ),
+  ];
+
+  emitMerged().catch(error => {
+    console.error('[Firebase][BookingService] Error output: onInstructorBookingRequests(initial)', { instructorId, error });
+  });
+
+  return () => {
+    unsubscribers.forEach(unsub => unsub());
+  };
 };
 
 /**

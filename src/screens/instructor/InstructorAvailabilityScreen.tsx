@@ -6,7 +6,7 @@
  * Manual validation: no Sundays, 30-min gap enforcement, overlap check.
  */
 
-import React, { useMemo, useState, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -105,6 +105,99 @@ const formatTime = (mins: number): string => {
 
 const DATE_RANGE = generateDateRange(CALENDAR_DAYS);
 
+const DAY_NAME_TO_JS_DAY: Record<string, number> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
+
+const getCurrentWeekMonday = (): Date => {
+  const now = new Date();
+  const jsDay = now.getDay();
+  const daysFromMonday = (jsDay + 6) % 7; // Mon=0 ... Sun=6
+  const monday = new Date(now);
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(now.getDate() - daysFromMonday);
+  return monday;
+};
+
+const addDays = (base: Date, days: number): Date => {
+  const next = new Date(base);
+  next.setDate(base.getDate() + days);
+  return next;
+};
+
+const computeEndTime = (startTime: string, duration?: number, rowSpan?: number): string => {
+  const startMinutes = parseTime(startTime);
+  if (startMinutes === null) return startTime;
+
+  const durationMinutes = typeof duration === 'number' && Number.isFinite(duration)
+    ? Math.max(30, Math.round(duration * 60))
+    : typeof rowSpan === 'number' && Number.isFinite(rowSpan)
+      ? Math.max(30, Math.round(rowSpan * 30))
+      : 60;
+
+  return formatTime(startMinutes + durationMinutes);
+};
+
+const mapTimetableToAvailabilitySlots = (source: any): AvailabilitySlot[] => {
+  if (!source) return [];
+
+  if (Array.isArray(source.timeBlocks) && source.timeBlocks.length > 0) {
+    const weekMonday = getCurrentWeekMonday();
+    return source.timeBlocks
+      .filter((block: any) => block && block.startTime)
+      .map((block: any, index: number) => {
+        const dayIndex = typeof block.day === 'number' ? block.day : 0; // web format: 0=Mon ... 6=Sun
+        const weekOffset = typeof block.week === 'number' ? block.week : 0;
+        const targetDate = addDays(weekMonday, weekOffset * 7 + dayIndex);
+        const date = toDateString(targetDate);
+        return {
+          id: block.id ? String(block.id) : `TB-${index}`,
+          date,
+          startTime: block.startTime,
+          endTime: computeEndTime(block.startTime, block.duration, block.rowSpan),
+        } as AvailabilitySlot;
+      })
+      .sort((a: AvailabilitySlot, b: AvailabilitySlot) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        return a.startTime.localeCompare(b.startTime);
+      });
+  }
+
+  if (Array.isArray(source.slots) && source.slots.length > 0) {
+    return source.slots
+      .filter((slot: any) => slot && slot.available !== false)
+      .map((slot: any, index: number) => {
+        const dayText = typeof slot.day === 'string' ? slot.day : '';
+        const isDate = /^\d{4}-\d{2}-\d{2}$/.test(dayText);
+        let date = isDate ? dayText : DATE_RANGE[0];
+
+        if (!isDate && DAY_NAME_TO_JS_DAY[dayText] !== undefined) {
+          const base = new Date();
+          base.setHours(0, 0, 0, 0);
+          const current = base.getDay();
+          const target = DAY_NAME_TO_JS_DAY[dayText];
+          const diff = (target - current + 7) % 7;
+          date = toDateString(addDays(base, diff));
+        }
+
+        return {
+          id: slot.id ? String(slot.id) : `SLOT-${index}`,
+          date,
+          startTime: slot.startTime || '',
+          endTime: slot.endTime || '',
+        } as AvailabilitySlot;
+      });
+  }
+
+  return [];
+};
+
 const InstructorAvailabilityScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
   const { showToast } = useToast();
@@ -115,20 +208,12 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
   const authProfile = useSelector((state: any) => state.auth.profile);
   const timetable = useSelector((state: any) => state.instructor.timetable);
 
-  // Convert timetable slots to AvailabilitySlot view model
+  // Convert timetable data to AvailabilitySlot view model
   const initialSlots: AvailabilitySlot[] = useMemo(() => {
-    if (!timetable?.slots) return [];
-    return timetable.slots
-      .filter((s: any) => s.available !== false)
-      .map((s: any, idx: number) => ({
-        id: `SLOT-${idx}`,
-        date: s.day || '',
-        startTime: s.startTime || '',
-        endTime: s.endTime || '',
-      }));
+    return mapTimetableToAvailabilitySlots(timetable);
   }, [timetable]);
 
-  const [slots, setSlots] = useState<AvailabilitySlot[]>(initialSlots);
+  const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [selectedDate, setSelectedDate] = useState(DATE_RANGE[0]);
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -136,6 +221,33 @@ const InstructorAvailabilityScreen = ({ navigation }: Props) => {
   const [slotDrawerVisible, setSlotDrawerVisible] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null);
   const [pickerValue, setPickerValue] = useState<Date>(new Date());
+
+  useEffect(() => {
+    setSlots(initialSlots);
+  }, [initialSlots]);
+
+  useEffect(() => {
+    let active = true;
+
+    const hydrateFromService = async () => {
+      if (!authProfile?.uid || initialSlots.length > 0) return;
+      try {
+        const fresh = await timetableService.getInstructorTimetable(authProfile.uid);
+        if (!active || !fresh) return;
+        const mapped = mapTimetableToAvailabilitySlots(fresh);
+        if (mapped.length > 0) {
+          setSlots(mapped);
+        }
+      } catch {
+        // noop: UI already handles empty state gracefully
+      }
+    };
+
+    hydrateFromService();
+    return () => {
+      active = false;
+    };
+  }, [authProfile?.uid, initialSlots.length]);
 
   const selectedIsSunday = isSunday(selectedDate);
 

@@ -6,7 +6,7 @@
  * and 5-level assessment (Introduced → Independent).
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   StyleSheet,
@@ -21,11 +21,12 @@ import type { AppTheme } from '../../constants/theme';
 import type { DrawerScreenProps } from '@react-navigation/drawer';
 import type { InstructorTabsParamList } from '../../navigation/instructor/InstructorTabs';
 import type { InstructorLesson } from '../../types/instructor-views';
-import { mapBookingToInstructorLesson } from '../../utils/mappers';
+import { toDate } from '../../utils/mappers';
 import { useSelector } from 'react-redux';
-import { feedbackService } from '../../services';
+import * as feedbackService from '../../services/feedbackService';
 import FeedbackModal from '../../components/instructor/FeedbackModal';
 import { useToast } from '../../components/admin';
+import type { FeedbackPending } from '../../types';
 
 type Props = DrawerScreenProps<InstructorTabsParamList, 'Pending Reviews'>;
 
@@ -34,20 +35,73 @@ const InstructorPendingReviewsScreen = ({ navigation }: Props) => {
   const { showToast } = useToast();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const bookings = useSelector((state: any) => state.instructor.bookings) || [];
-  const lessonCompletions = useSelector((state: any) => state.instructor.lessonCompletions) || [];
+  const authProfile = useSelector((state: any) => state.auth.profile);
 
-  // Build lessons needing review: completed bookings without matching lessonCompletion
-  const completedBookingIds = new Set(lessonCompletions.map((lc: any) => lc.bookingId));
-  const pendingReviewLessons: InstructorLesson[] = useMemo(
-    () => bookings
-      .filter((b: any) => b.status === 'completed' && !completedBookingIds.has(b.id))
-      .map((b: any) => mapBookingToInstructorLesson(b)),
-    [bookings, lessonCompletions],
-  );
+  const [pendingItems, setPendingItems] = useState<FeedbackPending[]>([]);
 
-  const [lessons, setLessons] = useState<InstructorLesson[]>(pendingReviewLessons);
+  useEffect(() => {
+    if (!authProfile?.uid) {
+      setPendingItems([]);
+      return;
+    }
+
+    const unsubscribe = feedbackService.onInstructorPendingFeedback(
+      authProfile.uid,
+      (items) => {
+        setPendingItems(items);
+      },
+    );
+
+    return unsubscribe;
+  }, [authProfile?.uid]);
+
+  const formatDate = (value: unknown): string => {
+    const parsed = typeof value === 'string' ? new Date(value) : toDate(value as any);
+    if (!parsed || Number.isNaN(parsed.getTime())) {
+      return 'Date not available';
+    }
+    return parsed.toLocaleDateString('en-GB', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const fallbackInitials = (name: string) =>
+    name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() || '')
+      .join('') || 'ST';
+
+  const pendingReviewLessons: InstructorLesson[] = useMemo(() => {
+    return pendingItems.map((item: any) => {
+      const studentName = item.student_name || item.studentName || 'Student';
+      const lessonDateRaw = item.lesson_date || item.lessonDate;
+      const lessonTime = item.lesson_time || item.lessonTime || 'Time not available';
+      const durationValue = item.duration || item.totalHours || 1;
+      const duration = `${durationValue} hour${durationValue === 1 ? '' : 's'}`;
+
+      return {
+        id: item.id,
+        studentName,
+        studentAvatar: fallbackInitials(studentName),
+        date: formatDate(lessonDateRaw),
+        time: lessonTime,
+        duration,
+        status: 'pending_review',
+        reviewed: false,
+      } as InstructorLesson;
+    });
+  }, [pendingItems]);
+
   const [selectedLesson, setSelectedLesson] = useState<InstructorLesson | null>(null);
+  const selectedPendingItem = useMemo(
+    () => pendingItems.find((item) => item.id === selectedLesson?.id),
+    [pendingItems, selectedLesson?.id],
+  );
 
   const handleOpenReview = (lesson: InstructorLesson) => {
     setSelectedLesson(lesson);
@@ -55,16 +109,30 @@ const InstructorPendingReviewsScreen = ({ navigation }: Props) => {
 
   const handleFeedbackSubmit = async (data: { action: string; rating?: number; notes?: string; skills?: any[] }) => {
     try {
+      if (!selectedPendingItem) {
+        setSelectedLesson(null);
+        return;
+      }
+
       if (data.action === 'lesson_cancelled') {
-        setLessons((prev) => prev.filter((l) => l.id !== selectedLesson?.id));
+        await feedbackService.completePendingFeedback(selectedPendingItem.id, 'lesson_cancelled');
         showToast('warning', 'The student has been notified and hours refunded.');
-      } else if (selectedLesson) {
-        await feedbackService.submitLessonFeedback(selectedLesson.id, {
+      } else {
+        await feedbackService.submitFeedback({
+          studentId: (selectedPendingItem as any).studentId || (selectedPendingItem as any).student_id || '',
+          instructorId: (selectedPendingItem as any).instructorId || (selectedPendingItem as any).instructor_id || authProfile?.uid || '',
+          bookingId: selectedPendingItem.bookingId,
           rating: data.rating || 0,
           notes: data.notes || '',
           skills: data.skills || [],
+          studentName: (selectedPendingItem as any).student_name || selectedPendingItem.studentName || '',
+          instructorName: (selectedPendingItem as any).instructor_name || selectedPendingItem.instructorName || '',
+          lessonDate: (selectedPendingItem as any).lesson_date || selectedPendingItem.lessonDate || '',
+          lessonTime: (selectedPendingItem as any).lesson_time || selectedPendingItem.lessonTime || '',
+          duration: (selectedPendingItem as any).duration || (selectedPendingItem as any).totalHours || 0,
+          lessonTitle: (selectedPendingItem as any).lesson_title || `Lesson with ${(selectedPendingItem as any).student_name || selectedPendingItem.studentName || 'Student'}`,
+          feedbackPendingId: selectedPendingItem.id,
         });
-        setLessons((prev) => prev.filter((l) => l.id !== selectedLesson?.id));
         showToast('success', 'Feedback submitted successfully!');
       }
     } catch (e) {
@@ -101,7 +169,7 @@ const InstructorPendingReviewsScreen = ({ navigation }: Props) => {
   return (
     <ScreenContainer showHeader title="Pending Reviews" onBackPress={() => navigation.goBack()}>
       <FlatList
-        data={lessons}
+        data={pendingReviewLessons}
         renderItem={renderLesson}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}

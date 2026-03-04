@@ -97,7 +97,6 @@ export const getInstructorPendingFeedback = async (
     .collection(Collections.FEEDBACK_PENDING)
     .where('instructorId', '==', instructorId)
     .where('status', '==', 'pending')
-    .orderBy('createdAt', 'desc')
     .get();
   return fromQuerySnapshot<FeedbackPending>(snap);
 };
@@ -114,10 +113,27 @@ export const onInstructorPendingFeedback = (
     .collection(Collections.FEEDBACK_PENDING)
     .where('instructorId', '==', instructorId)
     .where('status', '==', 'pending')
-    .orderBy('createdAt', 'desc')
     .onSnapshot(
       (snap) => callback(fromQuerySnapshot<FeedbackPending>(snap)),
     );
+};
+
+/**
+ * Complete a pending feedback item without creating feedback
+ * (used when lesson is marked cancelled from feedback modal flow).
+ */
+export const completePendingFeedback = async (
+  feedbackPendingId: string,
+  action: 'feedback_submitted' | 'lesson_cancelled' = 'feedback_submitted',
+): Promise<void> => {
+  await db
+    .collection(Collections.FEEDBACK_PENDING)
+    .doc(feedbackPendingId)
+    .update({
+      status: 'completed',
+      action,
+      completedAt: serverTimestamp(),
+    });
 };
 
 // ─── Submit Feedback ─────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@
  * Package management screen (CRUD) for instructor packages.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -24,11 +24,30 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { AppTheme } from '../../constants/theme';
 import type { ApprovalStatus, InstructorPackageView } from '../../types/instructor-views';
 import { useSelector, useDispatch } from 'react-redux';
-import { createPackageThunk, updatePackageThunk, deactivatePackageThunk } from '../../store/instructor/thunks';
+import {
+  createPackageThunk,
+  updatePackageThunk,
+  deactivatePackageThunk,
+  fetchInstructorPackagesThunk,
+} from '../../store/instructor/thunks';
 import { useToast } from '../../components/admin';
 import { useConfirmation } from '../../components/common';
+import { toISOString } from '../../utils/mappers';
 
 const COMMISSION_PERCENTAGE = 15;
+
+const formatCreatedDate = (value: unknown): string => {
+  if (!value) {
+    return '-';
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  const iso = toISOString(value as any);
+  return iso || '-';
+};
 
 const InstructorPackageScreen = () => {
   const navigation = useNavigation();
@@ -75,6 +94,14 @@ const InstructorPackageScreen = () => {
   const [description, setDescription] = useState('');
   const [lessonCount, setLessonCount] = useState('');
   const [price, setPrice] = useState('');
+
+  useEffect(() => {
+    if (!authProfile?.uid) {
+      return;
+    }
+
+    dispatch(fetchInstructorPackagesThunk(authProfile.uid));
+  }, [authProfile?.uid, dispatch]);
 
   const stats = useMemo(() => {
     return {
@@ -234,7 +261,7 @@ const InstructorPackageScreen = () => {
                   <View style={styles.packageTopRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.packageTitle}>{pkg.title}</Text>
-                      <Text style={styles.packageDate}>Created {pkg.createdAt}</Text>
+                      <Text style={styles.packageDate}>Created {formatCreatedDate(pkg.createdAt)}</Text>
                     </View>
                     <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
                       <Text style={[styles.statusText, { color: status.text }]}>{status.label}</Text>

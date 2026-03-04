@@ -85,6 +85,41 @@ export const onPendingFeedback = (
     );
 };
 
+/**
+ * Get pending feedback items for an instructor.
+ * Matches web InstructorDashboard.tsx query:
+ *   where('instructorId', '==', instructorId) + where('status', '==', 'pending')
+ */
+export const getInstructorPendingFeedback = async (
+  instructorId: string,
+): Promise<FeedbackPending[]> => {
+  const snap = await db
+    .collection(Collections.FEEDBACK_PENDING)
+    .where('instructorId', '==', instructorId)
+    .where('status', '==', 'pending')
+    .orderBy('createdAt', 'desc')
+    .get();
+  return fromQuerySnapshot<FeedbackPending>(snap);
+};
+
+/**
+ * Subscribe to pending feedback for an instructor.
+ * Matches web InstructorDashboard.tsx real-time query.
+ */
+export const onInstructorPendingFeedback = (
+  instructorId: string,
+  callback: (items: FeedbackPending[]) => void,
+): (() => void) => {
+  return db
+    .collection(Collections.FEEDBACK_PENDING)
+    .where('instructorId', '==', instructorId)
+    .where('status', '==', 'pending')
+    .orderBy('createdAt', 'desc')
+    .onSnapshot(
+      (snap) => callback(fromQuerySnapshot<FeedbackPending>(snap)),
+    );
+};
+
 // ─── Submit Feedback ─────────────────────────────────────────────────────────
 
 /**

@@ -10,6 +10,7 @@ import InstructorStudentSearchScreen from "../../screens/instructor/InstructorSt
 import InstructorMessagesScreen from "../../screens/instructor/InstructorMessagesScreen";
 import InstructorProfileScreen from "../../screens/instructor/InstructorProfileScreen";
 import InstructorPackageScreen from "../../screens/instructor/InstructorPackageScreen";
+import InstructorAreasScreen from "../../screens/instructor/InstructorAreasScreen";
 import { useTheme } from "../../theme";
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AppTopHeader from '../../components/AppTopHeader';
@@ -24,6 +25,7 @@ export type InstructorTabsParamList = {
     Dashboard: undefined;
     Schedule: undefined;
     Availability: undefined;
+    'Areas Covered': undefined;
     Packages: undefined;
     Earnings: undefined;
     Requests: undefined;
@@ -114,6 +116,16 @@ const InstructorTabs = () => {
                     headerShown: false,
                     drawerIcon: ({ color, size }) => (
                         <Ionicons name="time-outline" size={size} color={color} style={{ marginRight: 6 }} />
+                    ),
+                }}
+            />
+            <Drawer.Screen
+                name="Areas Covered"
+                component={InstructorAreasScreen as React.ComponentType<any>}
+                options={{
+                    headerShown: false,
+                    drawerIcon: ({ color, size }) => (
+                        <Ionicons name="location-outline" size={size} color={color} style={{ marginRight: 6 }} />
                     ),
                 }}
             />

@@ -21,8 +21,8 @@ export interface Package {
   commission_amount?: number;
   finalPrice?: number;
   status: PackageStatus;
-  approvedAt?: FirebaseFirestoreTypes.Timestamp;
-  updatedAt?: FirebaseFirestoreTypes.Timestamp;
+  approvedAt?: string | FirebaseFirestoreTypes.Timestamp;
+  updatedAt?: string | FirebaseFirestoreTypes.Timestamp;
 }
 
 /** Instructor-submitted pending package — `pendingPackages` collection. */
@@ -56,6 +56,6 @@ export interface AvailablePackage {
   commission_amount?: number;
   status: 'approved' | 'pending';
   available?: boolean;
-  approvedAt?: FirebaseFirestoreTypes.Timestamp;
-  updatedAt?: FirebaseFirestoreTypes.Timestamp;
+  approvedAt?: string | FirebaseFirestoreTypes.Timestamp;
+  updatedAt?: string | FirebaseFirestoreTypes.Timestamp;
 }

@@ -12,6 +12,7 @@ import {
   fromQuerySnapshot,
   fromSnapshot,
   serverTimestamp,
+  toISOString,
   withDualIds,
 } from '../utils/mappers';
 import type { Package, PendingPackage, AvailablePackage } from '../types';
@@ -48,6 +49,26 @@ const toMillis = (value: any): number => {
   return 0;
 };
 
+const toIsoOrKeep = <T>(value: T): T | string => {
+  if (!value) {return value;}
+  const iso = toISOString(value as any);
+  return iso || value;
+};
+
+const normalizeAvailablePackage = (pkg: AvailablePackage): AvailablePackage => ({
+  ...pkg,
+  approvedAt: toIsoOrKeep(pkg.approvedAt) as any,
+  updatedAt: toIsoOrKeep(pkg.updatedAt) as any,
+  createdAt: toIsoOrKeep((pkg as any).createdAt) as any,
+});
+
+const normalizePendingPackage = (pkg: PendingPackage): PendingPackage => ({
+  ...pkg,
+  created_at: toIsoOrKeep(pkg.created_at as any) as any,
+  createdAt: toIsoOrKeep((pkg as any).createdAt) as any,
+  updatedAt: toIsoOrKeep((pkg as any).updatedAt) as any,
+});
+
 // ─── Available Packages (created by instructor) ─────────────────────────────
 
 /**
@@ -78,6 +99,7 @@ export const getInstructorAvailablePackages = async (
       ...fromQuerySnapshot<AvailablePackage>(instructorIdSnap),
       ...fromQuerySnapshot<AvailablePackage>(instructorSnakeSnap),
     ])
+      .map(normalizeAvailablePackage)
       .filter(pkg => {
         const isApproved = pkg.status === 'approved';
         const isAvailable = pkg.available === true;
@@ -257,7 +279,9 @@ export const getPendingPackages = async (): Promise<PendingPackage[]> => {
     .collection(Collections.PENDING_PACKAGES)
     .where('status', '==', 'pending')
     .get();
-  return fromQuerySnapshot<PendingPackage>(snap).sort(
+  return fromQuerySnapshot<PendingPackage>(snap)
+    .map(normalizePendingPackage)
+    .sort(
     (a, b) => toMillis((b as any).createdAt) - toMillis((a as any).createdAt),
   );
 };
@@ -282,7 +306,9 @@ export const getInstructorPendingPackages = async (
   return dedupeById<PendingPackage>([
     ...fromQuerySnapshot<PendingPackage>(camelSnap),
     ...fromQuerySnapshot<PendingPackage>(snakeSnap),
-  ]).sort((a, b) => toMillis((b as any).createdAt) - toMillis((a as any).createdAt));
+  ])
+    .map(normalizePendingPackage)
+    .sort((a, b) => toMillis((b as any).createdAt) - toMillis((a as any).createdAt));
 };
 
 /**

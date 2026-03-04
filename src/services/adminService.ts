@@ -50,16 +50,16 @@ export const approveInstructor = async (instructorId: string): Promise<void> => 
   await db.collection(Collections.USERS).doc(instructorId).update({
     status: 'active',
     approved: true,
-    // Capability flags (matches web AdminInstructorManagement)
+    // Capability flags (matches web firebaseHelpers.ts approveInstructor)
     canCreatePackages: true,
     canAcceptBookings: true,
     canViewStudents: true,
-    canSendMessages: true,
+    canMessageStudents: true,
     canViewEarnings: true,
-    canViewTimetable: true,
-    canViewFeedback: true,
+    canManageSchedule: true,
+    canGiveFeedback: true,
     canEditProfile: true,
-    canViewDashboard: true,
+    canAccessDashboard: true,
     isFullyRegistered: true,
     profileComplete: true,
     profile_completed: true,

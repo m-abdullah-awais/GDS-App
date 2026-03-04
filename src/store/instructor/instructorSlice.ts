@@ -17,6 +17,27 @@ import type {
   Package,
 } from '../../types';
 
+const normalizeTimestampLike = (value: unknown): unknown => {
+  if (!value || typeof value === 'string' || typeof value === 'number' || value instanceof Date) {
+    return value;
+  }
+
+  const maybeTimestamp = value as { toDate?: () => Date };
+  if (typeof maybeTimestamp.toDate === 'function') {
+    return maybeTimestamp.toDate().toISOString();
+  }
+
+  return value;
+};
+
+const sanitizePackageForStore = <T extends Record<string, unknown>>(pkg: T): T => ({
+  ...pkg,
+  approvedAt: normalizeTimestampLike(pkg.approvedAt),
+  updatedAt: normalizeTimestampLike(pkg.updatedAt),
+  createdAt: normalizeTimestampLike(pkg.createdAt),
+  created_at: normalizeTimestampLike(pkg.created_at),
+}) as T;
+
 // ─── State Shape ──────────────────────────────────────────────────────────────
 
 export interface InstructorState {
@@ -66,10 +87,10 @@ const instructorSlice = createSlice({
       state.bookings = action.payload;
     },
     setPendingPackages(state, action: PayloadAction<PendingPackage[]>) {
-      state.pendingPackages = action.payload;
+      state.pendingPackages = action.payload.map(pkg => sanitizePackageForStore(pkg));
     },
     setPackages(state, action: PayloadAction<Package[]>) {
-      state.packages = action.payload;
+      state.packages = action.payload.map(pkg => sanitizePackageForStore(pkg));
     },
     setLessonCompletions(state, action: PayloadAction<LessonCompletion[]>) {
       state.lessonCompletions = action.payload;
@@ -82,6 +103,8 @@ const instructorSlice = createSlice({
     },
     setInstructorLoading(state, action: PayloadAction<boolean>) {
       state.loading = action.payload;
+      state.packages = state.packages.map(pkg => sanitizePackageForStore(pkg));
+      state.pendingPackages = state.pendingPackages.map(pkg => sanitizePackageForStore(pkg));
     },
     setInstructorError(state, action: PayloadAction<string | null>) {
       state.error = action.payload;

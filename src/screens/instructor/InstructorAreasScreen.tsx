@@ -1,16 +1,21 @@
 /**
  * InstructorAreasScreen
  * ======================
- * Configure service areas and postcode selections.
+ * Web-parity area configuration for instructor:
+ * - full city/postcode catalog
+ * - active-area gating from systemSettings/areaSettings
+ * - postcode search + select all/clear all
+ * - save to users.postcodesCovered
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  FlatList,
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import ScreenContainer from '../../components/ScreenContainer';
@@ -20,344 +25,404 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { AppTheme } from '../../constants/theme';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { InstructorStackParamList } from '../../navigation/instructor/InstructorStack';
-import { areas as initialAreas, type Area, type Postcode } from '../../types/instructor-views';
 import { useConfirmation } from '../../components/common';
 import { useSelector } from 'react-redux';
-import { userService } from '../../services';
-
-// Reference areas data (would typically come from admin configuration)
-const REFERENCE_AREAS: Area[] = [
-  {
-    id: 'AREA-001', name: 'South West London',
-    postcodes: [
-      { id: 'PC-001', code: 'SW1', selected: false },
-      { id: 'PC-002', code: 'SW3', selected: false },
-      { id: 'PC-003', code: 'SW5', selected: false },
-      { id: 'PC-004', code: 'SW7', selected: false },
-      { id: 'PC-005', code: 'SW9', selected: false },
-      { id: 'PC-006', code: 'SW11', selected: false },
-      { id: 'PC-007', code: 'SW15', selected: false },
-    ],
-  },
-  {
-    id: 'AREA-002', name: 'Central London',
-    postcodes: [
-      { id: 'PC-008', code: 'W1', selected: false },
-      { id: 'PC-009', code: 'W2', selected: false },
-      { id: 'PC-010', code: 'WC1', selected: false },
-      { id: 'PC-011', code: 'WC2', selected: false },
-      { id: 'PC-012', code: 'EC1', selected: false },
-      { id: 'PC-013', code: 'EC2', selected: false },
-    ],
-  },
-  {
-    id: 'AREA-003', name: 'North London',
-    postcodes: [
-      { id: 'PC-014', code: 'N1', selected: false },
-      { id: 'PC-015', code: 'N7', selected: false },
-      { id: 'PC-016', code: 'N19', selected: false },
-      { id: 'PC-017', code: 'NW1', selected: false },
-      { id: 'PC-018', code: 'NW3', selected: false },
-      { id: 'PC-019', code: 'NW5', selected: false },
-    ],
-  },
-  {
-    id: 'AREA-004', name: 'East London',
-    postcodes: [
-      { id: 'PC-020', code: 'E1', selected: false },
-      { id: 'PC-021', code: 'E2', selected: false },
-      { id: 'PC-022', code: 'E3', selected: false },
-      { id: 'PC-023', code: 'E14', selected: false },
-      { id: 'PC-024', code: 'E15', selected: false },
-    ],
-  },
-  {
-    id: 'AREA-005', name: 'South East London',
-    postcodes: [
-      { id: 'PC-025', code: 'SE1', selected: false },
-      { id: 'PC-026', code: 'SE5', selected: false },
-      { id: 'PC-027', code: 'SE15', selected: false },
-      { id: 'PC-028', code: 'SE22', selected: false },
-    ],
-  },
-];
+import { getAreaSettings } from '../../services/adminService';
+import { getUserById, updateUserProfile } from '../../services/userService';
+import { CITY_POSTCODES } from '../../constants/cityPostcodes';
 
 type Props = NativeStackScreenProps<InstructorStackParamList, 'Areas'>;
+type CityName = keyof typeof CITY_POSTCODES;
+
+const ALL_CITIES = Object.keys(CITY_POSTCODES) as CityName[];
+
+const toActiveAreaMap = (input: unknown): Record<string, boolean> => {
+  if (Array.isArray(input)) {
+    return input.reduce<Record<string, boolean>>((acc, city) => {
+      if (typeof city === 'string') {
+        acc[city] = true;
+      }
+      return acc;
+    }, {});
+  }
+
+  if (input && typeof input === 'object') {
+    return Object.entries(input as Record<string, unknown>).reduce<Record<string, boolean>>((acc, [city, enabled]) => {
+      acc[city] = Boolean(enabled);
+      return acc;
+    }, {});
+  }
+
+  return {};
+};
+
+const normalizePostcodes = (values: unknown): string[] => {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  return values
+    .filter((value): value is string => typeof value === 'string')
+    .map((postcode) => postcode.trim().toUpperCase())
+    .filter(Boolean);
+};
 
 const InstructorAreasScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
-  const { notify } = useConfirmation();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const { notify } = useConfirmation();
   const authProfile = useSelector((state: any) => state.auth.profile);
 
-  // Mark user's existing areas as selected
-  const userAreas: string[] = authProfile?.areas || [];
-  const mergedAreas = REFERENCE_AREAS.map(a => ({
-    ...a,
-    postcodes: a.postcodes.map(p => ({
-      ...p,
-      selected: userAreas.includes(p.code) || userAreas.includes(a.name),
-    })),
-  }));
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCity, setSelectedCity] = useState<CityName>(ALL_CITIES[0]);
+  const [selectedPostcodes, setSelectedPostcodes] = useState<string[]>([]);
+  const [activeAreas, setActiveAreas] = useState<Record<string, boolean>>({});
 
-  const [areasData, setAreasData] = useState<Area[]>(mergedAreas);
-  const [expandedAreaId, setExpandedAreaId] = useState<string | null>(
-    REFERENCE_AREAS[0]?.id ?? null,
+  useEffect(() => {
+    const loadData = async () => {
+      if (!authProfile?.uid) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const [settings, userDoc] = await Promise.all([
+          getAreaSettings(),
+          getUserById(authProfile.uid),
+        ]);
+
+        setActiveAreas(toActiveAreaMap((settings as any)?.activeAreas));
+
+        const existingPostcodes = normalizePostcodes((userDoc as any)?.postcodesCovered);
+        if (existingPostcodes.length > 0) {
+          setSelectedPostcodes(existingPostcodes);
+
+          const matchingCity = ALL_CITIES.find((city) =>
+            existingPostcodes.some((postcode) => CITY_POSTCODES[city].includes(postcode)),
+          );
+
+          if (matchingCity) {
+            setSelectedCity(matchingCity);
+          }
+        }
+      } catch (_error) {
+        await notify({
+          title: 'Error',
+          message: 'Failed to load existing areas.',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [authProfile?.uid, notify]);
+
+  const availablePostcodes = CITY_POSTCODES[selectedCity] || [];
+  const filteredPostcodes = useMemo(
+    () => availablePostcodes.filter((postcode) => postcode.toLowerCase().includes(searchTerm.toLowerCase())),
+    [availablePostcodes, searchTerm],
   );
 
-  const togglePostcode = (areaId: string, postcodeId: string) => {
-    setAreasData((prev) =>
-      prev.map((area) =>
-        area.id === areaId
-          ? {
-              ...area,
-              postcodes: area.postcodes.map((pc) =>
-                pc.id === postcodeId ? { ...pc, selected: !pc.selected } : pc,
-              ),
-            }
-          : area,
-      ),
+  const isCurrentCityActive = Boolean(activeAreas[selectedCity]);
+
+  const handleCityChange = (city: CityName) => {
+    setSelectedCity(city);
+    setSelectedPostcodes([]);
+    setSearchTerm('');
+  };
+
+  const togglePostcode = (postcode: string) => {
+    setSelectedPostcodes((prev) =>
+      prev.includes(postcode)
+        ? prev.filter((code) => code !== postcode)
+        : [...prev, postcode],
     );
+  };
+
+  const selectAllPostcodes = () => {
+    setSelectedPostcodes(filteredPostcodes);
+  };
+
+  const clearAllPostcodes = () => {
+    setSelectedPostcodes([]);
   };
 
   const handleSave = async () => {
-    try {
-      const selectedPostcodes = areasData.flatMap(a =>
-        a.postcodes.filter(p => p.selected).map(p => p.code),
-      );
-      const selectedAreaNames = areasData
-        .filter(a => a.postcodes.some(p => p.selected))
-        .map(a => a.name);
-      if (authProfile?.uid) {
-        await userService.updateUserProfile(authProfile.uid, {
-          areas: selectedAreaNames,
-          postcodes: selectedPostcodes,
-        });
-      }
-      await notify({
-        title: 'Success',
-        message: 'Areas and postcodes saved successfully!',
-        variant: 'success',
-      });
-      navigation.goBack();
-    } catch (e) {
+    if (!authProfile?.uid) {
       await notify({
         title: 'Error',
-        message: 'Failed to save areas.',
-        variant: 'error',
+        message: 'User not authenticated.',
+        variant: 'destructive',
       });
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await updateUserProfile(authProfile.uid, {
+        postcodesCovered: selectedPostcodes,
+      } as any);
+
+      await notify({
+        title: 'Success',
+        message: 'Areas updated!',
+        variant: 'success',
+      });
+    } catch (_error) {
+      await notify({
+        title: 'Error',
+        message: 'Failed to update areas.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
-  const renderPostcode = (postcode: Postcode, areaId: string) => (
-    <Pressable
-      key={postcode.id}
-      style={[
-        styles.postcodeChip,
-        {
-          borderColor: postcode.selected
-            ? theme.colors.primary
-            : theme.colors.border,
-          backgroundColor: postcode.selected
-            ? theme.colors.primaryLight
-            : theme.colors.surface,
-        },
-      ]}
-      onPress={() => togglePostcode(areaId, postcode.id)}
-    >
-      <View
-        style={[
-          styles.checkbox,
-          {
-            borderColor: postcode.selected
-              ? theme.colors.primary
-              : theme.colors.neutral400,
-            backgroundColor: postcode.selected
-              ? theme.colors.primary
-              : 'transparent',
-          },
-        ]}
-      >
-        {postcode.selected && (
-          <Ionicons name="checkmark" size={14} color={theme.colors.textInverse} />
-        )}
-      </View>
-      <Text
-        style={[
-          styles.postcodeText,
-          {
-            color: postcode.selected
-              ? theme.colors.primary
-              : theme.colors.textPrimary,
-          },
-        ]}
-      >
-        {postcode.code}
-      </Text>
-    </Pressable>
-  );
-
-  const renderArea = ({ item }: { item: Area }) => {
-    const isExpanded = expandedAreaId === item.id;
-    const selectedCount = item.postcodes.filter((p) => p.selected).length;
-
+  if (loading) {
     return (
-      <View style={styles.areaCard}>
-        <Pressable
-          style={styles.areaHeader}
-          onPress={() => setExpandedAreaId(isExpanded ? null : item.id)}
-        >
-          <View style={styles.areaHeaderLeft}>
-            <Text style={styles.areaName}>{item.name}</Text>
-            {selectedCount > 0 && (
-              <View style={styles.countBadge}>
-                <Text style={styles.countBadgeText}>
-                  {selectedCount} selected
-                </Text>
-              </View>
-            )}
-          </View>
-          <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={theme.colors.textTertiary} />
-        </Pressable>
-
-        {isExpanded && (
-          <View style={styles.postcodesContainer}>
-            <View style={styles.postcodesGrid}>
-              {item.postcodes.map((pc) => renderPostcode(pc, item.id))}
-            </View>
-          </View>
-        )}
-      </View>
+      <ScreenContainer showHeader title="Configure Areas" onBackPress={() => navigation.goBack()}>
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Loading your areas...</Text>
+        </View>
+      </ScreenContainer>
     );
-  };
+  }
 
   return (
     <ScreenContainer showHeader title="Configure Areas" onBackPress={() => navigation.goBack()}>
-      <View style={styles.container}>
-        <FlatList
-          data={areasData}
-          renderItem={renderArea}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={
-            <Text style={styles.headerDescription}>
-              Select the areas and postcodes where you offer driving lessons.
-            </Text>
-          }
-          ListFooterComponent={<View style={{ height: 100 }} />}
-        />
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Select Your City</Text>
+          <View style={styles.cityList}>
+            {ALL_CITIES.map((city) => {
+              const isSelected = city === selectedCity;
+              const isActive = Boolean(activeAreas[city]);
 
-        <View style={styles.footer}>
+              return (
+                <Pressable
+                  key={city}
+                  disabled={!isActive}
+                  onPress={() => isActive && handleCityChange(city)}
+                  style={[
+                    styles.cityChip,
+                    isSelected && styles.cityChipSelected,
+                    !isActive && styles.cityChipDisabled,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.cityChipText,
+                      isSelected && styles.cityChipTextSelected,
+                      !isActive && styles.cityChipTextDisabled,
+                    ]}
+                  >
+                    {city}
+                  </Text>
+                  <Text style={styles.cityChipCount}>{CITY_POSTCODES[city].length}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.cardTitle}>Select Postcodes for {selectedCity}</Text>
+            <Text style={styles.counterText}>{selectedPostcodes.length} of {filteredPostcodes.length}</Text>
+          </View>
+
+          {!isCurrentCityActive && (
+            <View style={styles.noticeCard}>
+              <Ionicons name="time-outline" size={16} color={theme.colors.warning} />
+              <Text style={styles.noticeText}>This area is not active yet (Coming Soon).</Text>
+            </View>
+          )}
+
+          {isCurrentCityActive && (
+            <>
+              <View style={styles.searchWrap}>
+                <Ionicons name="search" size={18} color={theme.colors.textTertiary} />
+                <TextInput
+                  value={searchTerm}
+                  onChangeText={setSearchTerm}
+                  placeholder="Search postcodes..."
+                  placeholderTextColor={theme.colors.placeholder}
+                  style={styles.searchInput}
+                />
+              </View>
+
+              <View style={styles.bulkActions}>
+                <Button
+                  title="Select All"
+                  size="sm"
+                  variant="outline"
+                  onPress={selectAllPostcodes}
+                  disabled={filteredPostcodes.length === selectedPostcodes.length}
+                />
+                <Button
+                  title="Clear All"
+                  size="sm"
+                  variant="outline"
+                  onPress={clearAllPostcodes}
+                  disabled={selectedPostcodes.length === 0}
+                />
+              </View>
+            </>
+          )}
+
+          <View style={styles.postcodesGrid}>
+            {filteredPostcodes.map((postcode) => {
+              const isSelected = selectedPostcodes.includes(postcode);
+
+              return (
+                <Pressable
+                  key={postcode}
+                  disabled={!isCurrentCityActive}
+                  onPress={() => isCurrentCityActive && togglePostcode(postcode)}
+                  style={[
+                    styles.postcodeChip,
+                    isSelected && styles.postcodeChipSelected,
+                    !isCurrentCityActive && styles.postcodeChipDisabled,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.postcodeText,
+                      isSelected && styles.postcodeTextSelected,
+                      !isCurrentCityActive && styles.postcodeTextDisabled,
+                    ]}
+                  >
+                    {postcode}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {filteredPostcodes.length === 0 && (
+            <Text style={styles.emptyText}>No postcodes found for "{searchTerm}".</Text>
+          )}
+        </View>
+
+        {selectedPostcodes.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Current Coverage Summary</Text>
+            <Text style={styles.summaryText}>Selected City: {selectedCity}</Text>
+            <Text style={styles.summaryText}>Postcodes Covered: {selectedPostcodes.length}</Text>
+            <Text style={styles.summaryText}>
+              City Coverage: {Math.round((selectedPostcodes.length / Math.max(availablePostcodes.length, 1)) * 100)}%
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.footerPad}>
           <Button
-            title="Save Areas"
+            title={saving ? 'Saving...' : 'Save Areas Covered'}
             onPress={handleSave}
+            disabled={saving || selectedPostcodes.length === 0 || !isCurrentCityActive}
             variant="primary"
             size="lg"
             fullWidth
           />
         </View>
-      </View>
+      </ScrollView>
     </ScreenContainer>
   );
 };
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    listContent: {
-      padding: theme.spacing.md,
-    },
-    headerDescription: {
-      ...theme.typography.bodyMedium,
-      color: theme.colors.textSecondary,
-      marginBottom: theme.spacing.lg,
-    },
-    areaCard: {
+    container: { flex: 1 },
+    content: { padding: theme.spacing.md, gap: theme.spacing.md },
+    loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm },
+    loadingText: { ...theme.typography.bodyMedium, color: theme.colors.textSecondary },
+    card: {
       backgroundColor: theme.colors.surface,
-      borderRadius: theme.borderRadius.lg,
       borderWidth: 1,
       borderColor: theme.colors.border,
-      marginBottom: theme.spacing.sm,
-      overflow: 'hidden',
-      ...theme.shadows.sm,
-    },
-    areaHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      borderRadius: theme.borderRadius.lg,
       padding: theme.spacing.md,
+      ...theme.shadows.sm,
+      gap: theme.spacing.sm,
     },
-    areaHeaderLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flex: 1,
-      gap: theme.spacing.xs,
-    },
-    areaName: {
-      ...theme.typography.h4,
-      color: theme.colors.textPrimary,
-    },
-    countBadge: {
-      backgroundColor: theme.colors.primaryLight,
-      paddingHorizontal: theme.spacing.xs,
-      paddingVertical: 2,
-      borderRadius: theme.borderRadius.full,
-    },
-    countBadgeText: {
-      ...theme.typography.caption,
-      color: theme.colors.primary,
-    },
-    expandIcon: {
-      ...theme.typography.bodySmall,
-      color: theme.colors.textTertiary,
-    },
-    postcodesContainer: {
-      paddingHorizontal: theme.spacing.md,
-      paddingBottom: theme.spacing.md,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.divider,
-      paddingTop: theme.spacing.sm,
-    },
-    postcodesGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: theme.spacing.xs,
-    },
-    postcodeChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
+    cardTitle: { ...theme.typography.h4, color: theme.colors.textPrimary },
+    cityList: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs },
+    cityChip: {
       borderWidth: 1,
+      borderColor: theme.colors.border,
       borderRadius: theme.borderRadius.md,
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xs,
+      backgroundColor: theme.colors.surface,
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: theme.spacing.xs,
     },
-    checkbox: {
-      width: 20,
-      height: 20,
-      borderWidth: 2,
-      borderRadius: theme.borderRadius.sm,
+    cityChipSelected: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primaryLight,
+    },
+    cityChipDisabled: { opacity: 0.45 },
+    cityChipText: { ...theme.typography.bodySmall, color: theme.colors.textPrimary },
+    cityChipTextSelected: { color: theme.colors.primary, fontWeight: '700' },
+    cityChipTextDisabled: { color: theme.colors.textTertiary },
+    cityChipCount: { ...theme.typography.caption, color: theme.colors.textTertiary },
+    sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    counterText: { ...theme.typography.caption, color: theme.colors.textSecondary },
+    noticeCard: {
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
+      gap: theme.spacing.xs,
+      borderWidth: 1,
+      borderColor: theme.colors.warning,
+      borderRadius: theme.borderRadius.md,
+      padding: theme.spacing.sm,
+      backgroundColor: theme.colors.warningLight,
     },
-    checkmark: {
-      color: theme.colors.textInverse,
-      fontSize: 12,
-      fontWeight: '700',
+    noticeText: { ...theme.typography.bodySmall, color: theme.colors.warning },
+    searchWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.md,
+      paddingHorizontal: theme.spacing.sm,
+      backgroundColor: theme.colors.surfaceSecondary,
     },
-    postcodeText: {
-      ...theme.typography.buttonMedium,
+    searchInput: {
+      flex: 1,
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textPrimary,
+      paddingVertical: theme.spacing.sm,
+      marginLeft: theme.spacing.xs,
     },
-    footer: {
-      padding: theme.spacing.md,
-      paddingBottom: theme.spacing.xl,
-      backgroundColor: theme.colors.background,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.divider,
+    bulkActions: { flexDirection: 'row', gap: theme.spacing.sm },
+    postcodesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs },
+    postcodeChip: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.md,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      backgroundColor: theme.colors.surface,
     },
+    postcodeChipSelected: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary,
+    },
+    postcodeChipDisabled: { opacity: 0.5 },
+    postcodeText: { ...theme.typography.buttonMedium, color: theme.colors.textPrimary },
+    postcodeTextSelected: { color: theme.colors.textInverse },
+    postcodeTextDisabled: { color: theme.colors.textTertiary },
+    emptyText: { ...theme.typography.bodySmall, color: theme.colors.textTertiary, textAlign: 'center' },
+    summaryText: { ...theme.typography.bodyMedium, color: theme.colors.textSecondary },
+    footerPad: { paddingBottom: theme.spacing.xl },
   });
 
 export default InstructorAreasScreen;

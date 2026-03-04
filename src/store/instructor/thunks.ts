@@ -207,6 +207,44 @@ export const createPackageThunk = (data: {
 };
 
 /**
+ * Fetch instructor packages (available + pending).
+ * Uses per-query fallback so one denied collection doesn't hide all package data.
+ */
+export const fetchInstructorPackagesThunk = (
+  instructorId: string,
+) => async (dispatch: Dispatch) => {
+  try {
+    dispatch(setInstructorLoading(true));
+
+    const readOrFallback = async <T>(reader: () => Promise<T>, fallback: T): Promise<T> => {
+      try {
+        return await reader();
+      } catch (error: any) {
+        if (error?.code === 'firestore/permission-denied') {
+          console.warn('[Instructor] Firestore permission denied for one package query, using fallback data.');
+          return fallback;
+        }
+        throw error;
+      }
+    };
+
+    const [available, pending] = await Promise.all([
+      readOrFallback(() => packageService.getInstructorAvailablePackages(instructorId), []),
+      readOrFallback(() => packageService.getInstructorPendingPackages(instructorId), []),
+    ]);
+
+    dispatch(setPackages(available));
+    dispatch(setPendingPackages(pending));
+  } catch (error: any) {
+    console.error('Failed to fetch instructor packages:', error);
+    dispatch(setInstructorError(error.message || 'Failed to fetch packages'));
+    throw error;
+  } finally {
+    dispatch(setInstructorLoading(false));
+  }
+};
+
+/**
  * Update an existing package.
  */
 export const updatePackageThunk = (

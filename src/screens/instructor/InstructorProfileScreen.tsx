@@ -14,6 +14,7 @@
 
 import React, { useMemo, useState } from 'react';
 import {
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -87,6 +88,37 @@ const InstructorProfileScreen = () => {
   const studentRequests = useSelector((state: any) => state.instructor.studentRequests) || [];
   const instructorPayments = useSelector((state: any) => state.instructor.instructorPayments) || [];
   const bookings = useSelector((state: any) => state.instructor.bookings) || [];
+
+  const instructorProfile = useMemo(() => ({
+    badgeImageUrl:
+      authProfile?.badge_url ||
+      authProfile?.badgeImageUrl ||
+      authProfile?.badge_image_url ||
+      '',
+    licenceImageUrl:
+      authProfile?.driving_licence_url ||
+      authProfile?.driving_license_url ||
+      authProfile?.drivingLicenseUrl ||
+      authProfile?.license_url ||
+      authProfile?.licence_url ||
+      '',
+    insuranceBadge: !!(authProfile?.insurance_url || authProfile?.insuranceBadge),
+    drivingLicense: !!(
+      authProfile?.driving_licence_url ||
+      authProfile?.driving_license_url ||
+      authProfile?.drivingLicenseUrl ||
+      authProfile?.license_url ||
+      authProfile?.licence_url ||
+      authProfile?.drivingLicense
+    ),
+    approvalStatus: (
+      authProfile?.status === 'active' && authProfile?.approved
+        ? 'approved'
+        : authProfile?.status === 'rejected'
+          ? 'rejected'
+          : 'pending'
+    ) as 'approved' | 'pending' | 'rejected',
+  }), [authProfile]);
 
   const toProfileData = (): ProfileData => ({
     fullName: authProfile?.full_name || '',
@@ -395,6 +427,40 @@ const InstructorProfileScreen = () => {
               ]}>
                 {instructorProfile.drivingLicense ? 'Verified' : 'Not Uploaded'}
               </Text>
+            </View>
+          </View>
+
+          <View style={styles.docsRow}>
+            <View style={styles.docCard}>
+              <Text style={styles.docTitle}>Licence Image</Text>
+              {instructorProfile.licenceImageUrl ? (
+                <Image
+                  source={{ uri: instructorProfile.licenceImageUrl }}
+                  style={styles.docImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.docPlaceholder}>
+                  <Ionicons name="image-outline" size={18} color={theme.colors.textTertiary} />
+                  <Text style={styles.docPlaceholderText}>No licence image</Text>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.docCard}>
+              <Text style={styles.docTitle}>Badge Image</Text>
+              {instructorProfile.badgeImageUrl ? (
+                <Image
+                  source={{ uri: instructorProfile.badgeImageUrl }}
+                  style={styles.docImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.docPlaceholder}>
+                  <Ionicons name="image-outline" size={18} color={theme.colors.textTertiary} />
+                  <Text style={styles.docPlaceholderText}>No badge image</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -743,6 +809,47 @@ const createStyles = (theme: AppTheme) =>
     badgeStatus: {
       ...theme.typography.caption,
       fontWeight: '500',
+    },
+    docsRow: {
+      flexDirection: 'row',
+      gap: 10,
+      marginBottom: 12,
+    },
+    docCard: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.md,
+      padding: 10,
+      backgroundColor: theme.colors.surfaceSecondary,
+      gap: 8,
+    },
+    docTitle: {
+      ...theme.typography.caption,
+      color: theme.colors.textSecondary,
+      fontWeight: '700',
+    },
+    docImage: {
+      width: '100%',
+      height: 96,
+      borderRadius: theme.borderRadius.sm,
+      backgroundColor: theme.colors.surface,
+    },
+    docPlaceholder: {
+      width: '100%',
+      height: 96,
+      borderRadius: theme.borderRadius.sm,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: theme.colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      backgroundColor: theme.colors.surface,
+    },
+    docPlaceholderText: {
+      ...theme.typography.caption,
+      color: theme.colors.textTertiary,
     },
     approvalRow: {
       flexDirection: 'row',

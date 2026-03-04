@@ -17,9 +17,24 @@ import { AuthStackParamList } from '../../navigation/AuthStack'
 import { useTheme } from '../../theme'
 import Button from '../../components/Button'
 import { useConfirmation } from '../../components/common'
-import { signInWithEmail, sendPasswordResetEmail } from '../../services/authService'
+import { signInWithEmail, sendPasswordReset } from '../../services/authService'
 
 type LoginScreenProps = NativeStackScreenProps<AuthStackParamList, 'Login'>
+
+const DEV_LOGIN_CREDENTIALS = {
+  admin: {
+    email: 'admin2@gmail.com',
+    password: '12345678',
+  },
+  student: {
+    email: 'student4@yopmail.com',
+    password: '12345678',
+  },
+  instructor: {
+    email: 'testi12@yopmail.com',
+    password: '12345678',
+  },
+} as const
 
 const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const { theme } = useTheme()
@@ -33,6 +48,11 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
     const hasValidEmail = /\S+@\S+\.\S+/.test(email.trim())
     return hasValidEmail && password.trim().length >= 6
   }, [email, password])
+
+  const handleDevAutofill = (credential: { email: string; password: string }) => {
+    setEmail(credential.email)
+    setPassword(credential.password)
+  }
 
   const handleLogin = async () => {
     if (!isFormValid) {
@@ -60,7 +80,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
       } else if (code === 'auth/network-request-failed') {
         message = 'Network error. Please check your connection.'
       }
-      void notify({ title: 'Sign in failed', message, variant: 'error' })
+      void notify({ title: 'Sign in failed', message, variant: 'destructive' })
     } finally {
       setIsSubmitting(false)
     }
@@ -77,7 +97,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
       return
     }
     try {
-      await sendPasswordResetEmail(trimmedEmail)
+      await sendPasswordReset(trimmedEmail)
       void notify({
         title: 'Reset email sent',
         message: 'Check your inbox for a password reset link.',
@@ -87,7 +107,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
       void notify({
         title: 'Reset failed',
         message: 'Could not send password reset email. Please try again.',
-        variant: 'error',
+        variant: 'destructive',
       })
     }
   }
@@ -155,6 +175,42 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
                 />
               </View>
             </View>
+
+            {__DEV__ ? (
+              <View style={styles.devCard}>
+                <View style={styles.devHeaderRow}>
+                  <Ionicons name="flask-outline" size={16} color={theme.colors.warning} />
+                  <Text style={styles.devTitle}>Development Autofill</Text>
+                </View>
+                <Text style={styles.devSubtitle}>Tap to prefill test credentials</Text>
+                <View style={styles.devButtonsContainer}>
+                  <Button
+                    title="Use Admin"
+                    variant="outline"
+                    size="sm"
+                    fullWidth
+                    style={styles.devButton}
+                    onPress={() => handleDevAutofill(DEV_LOGIN_CREDENTIALS.admin)}
+                  />
+                  <Button
+                    title="Use Student"
+                    variant="outline"
+                    size="sm"
+                    fullWidth
+                    style={styles.devButton}
+                    onPress={() => handleDevAutofill(DEV_LOGIN_CREDENTIALS.student)}
+                  />
+                  <Button
+                    title="Use Instructor"
+                    variant="outline"
+                    size="sm"
+                    fullWidth
+                    style={styles.devButton}
+                    onPress={() => handleDevAutofill(DEV_LOGIN_CREDENTIALS.instructor)}
+                  />
+                </View>
+              </View>
+            ) : null}
 
             <Pressable onPress={handleForgotPassword}>
               <Text style={styles.forgotPassword}>Forgot password?</Text>

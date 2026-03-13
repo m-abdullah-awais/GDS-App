@@ -33,6 +33,7 @@ import {
   SET_SETTINGS,
   SET_DASHBOARD_STATS,
   SET_ADMIN_LOADING,
+  SET_DASHBOARD_DATA,
 } from './types';
 
 const initialState: AdminState = {
@@ -318,6 +319,17 @@ const adminReducer = (state = initialState, action: AdminAction): AdminState => 
 
     case SET_ADMIN_LOADING:
       return state; // loading tracked in thunks via local state
+
+    // Single batched update — sets all dashboard data in one dispatch (1 re-render)
+    case SET_DASHBOARD_DATA:
+      return {
+        ...state,
+        students: action.payload.students,
+        instructors: action.payload.instructors,
+        transactions: action.payload.transactions,
+        packages: action.payload.packages,
+        dashboardStats: action.payload.dashboardStats,
+      };
 
     default:
       return state;

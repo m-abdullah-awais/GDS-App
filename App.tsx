@@ -4,7 +4,8 @@
  * @format
  */
 
-import { StatusBar } from 'react-native';
+import { StatusBar, StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { Provider } from 'react-redux';
@@ -19,21 +20,27 @@ import { linkingConfig } from './src/navigation/linking';
 
 function App() {
   return (
-    <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
-        <ThemeProvider initialScheme="system">
-          <SafeAreaProvider>
-            <ToastProvider>
-              <ConfirmationProvider>
-                <AppContent />
-              </ConfirmationProvider>
-            </ToastProvider>
-          </SafeAreaProvider>
-        </ThemeProvider>
-      </PersistGate>
-    </Provider>
+    <GestureHandlerRootView style={styles.root}>
+      <Provider store={store}>
+        <PersistGate loading={null} persistor={persistor}>
+          <ThemeProvider initialScheme="system">
+            <SafeAreaProvider>
+              <ToastProvider>
+                <ConfirmationProvider>
+                  <AppContent />
+                </ConfirmationProvider>
+              </ToastProvider>
+            </SafeAreaProvider>
+          </ThemeProvider>
+        </PersistGate>
+      </Provider>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+});
 
 function AppContent() {
   const { theme } = useTheme();

@@ -6,7 +6,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TextInput,
@@ -177,179 +177,129 @@ const AdminPackageApprovalScreen = () => {
     }
   }, [confirmType, selected]);
 
+  const pkgListHeader = useMemo(() => (
+    <>
+      <View style={styles.summaryRow}>
+        <StatsCard title="Pending" value={stats.pending} icon="time-outline" accentColor="#F97316" tintColor="#F97316" />
+        <StatsCard title="Approved" value={stats.approved} icon="checkmark-circle-outline" accentColor="#1FBF5B" tintColor="#1FBF5B" />
+        <StatsCard title="Rejected" value={stats.rejected} icon="close-circle-outline" accentColor="#EF4444" tintColor="#EF4444" />
+        <StatsCard title="Avg Commission" value={stats.avgCommission} icon="calculator-outline" accentColor="#2F6BFF" tintColor="#2F6BFF" suffix="%" />
+      </View>
+      <View style={styles.toolbar}>
+        <SearchBar placeholder="Search packages..." onSearch={setSearch} />
+        <FilterChips options={FILTERS} activeValue={filter} onChange={setFilter} />
+      </View>
+      <View style={styles.resultsRow}>
+        <Text style={styles.resultsText}>
+          {filtered.length} package{filtered.length !== 1 ? 's' : ''}
+        </Text>
+      </View>
+    </>
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [stats, filter, filtered.length]);
+
   return (
     <View style={styles.screen}>
-      <ScrollView
+      <FlatList
+        data={filtered}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
-        {/* Summary */}
-        <View style={styles.summaryRow}>
-          <StatsCard
-            title="Pending"
-            value={stats.pending}
-            icon="time-outline"
-            accentColor="#F97316"
-            tintColor="#F97316"
-          />
-          <StatsCard
-            title="Approved"
-            value={stats.approved}
-            icon="checkmark-circle-outline"
-            accentColor="#1FBF5B"
-            tintColor="#1FBF5B"
-          />
-          <StatsCard
-            title="Rejected"
-            value={stats.rejected}
-            icon="close-circle-outline"
-            accentColor="#EF4444"
-            tintColor="#EF4444"
-          />
-          <StatsCard
-            title="Avg Commission"
-            value={stats.avgCommission}
-            icon="calculator-outline"
-            accentColor="#2F6BFF"
-            tintColor="#2F6BFF"
-            suffix="%"
-          />
-        </View>
-
-        {/* Toolbar */}
-        <View style={styles.toolbar}>
-          <SearchBar placeholder="Search packages..." onSearch={setSearch} />
-          <FilterChips options={FILTERS} activeValue={filter} onChange={setFilter} />
-        </View>
-
-        <View style={styles.resultsRow}>
-          <Text style={styles.resultsText}>
-            {filtered.length} package{filtered.length !== 1 ? 's' : ''}
-          </Text>
-        </View>
-
-        {filtered.length === 0 ? (
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews
+        ListHeaderComponent={pkgListHeader}
+        ListEmptyComponent={
           <EmptyState
             icon="cube-outline"
             title="No packages found"
             subtitle="Try adjusting your search or filter criteria."
           />
-        ) : (
-          <View style={styles.listContent}>
-            {filtered.map(pkg => (
-              <TouchableOpacity
-                key={pkg.id}
-                style={styles.card}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setSelected(pkg);
-                  setDrawerOpen(true);
-                }}>
-                <View style={styles.cardTop}>
-                  <View style={[styles.pkgIcon, { backgroundColor: theme.colors.primaryLight }]}>
-                    <Ionicons name="cube-outline" size={20} color={theme.colors.primary} />
-                  </View>
-                  <View style={styles.cardInfoCol}>
-                    <Text style={styles.cardName} numberOfLines={1}>
-                      {pkg.title}
-                    </Text>
-                    <Text style={styles.cardSub} numberOfLines={1}>
-                      {pkg.instructorName}
-                    </Text>
-                  </View>
-                  <StatusBadge status={pkg.status} />
-                </View>
+        }
+        renderItem={({ item: pkg }) => (
+          <TouchableOpacity
+            style={[styles.card, styles.listItemPad]}
+            activeOpacity={0.7}
+            onPress={() => {
+              setSelected(pkg);
+              setDrawerOpen(true);
+            }}>
+            <View style={styles.cardTop}>
+              <View style={[styles.pkgIcon, { backgroundColor: theme.colors.primaryLight }]}>
+                <Ionicons name="cube-outline" size={20} color={theme.colors.primary} />
+              </View>
+              <View style={styles.cardInfoCol}>
+                <Text style={styles.cardName} numberOfLines={1}>{pkg.title}</Text>
+                <Text style={styles.cardSub} numberOfLines={1}>{pkg.instructorName}</Text>
+              </View>
+              <StatusBadge status={pkg.status} />
+            </View>
 
-                <Text style={styles.cardDesc} numberOfLines={2}>
-                  {pkg.description}
-                </Text>
+            <Text style={styles.cardDesc} numberOfLines={2}>{pkg.description}</Text>
 
-                <View style={styles.metricsRow}>
-                  <View style={styles.metric}>
-                    <Text style={styles.metricValue}>{pkg.lessonCount}</Text>
-                    <Text style={styles.metricLabel}>Lessons</Text>
+            <View style={styles.metricsRow}>
+              <View style={styles.metric}>
+                <Text style={styles.metricValue}>{pkg.lessonCount}</Text>
+                <Text style={styles.metricLabel}>Lessons</Text>
+              </View>
+              <View style={styles.metric}>
+                <Text style={styles.metricValue}>{'\u00A3'}{pkg.price}</Text>
+                <Text style={styles.metricLabel}>Price</Text>
+              </View>
+              <View style={styles.metric}>
+                {editingId === pkg.id ? (
+                  <View style={styles.commissionEdit}>
+                    <TextInput
+                      style={styles.commissionInput}
+                      value={editCommission}
+                      onChangeText={setEditCommission}
+                      keyboardType="numeric"
+                      autoFocus
+                      maxLength={5}
+                    />
+                    <TouchableOpacity style={styles.commissionSaveBtn} onPress={() => handleCommissionSave(pkg)}>
+                      <Ionicons name="checkmark" size={14} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => { setEditingId(null); setEditCommission(''); }}>
+                      <Ionicons name="close" size={16} color={theme.colors.textTertiary} />
+                    </TouchableOpacity>
                   </View>
-                  <View style={styles.metric}>
-                    <Text style={styles.metricValue}>{'\u00A3'}{pkg.price}</Text>
-                    <Text style={styles.metricLabel}>Price</Text>
-                  </View>
-                  <View style={styles.metric}>
-                    {editingId === pkg.id ? (
-                      <View style={styles.commissionEdit}>
-                        <TextInput
-                          style={styles.commissionInput}
-                          value={editCommission}
-                          onChangeText={setEditCommission}
-                          keyboardType="numeric"
-                          autoFocus
-                          maxLength={5}
-                        />
-                        <TouchableOpacity
-                          style={styles.commissionSaveBtn}
-                          onPress={() => handleCommissionSave(pkg)}>
-                          <Ionicons name="checkmark" size={14} color="#fff" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => {
-                            setEditingId(null);
-                            setEditCommission('');
-                          }}>
-                          <Ionicons name="close" size={16} color={theme.colors.textTertiary} />
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
-                      <TouchableOpacity
-                        style={styles.commissionTap}
-                        onPress={() => {
-                          setEditingId(pkg.id);
-                          setEditCommission(String(pkg.commissionPercentage));
-                        }}>
-                        <Text style={[styles.metricValue, { color: theme.colors.primary }]}>
-                          {pkg.commissionPercentage}%
-                        </Text>
-                        <Ionicons name="pencil-outline" size={10} color={theme.colors.primary} />
-                      </TouchableOpacity>
-                    )}
-                    <Text style={styles.metricLabel}>Commission</Text>
-                  </View>
-                  <View style={styles.metric}>
-                    <Text style={styles.metricValue}>{pkg.createdAt}</Text>
-                    <Text style={styles.metricLabel}>Created</Text>
-                  </View>
-                </View>
-
-                <View style={styles.cardActions}>
-                  {pkg.status === 'pending' && (
-                    <>
-                      <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: theme.colors.successLight }]}
-                        onPress={() => openAction(pkg, 'approve')}>
-                        <Ionicons name="checkmark-outline" size={14} color={theme.colors.success} />
-                        <Text style={[styles.actionLabel, { color: theme.colors.success }]}>
-                          Approve
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: theme.colors.errorLight }]}
-                        onPress={() => openAction(pkg, 'reject')}>
-                        <Ionicons name="close-outline" size={14} color={theme.colors.error} />
-                        <Text style={[styles.actionLabel, { color: theme.colors.error }]}>
-                          Reject
-                        </Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
-                  <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: theme.colors.surfaceSecondary }]}
-                    onPress={() => openAction(pkg, 'delete')}>
-                    <Ionicons name="trash-outline" size={14} color={theme.colors.error} />
-                    <Text style={[styles.actionLabel, { color: theme.colors.error }]}>Delete</Text>
+                ) : (
+                  <TouchableOpacity style={styles.commissionTap} onPress={() => { setEditingId(pkg.id); setEditCommission(String(pkg.commissionPercentage)); }}>
+                    <Text style={[styles.metricValue, { color: theme.colors.primary }]}>{pkg.commissionPercentage}%</Text>
+                    <Ionicons name="pencil-outline" size={10} color={theme.colors.primary} />
                   </TouchableOpacity>
-                </View>
+                )}
+                <Text style={styles.metricLabel}>Commission</Text>
+              </View>
+              <View style={styles.metric}>
+                <Text style={styles.metricValue}>{pkg.createdAt}</Text>
+                <Text style={styles.metricLabel}>Created</Text>
+              </View>
+            </View>
+
+            <View style={styles.cardActions}>
+              {pkg.status === 'pending' && (
+                <>
+                  <TouchableOpacity style={[styles.actionBtn, { backgroundColor: theme.colors.successLight }]} onPress={() => openAction(pkg, 'approve')}>
+                    <Ionicons name="checkmark-outline" size={14} color={theme.colors.success} />
+                    <Text style={[styles.actionLabel, { color: theme.colors.success }]}>Approve</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.actionBtn, { backgroundColor: theme.colors.errorLight }]} onPress={() => openAction(pkg, 'reject')}>
+                    <Ionicons name="close-outline" size={14} color={theme.colors.error} />
+                    <Text style={[styles.actionLabel, { color: theme.colors.error }]}>Reject</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: theme.colors.surfaceSecondary }]} onPress={() => openAction(pkg, 'delete')}>
+                <Ionicons name="trash-outline" size={14} color={theme.colors.error} />
+                <Text style={[styles.actionLabel, { color: theme.colors.error }]}>Delete</Text>
               </TouchableOpacity>
-            ))}
-          </View>
+            </View>
+          </TouchableOpacity>
         )}
-      </ScrollView>
+      />
 
       {/* Confirm Modal */}
       <ConfirmModal
@@ -485,9 +435,9 @@ const createStyles = (theme: AppTheme) =>
       ...theme.typography.caption,
       color: theme.colors.textTertiary,
     },
-    listContent: {
-      paddingHorizontal: theme.spacing.md,
-      gap: theme.spacing.sm,
+    listItemPad: {
+      marginHorizontal: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
     },
     card: {
       backgroundColor: theme.colors.surface,

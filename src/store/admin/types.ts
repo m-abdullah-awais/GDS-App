@@ -176,6 +176,8 @@ export const SET_PACKAGES = 'admin/SET_PACKAGES';
 export const SET_SETTINGS = 'admin/SET_SETTINGS';
 export const SET_DASHBOARD_STATS = 'admin/SET_DASHBOARD_STATS';
 export const SET_ADMIN_LOADING = 'admin/SET_LOADING';
+// Single batched action — replaces 5 sequential dispatches to avoid JS thread hang
+export const SET_DASHBOARD_DATA = 'admin/SET_DASHBOARD_DATA';
 
 // ─── Action Interfaces ───────────────────────────────────────────────────────
 
@@ -314,6 +316,17 @@ interface SetAdminLoadingAction {
   payload: boolean;
 }
 
+interface SetDashboardDataAction {
+  type: typeof SET_DASHBOARD_DATA;
+  payload: {
+    students: AdminStudent[];
+    instructors: AdminInstructor[];
+    transactions: Transaction[];
+    packages: AdminPackage[];
+    dashboardStats: DashboardStats;
+  };
+}
+
 export type AdminAction =
   | ApproveStudentAction
   | RejectStudentAction
@@ -341,4 +354,5 @@ export type AdminAction =
   | SetPackagesAction
   | SetSettingsAction
   | SetDashboardStatsAction
-  | SetAdminLoadingAction;
+  | SetAdminLoadingAction
+  | SetDashboardDataAction;

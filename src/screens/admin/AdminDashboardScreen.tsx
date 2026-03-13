@@ -4,9 +4,10 @@
  * Admin overview dashboard with stats, chart placeholders, and recent cards.
  */
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  InteractionManager,
   ScrollView,
   StyleSheet,
   Text,
@@ -30,12 +31,28 @@ const AdminDashboardScreen = () => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const dispatch = useDispatch();
-  const { dashboardStats, students, instructors, transactions, loading } = useSelector(
-    (state: RootState) => state.admin,
-  );
+  const dashboardStats = useSelector((state: RootState) => state.admin.dashboardStats);
+  const students = useSelector((state: RootState) => state.admin.students);
+  const instructors = useSelector((state: RootState) => state.admin.instructors);
+  const transactions = useSelector((state: RootState) => state.admin.transactions);
+
+  // Gate: render a lightweight placeholder until the screen is fully settled.
+  // This prevents 50+ card components from rendering during the mount animation,
+  // which would block the JS thread and freeze the drawer.
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    dispatch(loadAdminDashboard() as any);
+    // Wait for mount + navigation animations to fully complete,
+    // THEN start the data fetch, THEN allow the heavy render.
+    const task = InteractionManager.runAfterInteractions(() => {
+      // Extra delay so the drawer opener is responsive immediately after mount
+      setTimeout(() => {
+        dispatch(loadAdminDashboard() as any);
+        // Allow heavy render after another frame yield
+        requestAnimationFrame(() => setReady(true));
+      }, 300);
+    });
+    return () => task.cancel();
   }, [dispatch]);
 
   const recentStudents = useMemo(
@@ -81,6 +98,14 @@ const AdminDashboardScreen = () => {
       year: 'numeric',
     });
   }, []);
+
+  if (!ready) {
+    return (
+      <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView

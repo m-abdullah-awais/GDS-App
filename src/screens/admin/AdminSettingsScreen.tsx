@@ -6,6 +6,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  InteractionManager,
   ScrollView,
   StyleSheet,
   Switch,
@@ -42,7 +43,10 @@ const AdminSettingsScreen = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    dispatch(loadAdminSettings() as any);
+    const task = InteractionManager.runAfterInteractions(() => {
+      dispatch(loadAdminSettings() as any);
+    });
+    return () => task.cancel();
   }, [dispatch]);
 
   useEffect(() => {

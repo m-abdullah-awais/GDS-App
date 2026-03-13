@@ -6,7 +6,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -47,8 +47,10 @@ const AdminStudentManagementScreen = () => {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const dispatch = useDispatch();
   const { showToast } = useToast();
-  const students = useSelector((state: RootState) =>
-    state.admin.students.filter(s => s.approvalStatus === 'approved'),
+  const allStudents = useSelector((state: RootState) => state.admin.students);
+  const students = useMemo(
+    () => allStudents.filter(s => s.approvalStatus === 'approved'),
+    [allStudents],
   );
 
   const [search, setSearch] = useState('');
@@ -149,80 +151,85 @@ const AdminStudentManagementScreen = () => {
         </Text>
       </View>
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon="people-outline"
-          title="No students found"
-          subtitle="Try adjusting your search or filter criteria."
-        />
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}>
-          {filtered.map(student => (
-            <TouchableOpacity
-              key={student.id}
-              style={styles.card}
-              activeOpacity={0.7}
-              onPress={() => {
-                setSelected(student);
-                setDrawerOpen(true);
-              }}>
-              <View style={styles.cardTop}>
-                <Avatar initials={student.avatar} size={40} theme={theme} />
-                <View style={styles.cardInfo}>
-                  <Text style={styles.cardName}>{student.name}</Text>
-                  <Text style={styles.cardSub}>{student.email}</Text>
-                  <Text style={styles.cardSub}>{student.city}</Text>
-                </View>
-                <StatusBadge status={student.accountStatus} />
+      <FlatList
+        data={filtered}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews
+        ListEmptyComponent={
+          <EmptyState
+            icon="people-outline"
+            title="No students found"
+            subtitle="Try adjusting your search or filter criteria."
+          />
+        }
+        renderItem={({ item: student }) => (
+          <TouchableOpacity
+            key={student.id}
+            style={styles.card}
+            activeOpacity={0.7}
+            onPress={() => {
+              setSelected(student);
+              setDrawerOpen(true);
+            }}>
+            <View style={styles.cardTop}>
+              <Avatar initials={student.avatar} size={40} theme={theme} />
+              <View style={styles.cardInfo}>
+                <Text style={styles.cardName}>{student.name}</Text>
+                <Text style={styles.cardSub}>{student.email}</Text>
+                <Text style={styles.cardSub}>{student.city}</Text>
               </View>
+              <StatusBadge status={student.accountStatus} />
+            </View>
 
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <Ionicons name="book-outline" size={14} color={theme.colors.primary} />
-                  <Text style={styles.statValue}>{student.lessonsCompleted}</Text>
-                  <Text style={styles.statLabel}>Completed</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Ionicons name="calendar-outline" size={14} color={theme.colors.warning} />
-                  <Text style={styles.statValue}>{student.upcomingLessons}</Text>
-                  <Text style={styles.statLabel}>Upcoming</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Ionicons name="star-outline" size={14} color={theme.colors.accent} />
-                  <Text style={styles.statValue}>{student.rating}</Text>
-                  <Text style={styles.statLabel}>Rating</Text>
-                </View>
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Ionicons name="book-outline" size={14} color={theme.colors.primary} />
+                <Text style={styles.statValue}>{student.lessonsCompleted}</Text>
+                <Text style={styles.statLabel}>Completed</Text>
               </View>
+              <View style={styles.statItem}>
+                <Ionicons name="calendar-outline" size={14} color={theme.colors.warning} />
+                <Text style={styles.statValue}>{student.upcomingLessons}</Text>
+                <Text style={styles.statLabel}>Upcoming</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Ionicons name="star-outline" size={14} color={theme.colors.accent} />
+                <Text style={styles.statValue}>{student.rating}</Text>
+                <Text style={styles.statLabel}>Rating</Text>
+              </View>
+            </View>
 
-              <View style={styles.cardActions}>
-                {student.accountStatus === 'active' ? (
-                  <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: theme.colors.warningLight }]}
-                    onPress={() => openAction(student, 'suspend')}>
-                    <Ionicons name="pause-outline" size={14} color={theme.colors.warning} />
-                    <Text style={[styles.actionBtnLabel, { color: theme.colors.warning }]}>Suspend</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: theme.colors.successLight }]}
-                    onPress={() => openAction(student, 'activate')}>
-                    <Ionicons name="play-outline" size={14} color={theme.colors.success} />
-                    <Text style={[styles.actionBtnLabel, { color: theme.colors.success }]}>Activate</Text>
-                  </TouchableOpacity>
-                )}
+            <View style={styles.cardActions}>
+              {student.accountStatus === 'active' ? (
                 <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: theme.colors.errorLight }]}
-                  onPress={() => openAction(student, 'delete')}>
-                  <Ionicons name="trash-outline" size={14} color={theme.colors.error} />
-                  <Text style={[styles.actionBtnLabel, { color: theme.colors.error }]}>Delete</Text>
+                  style={[styles.actionBtn, { backgroundColor: theme.colors.warningLight }]}
+                  onPress={() => openAction(student, 'suspend')}>
+                  <Ionicons name="pause-outline" size={14} color={theme.colors.warning} />
+                  <Text style={[styles.actionBtnLabel, { color: theme.colors.warning }]}>Suspend</Text>
                 </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
+              ) : (
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: theme.colors.successLight }]}
+                  onPress={() => openAction(student, 'activate')}>
+                  <Ionicons name="play-outline" size={14} color={theme.colors.success} />
+                  <Text style={[styles.actionBtnLabel, { color: theme.colors.success }]}>Activate</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: theme.colors.errorLight }]}
+                onPress={() => openAction(student, 'delete')}>
+                <Ionicons name="trash-outline" size={14} color={theme.colors.error} />
+                <Text style={[styles.actionBtnLabel, { color: theme.colors.error }]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        )}
+      />
 
       {/* Confirm Modal */}
       <ConfirmModal

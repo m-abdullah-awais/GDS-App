@@ -49,15 +49,22 @@ const sortByCreatedAtAsc = (messages: Message[]): Message[] => {
  * Get messages where current user is participant (sender or receiver).
  * Performs two queries due to security rule constraints.
  */
-export const getMessagesForUser = async (userId: string): Promise<Message[]> => {
+export const getMessagesForUser = async (
+  userId: string,
+  limitCount = 50,
+): Promise<Message[]> => {
   const [sentSnapshot, receivedSnapshot] = await Promise.all([
     db
       .collection(Collections.MESSAGES)
       .where('sender_id', '==', userId)
+      .orderBy('createdAt', 'desc')
+      .limit(limitCount)
       .get(),
     db
       .collection(Collections.MESSAGES)
       .where('receiver_id', '==', userId)
+      .orderBy('createdAt', 'desc')
+      .limit(limitCount)
       .get(),
   ]);
 
@@ -71,13 +78,7 @@ export const getMessagesForUser = async (userId: string): Promise<Message[]> => 
     }
   }
 
-  const messages = sortByCreatedAtDesc(Array.from(map.values()));
-  console.log('[Firebase][READ][MessageService] getMessagesForUser', {
-    userId,
-    count: messages.length,
-    data: messages,
-  });
-  return messages;
+  return sortByCreatedAtDesc(Array.from(map.values()));
 };
 
 /**
@@ -106,14 +107,7 @@ export const getConversation = async (
     ...fromQuerySnapshot<Message>(received),
   ];
 
-  const messages = sortByCreatedAtAsc(all);
-  console.log('[Firebase][READ][MessageService] getConversation', {
-    userId1,
-    userId2,
-    count: messages.length,
-    data: messages,
-  });
-  return messages;
+  return sortByCreatedAtAsc(all);
 };
 
 /**

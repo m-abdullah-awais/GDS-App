@@ -6,7 +6,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -118,78 +118,82 @@ const AdminInstructorApprovalScreen = () => {
         </Text>
       </View>
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon="car-outline"
-          title="No instructors found"
-          subtitle="Try adjusting your search or filter criteria."
-        />
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}>
-          {filtered.map(inst => (
-            <TouchableOpacity
-              key={inst.id}
-              style={styles.card}
-              activeOpacity={0.7}
-              onPress={() => openDrawer(inst)}>
-              <View style={styles.cardHeader}>
-                <Avatar initials={inst.avatar} size={40} theme={theme} />
-                <View style={styles.cardInfo}>
-                  <Text style={styles.cardName}>{inst.name}</Text>
-                  <Text style={styles.cardSub}>{inst.email}</Text>
-                  <View style={styles.metaRow}>
-                    <Text style={styles.metaItem}>
-                      <Ionicons name="location-outline" size={12} color={theme.colors.textTertiary} />{' '}
-                      {inst.city}
-                    </Text>
-                    <Text style={styles.metaItem}>
-                      <Ionicons name="time-outline" size={12} color={theme.colors.textTertiary} />{' '}
-                      {inst.experience}
-                    </Text>
-                  </View>
+      <FlatList
+        data={filtered}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews
+        ListEmptyComponent={
+          <EmptyState
+            icon="car-outline"
+            title="No instructors found"
+            subtitle="Try adjusting your search or filter criteria."
+          />
+        }
+        renderItem={({ item: inst }) => (
+          <TouchableOpacity
+            style={styles.card}
+            activeOpacity={0.7}
+            onPress={() => openDrawer(inst)}>
+            <View style={styles.cardHeader}>
+              <Avatar initials={inst.avatar} size={40} theme={theme} />
+              <View style={styles.cardInfo}>
+                <Text style={styles.cardName}>{inst.name}</Text>
+                <Text style={styles.cardSub}>{inst.email}</Text>
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaItem}>
+                    <Ionicons name="location-outline" size={12} color={theme.colors.textTertiary} />{' '}
+                    {inst.city}
+                  </Text>
+                  <Text style={styles.metaItem}>
+                    <Ionicons name="time-outline" size={12} color={theme.colors.textTertiary} />{' '}
+                    {inst.experience}
+                  </Text>
                 </View>
-                <StatusBadge status={inst.approvalStatus} />
               </View>
+              <StatusBadge status={inst.approvalStatus} />
+            </View>
 
-              {/* Documents summary */}
-              <View style={styles.docsRow}>
-                <Ionicons name="document-text-outline" size={14} color={theme.colors.textSecondary} />
-                <Text style={styles.docsText}>
-                  {inst.documentsUploaded.length} documents uploaded
-                </Text>
-                {inst.documentsUploaded.every(d => d.status === 'verified') ? (
-                  <View style={[styles.docsBadge, { backgroundColor: theme.colors.successLight }]}>
-                    <Text style={[styles.docsBadgeText, { color: theme.colors.success }]}>All verified</Text>
-                  </View>
-                ) : (
-                  <View style={[styles.docsBadge, { backgroundColor: theme.colors.warningLight }]}>
-                    <Text style={[styles.docsBadgeText, { color: theme.colors.warning }]}>Needs review</Text>
-                  </View>
-                )}
-              </View>
-
-              {inst.approvalStatus === 'pending' && (
-                <View style={styles.cardActions}>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.approveBtn]}
-                    onPress={() => handleAction(inst, 'approve')}>
-                    <Ionicons name="checkmark-outline" size={16} color="#fff" />
-                    <Text style={styles.actionBtnText}>Approve</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.rejectBtn]}
-                    onPress={() => handleAction(inst, 'reject')}>
-                    <Ionicons name="close-outline" size={16} color="#fff" />
-                    <Text style={styles.actionBtnText}>Reject</Text>
-                  </TouchableOpacity>
+            {/* Documents summary */}
+            <View style={styles.docsRow}>
+              <Ionicons name="document-text-outline" size={14} color={theme.colors.textSecondary} />
+              <Text style={styles.docsText}>
+                {inst.documentsUploaded.length} documents uploaded
+              </Text>
+              {inst.documentsUploaded.every(d => d.status === 'verified') ? (
+                <View style={[styles.docsBadge, { backgroundColor: theme.colors.successLight }]}>
+                  <Text style={[styles.docsBadgeText, { color: theme.colors.success }]}>All verified</Text>
+                </View>
+              ) : (
+                <View style={[styles.docsBadge, { backgroundColor: theme.colors.warningLight }]}>
+                  <Text style={[styles.docsBadgeText, { color: theme.colors.warning }]}>Needs review</Text>
                 </View>
               )}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
+            </View>
+
+            {inst.approvalStatus === 'pending' && (
+              <View style={styles.cardActions}>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.approveBtn]}
+                  onPress={() => handleAction(inst, 'approve')}>
+                  <Ionicons name="checkmark-outline" size={16} color="#fff" />
+                  <Text style={styles.actionBtnText}>Approve</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.rejectBtn]}
+                  onPress={() => handleAction(inst, 'reject')}>
+                  <Ionicons name="close-outline" size={16} color="#fff" />
+                  <Text style={styles.actionBtnText}>Reject</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+      />
 
       {/* Confirm Modal */}
       <ConfirmModal

@@ -1,5 +1,5 @@
-import React from 'react';
-import { createDrawerNavigator } from '@react-navigation/drawer';
+import React, { useCallback, useMemo } from 'react';
+import { createDrawerNavigator, type DrawerContentComponentProps } from '@react-navigation/drawer';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../theme';
 import AppTopHeader from '../../components/AppTopHeader';
@@ -46,7 +46,7 @@ const AdminTabs = () => {
   const userName = profile?.full_name || 'Admin';
   const userEmail = profile?.email || '';
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     const shouldLogout = await confirm({
       title: 'Logout',
       message: 'Are you sure you want to logout?',
@@ -60,36 +60,52 @@ const AdminTabs = () => {
       await authService.signOut();
       dispatch(clearAuth());
     }
-  };
+  }, [confirm, dispatch]);
+
+  // Memoize drawerContent so React Navigation doesn't re-mount it on every
+  // AdminTabs re-render (which happens on every drawer toggle / nav state change).
+  const renderDrawerContent = useCallback(
+    (props: DrawerContentComponentProps) => (
+      <CustomDrawerContent
+        {...props}
+        userName={userName}
+        userEmail={userEmail}
+        roleLabel="Admin"
+        onLogout={handleLogout}
+      />
+    ),
+    [userName, userEmail, handleLogout],
+  );
+
+  // Stable screenOptions object — rebuilt only when theme changes.
+  const screenOptions = useMemo(
+    () => ({
+      header: ({ navigation, route, options }: any) => (
+        <AppTopHeader
+          title={options.title ?? route.name}
+          subtitle="Admin Console"
+          avatarText="Admin"
+          leftAction="menu"
+          onLeftPress={() => navigation.toggleDrawer()}
+        />
+      ),
+      drawerStyle: { backgroundColor: theme.colors.background },
+      drawerActiveTintColor: theme.colors.primary,
+      drawerInactiveTintColor: theme.colors.textSecondary,
+      drawerActiveBackgroundColor: theme.colors.primaryLight,
+      drawerLabelStyle: { marginLeft: -10, fontSize: 15, fontWeight: '500' as const },
+      sceneStyle: { backgroundColor: theme.colors.background },
+      lazy: true,
+      // Freeze screens that are not focused to avoid re-renders during drawer animation
+      freezeOnBlur: true,
+    }),
+    [theme],
+  );
 
   return (
     <Drawer.Navigator
-      drawerContent={(props) => (
-        <CustomDrawerContent
-          {...props}
-          userName={userName}
-          userEmail={userEmail}
-          roleLabel="Admin"
-          onLogout={handleLogout}
-        />
-      )}
-      screenOptions={{
-        header: ({ navigation, route, options }) => (
-          <AppTopHeader
-            title={options.title ?? route.name}
-            subtitle="Admin Console"
-            avatarText="Admin"
-            leftAction="menu"
-            onLeftPress={() => navigation.toggleDrawer()}
-          />
-        ),
-        drawerStyle: { backgroundColor: theme.colors.background },
-        drawerActiveTintColor: theme.colors.primary,
-        drawerInactiveTintColor: theme.colors.textSecondary,
-        drawerActiveBackgroundColor: theme.colors.primaryLight,
-        drawerLabelStyle: { marginLeft: -10, fontSize: 15, fontWeight: '500' },
-        sceneStyle: { backgroundColor: theme.colors.background },
-      }}>
+      drawerContent={renderDrawerContent}
+      screenOptions={screenOptions}>
       <Drawer.Screen
         name="Dashboard"
         component={AdminDashboardScreen}

@@ -3,46 +3,13 @@
  * ==================================================
  * Manages authentication state: Firebase user, Firestore profile,
  * role, and initialization status.
+ *
+ * NOTE: Profile data is serialized ONCE in useAuthStateListener
+ * (toSerializable) before dispatch. No re-serialization needed here.
  */
 
-import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { UserProfile, UserRole } from '../../types';
-
-const toSerializable = (value: unknown): unknown => {
-  if (value == null) {
-    return value;
-  }
-
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-
-  if (Array.isArray(value)) {
-    return value.map(toSerializable);
-  }
-
-  if (typeof value === 'object') {
-    const maybeTimestamp = value as { toDate?: () => Date };
-    if (typeof maybeTimestamp.toDate === 'function') {
-      return maybeTimestamp.toDate().toISOString();
-    }
-
-    const entries = Object.entries(value as Record<string, unknown>).map(
-      ([key, nestedValue]) => [key, toSerializable(nestedValue)],
-    );
-    return Object.fromEntries(entries);
-  }
-
-  return value;
-};
-
-export const sanitizeAuthProfile = (profile: UserProfile | null): UserProfile | null => {
-  if (!profile) {
-    return null;
-  }
-
-  return toSerializable(profile) as UserProfile;
-};
 
 // ─── State Shape ──────────────────────────────────────────────────────────────
 
@@ -91,19 +58,16 @@ const authSlice = createSlice({
       }
     },
     setProfile(state, action: PayloadAction<UserProfile | null>) {
-      const sanitizedProfile = sanitizeAuthProfile(action.payload);
-      state.profile = sanitizedProfile;
-      state.role = sanitizedProfile?.role ?? null;
+      state.profile = action.payload;
+      state.role = action.payload?.role ?? null;
     },
     setRole(state, action: PayloadAction<UserRole | null>) {
       state.role = action.payload;
     },
     setInitialized(state) {
-      state.profile = sanitizeAuthProfile(state.profile);
       state.initialized = true;
     },
     setLoading(state, action: PayloadAction<boolean>) {
-      state.profile = sanitizeAuthProfile(state.profile);
       state.loading = action.payload;
     },
     setError(state, action: PayloadAction<string | null>) {

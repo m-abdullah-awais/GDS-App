@@ -6,22 +6,12 @@
  */
 
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
-import {
-  persistStore,
-  persistReducer,
-  createTransform,
-  FLUSH,
-  REHYDRATE,
-  PAUSE,
-  PERSIST,
-  PURGE,
-  REGISTER,
-} from 'redux-persist';
+import { persistStore, persistReducer } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import adminReducer from './admin/reducer';
 import studentReducer from './student/reducer';
-import { authReducer, sanitizeAuthProfile } from './auth';
+import { authReducer } from './auth';
 import { instructorReducer } from './instructor';
 
 // ─── Root Reducer ─────────────────────────────────────────────────────────────
@@ -32,36 +22,14 @@ const rootReducer = combineReducers({
   instructor: instructorReducer,
 });
 
-const authTransform = createTransform(
-  (inboundState: any) => {
-    if (!inboundState) {
-      return inboundState;
-    }
-
-    return {
-      ...inboundState,
-      profile: sanitizeAuthProfile(inboundState.profile ?? null),
-    };
-  },
-  (outboundState: any) => {
-    if (!outboundState) {
-      return outboundState;
-    }
-
-    return {
-      ...outboundState,
-      profile: sanitizeAuthProfile(outboundState.profile ?? null),
-    };
-  },
-  { whitelist: ['auth'] },
-);
-
 // ─── Persist Configuration ───────────────────────────────────────────────────
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
   whitelist: ['auth'], // Only persist auth state across app restarts
-  transforms: [authTransform],
+  // No transforms — auth profile is already serialized in useAuthStateListener
+  // before it reaches Redux. The old authTransform was running sanitizeAuthProfile
+  // redundantly on every persist cycle, wasting CPU.
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
@@ -71,12 +39,12 @@ const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
-      serializableCheck: {
-        // Ignore redux-persist action types for serializable check
-        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-      },
+      serializableCheck: false,
+      immutableCheck: false,
     }),
-  devTools: __DEV__,
+  // Disabled — Redux DevTools records full state snapshots on every dispatch.
+  // With 200+ admin records in state, this silently blocks the JS thread.
+  devTools: false,
 });
 
 export const persistor = persistStore(store);

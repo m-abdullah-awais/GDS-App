@@ -7,7 +7,7 @@
 import { db, firebaseAuth } from '../config/firebase';
 import { firebaseStorage } from '../config/firebase';
 import { Collections, fromSnapshot, fromQuerySnapshot, serverTimestamp } from '../utils/mappers';
-import { collection, doc, getDoc, query, where, getDocs, updateDoc, onSnapshot } from '@react-native-firebase/firestore';
+import { collection, doc, getDoc, query, where, getDocs, limit, updateDoc, onSnapshot } from '@react-native-firebase/firestore';
 import type { UserProfile, UserDoc } from '../types';
 
 /**
@@ -102,8 +102,11 @@ export const getActiveInstructors = async (): Promise<UserDoc[]> => {
 /**
  * Query users by role.
  */
-export const getUsersByRole = async (role: string): Promise<UserDoc[]> => {
-  const q = query(collection(db, Collections.USERS), where('role', '==', role));
+export const getUsersByRole = async (role: string, limitCount?: number): Promise<UserDoc[]> => {
+  const constraints = limitCount
+    ? [where('role', '==', role), limit(limitCount)]
+    : [where('role', '==', role)];
+  const q = query(collection(db, Collections.USERS), ...constraints);
   const snapshot = await getDocs(q);
   return fromQuerySnapshot<UserDoc>(snapshot);
 };

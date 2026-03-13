@@ -6,7 +6,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -47,8 +47,10 @@ const AdminInstructorManagementScreen = () => {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const dispatch = useDispatch();
   const { showToast } = useToast();
-  const instructors = useSelector((state: RootState) =>
-    state.admin.instructors.filter(i => i.approvalStatus === 'approved'),
+  const allInstructors = useSelector((state: RootState) => state.admin.instructors);
+  const instructors = useMemo(
+    () => allInstructors.filter(i => i.approvalStatus === 'approved'),
+    [allInstructors],
   );
 
   const [search, setSearch] = useState('');
@@ -154,139 +156,112 @@ const AdminInstructorManagementScreen = () => {
     }
   }, [confirmType, selected]);
 
+  const listHeader = useMemo(() => (
+    <>
+      <View style={styles.summaryRow}>
+        <StatsCard title="Active" value={stats.active} icon="checkmark-circle-outline" accentColor="#1FBF5B" tintColor="#1FBF5B" />
+        <StatsCard title="Suspended" value={stats.suspended} icon="pause-circle-outline" accentColor="#EF4444" tintColor="#EF4444" />
+        <StatsCard title="Earnings" value={stats.totalEarnings} icon="cash-outline" accentColor="#0EA5E9" tintColor="#0EA5E9" prefix={'£'} />
+        <StatsCard title="Pending" value={stats.totalPending} icon="wallet-outline" accentColor="#D946EF" tintColor="#D946EF" prefix={'£'} />
+      </View>
+      <View style={styles.toolbar}>
+        <SearchBar placeholder="Search instructors..." onSearch={setSearch} />
+        <FilterChips options={FILTERS} activeValue={filter} onChange={setFilter} />
+      </View>
+      <View style={styles.resultsRow}>
+        <Text style={styles.resultsText}>
+          {filtered.length} instructor{filtered.length !== 1 ? 's' : ''}
+        </Text>
+      </View>
+    </>
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [stats, filter, filtered.length]);
+
   return (
     <View style={styles.screen}>
-      <ScrollView
+      <FlatList
+        data={filtered}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
-        {/* Summary Cards */}
-        <View style={styles.summaryRow}>
-          <StatsCard
-            title="Active"
-            value={stats.active}
-            icon="checkmark-circle-outline"
-            accentColor="#1FBF5B"
-            tintColor="#1FBF5B"
-          />
-          <StatsCard
-            title="Suspended"
-            value={stats.suspended}
-            icon="pause-circle-outline"
-            accentColor="#EF4444"
-            tintColor="#EF4444"
-          />
-          <StatsCard
-            title="Earnings"
-            value={stats.totalEarnings}
-            icon="cash-outline"
-            accentColor="#0EA5E9"
-            tintColor="#0EA5E9"
-            prefix={'£'}
-          />
-          <StatsCard
-            title="Pending"
-            value={stats.totalPending}
-            icon="wallet-outline"
-            accentColor="#D946EF"
-            tintColor="#D946EF"
-            prefix={'£'}
-          />
-        </View>
-
-        {/* Toolbar */}
-        <View style={styles.toolbar}>
-          <SearchBar placeholder="Search instructors..." onSearch={setSearch} />
-          <FilterChips options={FILTERS} activeValue={filter} onChange={setFilter} />
-        </View>
-
-        <View style={styles.resultsRow}>
-          <Text style={styles.resultsText}>
-            {filtered.length} instructor{filtered.length !== 1 ? 's' : ''}
-          </Text>
-        </View>
-
-        {filtered.length === 0 ? (
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
           <EmptyState
             icon="car-outline"
             title="No instructors found"
             subtitle="Try adjusting your search or filter criteria."
           />
-        ) : (
-          <View style={styles.listContent}>
-            {filtered.map(inst => (
-              <TouchableOpacity
-                key={inst.id}
-                style={styles.card}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setSelected(inst);
-                  setDrawerOpen(true);
-                }}>
-                <View style={styles.cardTop}>
-                  <Avatar initials={inst.avatar} size={40} theme={theme} />
-                  <View style={styles.cardInfoCol}>
-                    <Text style={styles.cardName}>{inst.name}</Text>
-                    <Text style={styles.cardSub}>
-                      {inst.city} | {inst.experience}
-                    </Text>
-                  </View>
-                  <StatusBadge status={inst.accountStatus} />
-                </View>
+        }
+        renderItem={({ item: inst }) => (
+          <TouchableOpacity
+            style={[styles.card, styles.listItemPad]}
+            activeOpacity={0.7}
+            onPress={() => {
+              setSelected(inst);
+              setDrawerOpen(true);
+            }}>
+            <View style={styles.cardTop}>
+              <Avatar initials={inst.avatar} size={40} theme={theme} />
+              <View style={styles.cardInfoCol}>
+                <Text style={styles.cardName}>{inst.name}</Text>
+                <Text style={styles.cardSub}>{inst.city} | {inst.experience}</Text>
+              </View>
+              <StatusBadge status={inst.accountStatus} />
+            </View>
 
-                <View style={styles.metricsRow}>
-                  <View style={styles.metric}>
-                    <Text style={styles.metricValue}>{inst.completedLessons}</Text>
-                    <Text style={styles.metricLabel}>Lessons</Text>
-                  </View>
-                  <View style={styles.metric}>
-                    <Text style={styles.metricValue}>{inst.rating}</Text>
-                    <Text style={styles.metricLabel}>Rating</Text>
-                  </View>
-                  <View style={styles.metric}>
-                    <Text style={styles.metricValue}>{'\u00A3'}{inst.earningsTotal}</Text>
-                    <Text style={styles.metricLabel}>Total</Text>
-                  </View>
-                  <View style={styles.metric}>
-                    <Text style={[styles.metricValue, inst.pendingPayment > 0 && { color: theme.colors.error }]}>
-                      {'\u00A3'}{inst.pendingPayment}
-                    </Text>
-                    <Text style={styles.metricLabel}>Pending</Text>
-                  </View>
-                </View>
+            <View style={styles.metricsRow}>
+              <View style={styles.metric}>
+                <Text style={styles.metricValue}>{inst.completedLessons}</Text>
+                <Text style={styles.metricLabel}>Lessons</Text>
+              </View>
+              <View style={styles.metric}>
+                <Text style={styles.metricValue}>{inst.rating}</Text>
+                <Text style={styles.metricLabel}>Rating</Text>
+              </View>
+              <View style={styles.metric}>
+                <Text style={styles.metricValue}>{'\u00A3'}{inst.earningsTotal}</Text>
+                <Text style={styles.metricLabel}>Total</Text>
+              </View>
+              <View style={styles.metric}>
+                <Text style={[styles.metricValue, inst.pendingPayment > 0 && { color: theme.colors.error }]}>
+                  {'\u00A3'}{inst.pendingPayment}
+                </Text>
+                <Text style={styles.metricLabel}>Pending</Text>
+              </View>
+            </View>
 
-                <View style={styles.cardActions}>
-                  {inst.accountStatus === 'active' ? (
-                    <TouchableOpacity
-                      style={[styles.actionBtn, { backgroundColor: theme.colors.warningLight }]}
-                      onPress={() => openAction(inst, 'suspend')}>
-                      <Ionicons name="pause-outline" size={14} color={theme.colors.warning} />
-                      <Text style={[styles.actionLabel, { color: theme.colors.warning }]}>Suspend</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={[styles.actionBtn, { backgroundColor: theme.colors.successLight }]}
-                      onPress={() => openAction(inst, 'activate')}>
-                      <Ionicons name="play-outline" size={14} color={theme.colors.success} />
-                      <Text style={[styles.actionLabel, { color: theme.colors.success }]}>Activate</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {inst.pendingPayment > 0 && (
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.payBtn]}
-                      onPress={() => openAction(inst, 'payment')}>
-                      <Ionicons name="wallet-outline" size={14} color="#fff" />
-                      <Text style={styles.payBtnText}>
-                        Pay {'\u00A3'}{inst.pendingPayment}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
+            <View style={styles.cardActions}>
+              {inst.accountStatus === 'active' ? (
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: theme.colors.warningLight }]}
+                  onPress={() => openAction(inst, 'suspend')}>
+                  <Ionicons name="pause-outline" size={14} color={theme.colors.warning} />
+                  <Text style={[styles.actionLabel, { color: theme.colors.warning }]}>Suspend</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: theme.colors.successLight }]}
+                  onPress={() => openAction(inst, 'activate')}>
+                  <Ionicons name="play-outline" size={14} color={theme.colors.success} />
+                  <Text style={[styles.actionLabel, { color: theme.colors.success }]}>Activate</Text>
+                </TouchableOpacity>
+              )}
+              {inst.pendingPayment > 0 && (
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.payBtn]}
+                  onPress={() => openAction(inst, 'payment')}>
+                  <Ionicons name="wallet-outline" size={14} color="#fff" />
+                  <Text style={styles.payBtnText}>Pay {'\u00A3'}{inst.pendingPayment}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </TouchableOpacity>
         )}
-      </ScrollView>
+      />
 
       {/* Confirm */}
       <ConfirmModal
@@ -368,7 +343,8 @@ const DetailRow = ({ label, value, theme }: { label: string; value: string; them
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
-    scrollContent: { paddingBottom: theme.spacing['4xl'] },
+    scrollContent: { paddingBottom: theme.spacing['4xl'], gap: theme.spacing.sm },
+    listItemPad: { marginHorizontal: theme.spacing.md },
     summaryRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',

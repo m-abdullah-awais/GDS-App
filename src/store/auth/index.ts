@@ -9,4 +9,3 @@ export {
   clearAuth,
 } from './authSlice';
 export type { AuthState, AuthUser } from './authSlice';
-export { sanitizeAuthProfile } from './authSlice';

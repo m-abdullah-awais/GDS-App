@@ -6,7 +6,7 @@
 
 import React, { useMemo, useState } from 'react';
 import {
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -91,80 +91,41 @@ const AdminPaymentsScreen = () => {
       .catch(() => showToast('error', 'Payout failed. Please try again.'));
   };
 
-  return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}>
-      {/* Revenue Summary */}
+  const txnListHeader = useMemo(() => (
+    <View style={styles.headerPad}>
       <SectionHeader title="Revenue Summary" />
       <View style={styles.statsRow}>
-        <StatsCard
-          title="Monthly Revenue"
-          value={dashboardStats.monthlyRevenue}
-          icon="trending-up-outline"
-          accentColor="#0EA5E9"
-          tintColor="#0EA5E9"
-          prefix={'£'}
-        />
-        <StatsCard
-          title="Total Paid"
-          value={stats.totalPaid}
-          icon="checkmark-circle-outline"
-          accentColor="#1FBF5B"
-          tintColor="#1FBF5B"
-          prefix={'£'}
-        />
-        <StatsCard
-          title="Total Pending"
-          value={stats.totalPending}
-          icon="time-outline"
-          accentColor="#F97316"
-          tintColor="#F97316"
-          prefix={'£'}
-        />
+        <StatsCard title="Monthly Revenue" value={dashboardStats.monthlyRevenue} icon="trending-up-outline" accentColor="#0EA5E9" tintColor="#0EA5E9" prefix={'£'} />
+        <StatsCard title="Total Paid" value={stats.totalPaid} icon="checkmark-circle-outline" accentColor="#1FBF5B" tintColor="#1FBF5B" prefix={'£'} />
+        <StatsCard title="Total Pending" value={stats.totalPending} icon="time-outline" accentColor="#F97316" tintColor="#F97316" prefix={'£'} />
       </View>
-
-      {/* Stripe Connection Status */}
       <SectionHeader title="Stripe Status" />
       <View style={styles.stripeCard}>
         <View style={styles.stripeRow}>
           <Ionicons name="logo-usd" size={24} color={theme.colors.primary} />
           <View style={{ flex: 1, marginLeft: theme.spacing.sm }}>
             <Text style={styles.stripeTitle}>Stripe Connect</Text>
-            <Text style={styles.stripeSub}>
-              {stripeStats.connected}/{stripeStats.total} instructors connected
-            </Text>
+            <Text style={styles.stripeSub}>{stripeStats.connected}/{stripeStats.total} instructors connected</Text>
           </View>
           <View style={[styles.stripeBadge, { backgroundColor: theme.colors.successLight }]}>
-            <Text style={[styles.stripeBadgeText, { color: theme.colors.success }]}>
-              Live
-            </Text>
+            <Text style={[styles.stripeBadgeText, { color: theme.colors.success }]}>Live</Text>
           </View>
         </View>
         <View style={styles.stripeMetrics}>
           <View style={styles.stripeMetric}>
-            <Text style={[styles.stripeMetricVal, { color: theme.colors.success }]}>
-              {stripeStats.connected}
-            </Text>
+            <Text style={[styles.stripeMetricVal, { color: theme.colors.success }]}>{stripeStats.connected}</Text>
             <Text style={styles.stripeMetricLabel}>Connected</Text>
           </View>
           <View style={styles.stripeMetric}>
-            <Text style={[styles.stripeMetricVal, { color: theme.colors.warning }]}>
-              {stripeStats.pending}
-            </Text>
+            <Text style={[styles.stripeMetricVal, { color: theme.colors.warning }]}>{stripeStats.pending}</Text>
             <Text style={styles.stripeMetricLabel}>Pending</Text>
           </View>
           <View style={styles.stripeMetric}>
-            <Text style={[styles.stripeMetricVal, { color: theme.colors.error }]}>
-              {stripeStats.total - stripeStats.connected - stripeStats.pending}
-            </Text>
+            <Text style={[styles.stripeMetricVal, { color: theme.colors.error }]}>{stripeStats.total - stripeStats.connected - stripeStats.pending}</Text>
             <Text style={styles.stripeMetricLabel}>Not Connected</Text>
           </View>
         </View>
       </View>
-
-      {/* Toolbar */}
       <View style={styles.toolbar}>
         <View style={styles.toolbarTop}>
           <SectionHeader title="Transactions" />
@@ -176,98 +137,85 @@ const AdminPaymentsScreen = () => {
         <SearchBar placeholder="Search transactions..." onSearch={setSearch} />
         <FilterChips options={FILTERS} activeValue={filter} onChange={setFilter} />
       </View>
+      <Text style={styles.resultsText}>{filtered.length} transaction{filtered.length !== 1 ? 's' : ''}</Text>
+    </View>
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [dashboardStats, stats, stripeStats, filter, filtered.length]);
 
-      <Text style={styles.resultsText}>
-        {filtered.length} transaction{filtered.length !== 1 ? 's' : ''}
-      </Text>
-
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon="receipt-outline"
-          title="No transactions found"
-          subtitle="Try adjusting your search or filter."
-        />
-      ) : (
-        <View style={styles.cardList}>
-          {filtered.map(txn => {
-            const instructor = instructors.find(i => i.id === txn.instructorId);
-            const isPending = txn.status === 'pending';
-            const stripeReady = instructor?.stripeConnectionStatus === 'connected';
-
-            return (
-              <View key={txn.id} style={styles.txnCard}>
-                <View style={styles.txnCardTop}>
-                  <View style={styles.txnIcon}>
-                    <Ionicons
-                      name={isPending ? 'time-outline' : 'checkmark-circle-outline'}
-                      size={20}
-                      color={isPending ? theme.colors.warning : theme.colors.success}
-                    />
-                  </View>
-                  <View style={styles.txnInfo}>
-                    <Text style={styles.txnName} numberOfLines={1}>
-                      {txn.instructorName}
-                    </Text>
-                    <Text style={styles.txnDesc} numberOfLines={1}>
-                      {txn.description}
-                    </Text>
-                  </View>
-                  <View style={styles.txnAmount}>
-                    <Text style={styles.txnAmountText}>
-                      {'\u00A3'}{txn.amount}
-                    </Text>
-                    <StatusBadge status={txn.status} />
-                  </View>
-                </View>
-
-                <View style={styles.txnMeta}>
-                  <View style={styles.txnMetaItem}>
-                    <Ionicons name="calendar-outline" size={12} color={theme.colors.textTertiary} />
-                    <Text style={styles.txnMetaText}>{txn.date}</Text>
-                  </View>
-                  <View style={styles.txnMetaItem}>
-                    <Ionicons name="card-outline" size={12} color={theme.colors.textTertiary} />
-                    <Text style={styles.txnMetaText}>{txn.method}</Text>
-                  </View>
-                  {instructor && (
-                    <View style={styles.txnMetaItem}>
-                      <Ionicons
-                        name="logo-usd"
-                        size={12}
-                        color={
-                          instructor.stripeConnectionStatus === 'connected'
-                            ? theme.colors.success
-                            : theme.colors.warning
-                        }
-                      />
-                      <Text style={styles.txnMetaText}>
-                        Stripe {instructor.stripeConnectionStatus === 'connected' ? 'Connected' : 'Pending'}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                {isPending && stripeReady && (
-                  <TouchableOpacity
-                    style={styles.payNowBtn}
-                    onPress={() => handlePayNow(txn.instructorId, txn.instructorName, txn.amount)}>
-                    <Ionicons name="flash-outline" size={16} color="#fff" />
-                    <Text style={styles.payNowText}>Pay Now via Stripe</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            );
-          })}
+  return (
+    <FlatList
+      style={styles.screen}
+      data={filtered}
+      keyExtractor={item => item.id}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      initialNumToRender={15}
+      maxToRenderPerBatch={10}
+      windowSize={5}
+      removeClippedSubviews
+      ListHeaderComponent={txnListHeader}
+      ListEmptyComponent={
+        <View style={styles.headerPad}>
+          <EmptyState icon="receipt-outline" title="No transactions found" subtitle="Try adjusting your search or filter." />
         </View>
-      )}
-    </ScrollView>
+      }
+      renderItem={({ item: txn }) => {
+        const instructor = instructors.find(i => i.id === txn.instructorId);
+        const isPending = txn.status === 'pending';
+        const stripeReady = instructor?.stripeConnectionStatus === 'connected';
+        return (
+          <View style={[styles.txnCard, styles.headerPad]}>
+            <View style={styles.txnCardTop}>
+              <View style={styles.txnIcon}>
+                <Ionicons
+                  name={isPending ? 'time-outline' : 'checkmark-circle-outline'}
+                  size={20}
+                  color={isPending ? theme.colors.warning : theme.colors.success}
+                />
+              </View>
+              <View style={styles.txnInfo}>
+                <Text style={styles.txnName} numberOfLines={1}>{txn.instructorName}</Text>
+                <Text style={styles.txnDesc} numberOfLines={1}>{txn.description}</Text>
+              </View>
+              <View style={styles.txnAmount}>
+                <Text style={styles.txnAmountText}>{'\u00A3'}{txn.amount}</Text>
+                <StatusBadge status={txn.status} />
+              </View>
+            </View>
+            <View style={styles.txnMeta}>
+              <View style={styles.txnMetaItem}>
+                <Ionicons name="calendar-outline" size={12} color={theme.colors.textTertiary} />
+                <Text style={styles.txnMetaText}>{txn.date}</Text>
+              </View>
+              <View style={styles.txnMetaItem}>
+                <Ionicons name="card-outline" size={12} color={theme.colors.textTertiary} />
+                <Text style={styles.txnMetaText}>{txn.method}</Text>
+              </View>
+              {instructor && (
+                <View style={styles.txnMetaItem}>
+                  <Ionicons name="logo-usd" size={12} color={instructor.stripeConnectionStatus === 'connected' ? theme.colors.success : theme.colors.warning} />
+                  <Text style={styles.txnMetaText}>Stripe {instructor.stripeConnectionStatus === 'connected' ? 'Connected' : 'Pending'}</Text>
+                </View>
+              )}
+            </View>
+            {isPending && stripeReady && (
+              <TouchableOpacity style={styles.payNowBtn} onPress={() => handlePayNow(txn.instructorId, txn.instructorName, txn.amount)}>
+                <Ionicons name="flash-outline" size={16} color="#fff" />
+                <Text style={styles.payNowText}>Pay Now via Stripe</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        );
+      }}
+    />
   );
 };
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
-    content: { padding: theme.spacing.md, paddingBottom: theme.spacing['4xl'] },
+    content: { paddingBottom: theme.spacing['4xl'] },
+    headerPad: { paddingHorizontal: theme.spacing.md },
     statsRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -349,8 +297,8 @@ const createStyles = (theme: AppTheme) =>
       color: theme.colors.textTertiary,
       marginBottom: theme.spacing.sm,
     },
-    cardList: { gap: theme.spacing.sm },
     txnCard: {
+      marginBottom: theme.spacing.sm,
       backgroundColor: theme.colors.surface,
       borderRadius: theme.borderRadius.lg,
       borderWidth: 1,

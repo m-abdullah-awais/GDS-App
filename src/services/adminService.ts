@@ -474,13 +474,15 @@ export const deleteAvailablePackage = async (packageId: string): Promise<void> =
 /**
  * Get all packages for admin review (pending + available combined).
  */
-export const getAllPackagesForAdmin = async (): Promise<{
+export const getAllPackagesForAdmin = async (
+  limitCount = 50,
+): Promise<{
   pending: PendingPackage[];
   available: AvailablePackage[];
 }> => {
   const [pendingSnap, availSnap] = await Promise.all([
-    db.collection(Collections.PENDING_PACKAGES).orderBy('created_at', 'desc').get(),
-    db.collection(Collections.AVAILABLE_PACKAGES).orderBy('updatedAt', 'desc').get(),
+    db.collection(Collections.PENDING_PACKAGES).orderBy('created_at', 'desc').limit(limitCount).get(),
+    db.collection(Collections.AVAILABLE_PACKAGES).orderBy('updatedAt', 'desc').limit(limitCount).get(),
   ]);
   return {
     pending: fromQuerySnapshot<PendingPackage>(pendingSnap),

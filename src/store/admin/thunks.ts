@@ -15,6 +15,7 @@ import {
   setAdminPackages,
   setAdminSettings,
   setDashboardStats,
+  setDashboardData,
   approveStudent as approveStudentAction,
   rejectStudent as rejectStudentAction,
   suspendStudent as suspendStudentAction,
@@ -53,48 +54,65 @@ import type { AdminSettings } from './types';
 
 /**
  * Load all initial data for the admin dashboard.
+ *
+ * Uses a SINGLE batched dispatch (SET_DASHBOARD_DATA) instead of 5 sequential
+ * dispatches. This prevents 5 separate React re-render cycles that were blocking
+ * the JS thread and causing the drawer animation to hang/crash.
  */
 export const loadAdminDashboard = () => async (dispatch: Dispatch) => {
   try {
-    // Fetch users, transactions, packages in parallel
-    const [
-      allUsersStudents,
-      allUsersInstructors,
-      transactions,
-      dashCounts,
-      pkgs,
-    ] = await Promise.all([
-      userService.getUsersByRole('student'),
-      userService.getUsersByRole('instructor'),
-      adminService.getAllTransactions(),
-      adminService.getDashboardCounts(),
-      adminService.getAllPackagesForAdmin(),
+    // Keep limits LOW — every document crosses the native→JS bridge and
+    // gets deserialized synchronously on the JS thread.
+    // Split into two batches to reduce peak bridge pressure:
+    // each batch deserializes ~30 docs instead of ~60 at once.
+    const [allUsersStudents, allUsersInstructors] = await Promise.all([
+      userService.getUsersByRole('student', 15),
+      userService.getUsersByRole('instructor', 15),
     ]);
+
+    // Yield so the UI thread stays responsive between fetches
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const [transactions, pkgs] = await Promise.all([
+      adminService.getAllTransactions(15),
+      adminService.getAllPackagesForAdmin(15),
+    ]);
+
+    // Yield again before the CPU-bound mapping step
+    await new Promise(resolve => setTimeout(resolve, 0));
 
     // Map to view models
     const studentVMs = allUsersStudents.map(u => mapUserToAdminStudent(u));
-    dispatch(setStudents(studentVMs));
-
     const instructorVMs = allUsersInstructors.map(u => mapUserToAdminInstructor(u));
-    dispatch(setAdminInstructors(instructorVMs));
-
     const txnVMs = transactions.map(mapTransactionToAdminTransaction);
-    dispatch(setTransactions(txnVMs));
-
-    // Merge available + pending packages
     const allPkgVMs = [
-      ...(pkgs.available || []).map(p => mapPackageToAdminPackage(p, 'available')),
-      ...(pkgs.pending || []).map(p => mapPackageToAdminPackage(p, 'pending')),
+      ...(pkgs.available || []).map(p => mapPackageToAdminPackage(p)),
+      ...(pkgs.pending || []).map(p => mapPackageToAdminPackage(p)),
     ];
-    dispatch(setAdminPackages(allPkgVMs));
 
-    // Build dashboard stats from counts + computed values
-    const stats = buildDashboardStats(
-      dashCounts,
-      studentVMs.length,
-      instructorVMs.length,
-    );
-    dispatch(setDashboardStats(stats));
+    const pendingInstructors = instructorVMs.filter(i => i.approvalStatus === 'pending').length;
+    const activeInstructors = instructorVMs.filter(i => i.accountStatus === 'active').length;
+
+    const stats = buildDashboardStats({
+      totalStudents: studentVMs.length,
+      totalInstructors: instructorVMs.length,
+      activeLessons: activeInstructors,
+      pendingApprovals: pendingInstructors,
+      monthlyRevenue: 0,
+      pendingPayouts: 0,
+    });
+
+    // Yield to the JS thread so any in-progress animations (drawer open/close,
+    // screen transitions) can complete before we trigger a heavy re-render.
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    dispatch(setDashboardData({
+      students: studentVMs,
+      instructors: instructorVMs,
+      transactions: txnVMs,
+      packages: allPkgVMs,
+      dashboardStats: stats,
+    }));
   } catch (error) {
     console.error('Failed to load admin dashboard:', error);
   }

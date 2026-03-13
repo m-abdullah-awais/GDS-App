@@ -8,6 +8,7 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   FlatList,
+  InteractionManager,
   Pressable,
   StyleSheet,
   Text,
@@ -147,9 +148,11 @@ const AdminInstructorMessagesScreen = () => {
   const adminId = useSelector((state: RootState) => state.auth.profile?.uid ?? '');
 
   useEffect(() => {
-    if (adminId) {
+    if (!adminId) return;
+    const task = InteractionManager.runAfterInteractions(() => {
       dispatch(loadAdminConversations(adminId) as any);
-    }
+    });
+    return () => task.cancel();
   }, [dispatch, adminId]);
 
   const sortedConvos = useMemo(

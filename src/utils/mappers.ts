@@ -13,33 +13,6 @@
 import firestore from '@react-native-firebase/firestore';
 import type { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 
-const serializeForLog = (value: unknown): unknown => {
-  if (value == null) {
-    return value;
-  }
-
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-
-  if (Array.isArray(value)) {
-    return value.map(serializeForLog);
-  }
-
-  if (typeof value === 'object') {
-    const maybeTimestamp = value as { toDate?: () => Date };
-    if (typeof maybeTimestamp.toDate === 'function') {
-      return maybeTimestamp.toDate().toISOString();
-    }
-
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, serializeForLog(v)]),
-    );
-  }
-
-  return value;
-};
-
 // ─── Timestamp Helpers ────────────────────────────────────────────────────────
 
 /** Convert any timestamp variant to JS Date. */
@@ -88,12 +61,6 @@ export const fromSnapshot = <T extends { id: string }>(
     id: snapshot.id,
     ...snapshot.data(),
   } as T;
-
-  console.log('[Firebase][READ][Doc]', {
-    path: snapshot.ref.path,
-    data: serializeForLog(data),
-  });
-
   return data;
 };
 
@@ -108,18 +75,10 @@ export const fromSnapshot = <T extends { id: string }>(
 export const fromQuerySnapshot = <T extends { id: string }>(
   snapshot: FirebaseFirestoreTypes.QuerySnapshot,
 ): T[] => {
-  const items = snapshot.docs.map(doc => ({
+  return snapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data(),
   })) as T[];
-
-  console.log('[Firebase][READ][Query]', {
-    path: snapshot.docs[0]?.ref.parent.path || 'unknown',
-    count: items.length,
-    data: serializeForLog(items),
-  });
-
-  return items;
 };
 
 // ─── Dual-Name Writer Helpers ─────────────────────────────────────────────────

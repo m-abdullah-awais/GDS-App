@@ -31,6 +31,7 @@ import {
   SET_SETTINGS,
   SET_DASHBOARD_STATS,
   SET_ADMIN_LOADING,
+  SET_DASHBOARD_DATA,
   type AdminSettings,
   type AdminStudent,
   type AdminInstructor,
@@ -188,4 +189,15 @@ export const setDashboardStats = (stats: DashboardStats) => ({
 export const setAdminLoading = (loading: boolean) => ({
   type: SET_ADMIN_LOADING as typeof SET_ADMIN_LOADING,
   payload: loading,
+});
+
+export const setDashboardData = (data: {
+  students: AdminStudent[];
+  instructors: AdminInstructor[];
+  transactions: Transaction[];
+  packages: AdminPackage[];
+  dashboardStats: DashboardStats;
+}) => ({
+  type: SET_DASHBOARD_DATA as typeof SET_DASHBOARD_DATA,
+  payload: data,
 });

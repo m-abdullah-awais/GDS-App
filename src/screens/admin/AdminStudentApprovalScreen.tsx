@@ -6,7 +6,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -132,54 +132,58 @@ const AdminStudentApprovalScreen = () => {
         </Text>
       </View>
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon="people-outline"
-          title="No students found"
-          subtitle="Try adjusting your search or filter criteria."
-        />
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}>
-          {filtered.map(student => (
-            <TouchableOpacity
-              key={student.id}
-              style={styles.card}
-              activeOpacity={0.7}
-              onPress={() => openDrawer(student)}>
-              <View style={styles.cardHeader}>
-                <Avatar initials={student.avatar} size={40} theme={theme} />
-                <View style={styles.cardInfo}>
-                  <Text style={styles.cardName}>{student.name}</Text>
-                  <Text style={styles.cardSub}>{student.email}</Text>
-                  <Text style={styles.cardSub}>
-                    {student.city} | Registered: {student.registrationDate}
-                  </Text>
-                </View>
-                <StatusBadge status={student.approvalStatus} />
+      <FlatList
+        data={filtered}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews
+        ListEmptyComponent={
+          <EmptyState
+            icon="people-outline"
+            title="No students found"
+            subtitle="Try adjusting your search or filter criteria."
+          />
+        }
+        renderItem={({ item: student }) => (
+          <TouchableOpacity
+            style={styles.card}
+            activeOpacity={0.7}
+            onPress={() => openDrawer(student)}>
+            <View style={styles.cardHeader}>
+              <Avatar initials={student.avatar} size={40} theme={theme} />
+              <View style={styles.cardInfo}>
+                <Text style={styles.cardName}>{student.name}</Text>
+                <Text style={styles.cardSub}>{student.email}</Text>
+                <Text style={styles.cardSub}>
+                  {student.city} | Registered: {student.registrationDate}
+                </Text>
               </View>
+              <StatusBadge status={student.approvalStatus} />
+            </View>
 
-              {student.approvalStatus === 'pending' && (
-                <View style={styles.cardActions}>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.approveBtn]}
-                    onPress={() => handleApprove(student)}>
-                    <Ionicons name="checkmark-outline" size={16} color="#fff" />
-                    <Text style={styles.actionBtnText}>Approve</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.rejectBtn]}
-                    onPress={() => handleReject(student)}>
-                    <Ionicons name="close-outline" size={16} color="#fff" />
-                    <Text style={styles.actionBtnText}>Reject</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
+            {student.approvalStatus === 'pending' && (
+              <View style={styles.cardActions}>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.approveBtn]}
+                  onPress={() => handleApprove(student)}>
+                  <Ionicons name="checkmark-outline" size={16} color="#fff" />
+                  <Text style={styles.actionBtnText}>Approve</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.rejectBtn]}
+                  onPress={() => handleReject(student)}>
+                  <Ionicons name="close-outline" size={16} color="#fff" />
+                  <Text style={styles.actionBtnText}>Reject</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+      />
 
       {/* Confirm Modal */}
       <ConfirmModal

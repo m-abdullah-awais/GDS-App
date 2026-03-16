@@ -48,7 +48,7 @@ const AppTopHeader: React.FC<AppTopHeaderProps> = ({
         <View style={[styles.wrapper, { paddingTop: Math.max(insets.top, theme.spacing.sm) }]}>
             <View style={styles.contentRow}>
                 {leftAction !== 'none' ? (
-                    <Pressable style={styles.leftButton} onPress={onLeftPress}>
+                    <Pressable style={styles.leftButton} onPress={onLeftPress} hitSlop={8}>
                         <Ionicons
                             name={leftAction === 'menu' ? 'menu-outline' : 'arrow-back-outline'}
                             size={22}

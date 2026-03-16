@@ -4,8 +4,10 @@
  * Reports & analytics with chart placeholder cards and summary stats.
  */
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
+  InteractionManager,
   ScrollView,
   StyleSheet,
   Text,
@@ -27,6 +29,15 @@ const AdminReportsScreen = () => {
   const { dashboardStats, students, instructors, transactions } = useSelector(
     (state: RootState) => state.admin,
   );
+
+  // Defer heavy render until navigation animation completes
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => setReady(true));
+    });
+    return () => task.cancel();
+  }, []);
 
   const derivedStats = useMemo(() => {
     const approvalRate =
@@ -56,6 +67,14 @@ const AdminReportsScreen = () => {
         : 0;
     return { approvalRate, avgRating, totalRevenue, avgLessonsPerStudent };
   }, [students, instructors, transactions]);
+
+  if (!ready) {
+    return (
+      <View style={[styles.screen, { flex: 1, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView

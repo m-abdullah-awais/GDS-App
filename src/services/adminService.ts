@@ -10,6 +10,21 @@
 
 import { db } from '../config/firebase';
 import {
+  collection,
+  query,
+  where,
+  getDocs,
+  getDoc,
+  doc,
+  addDoc,
+  updateDoc,
+  setDoc,
+  deleteDoc,
+  onSnapshot,
+  orderBy,
+  limit,
+} from '@react-native-firebase/firestore';
+import {
   Collections,
   fromSnapshot,
   fromQuerySnapshot,
@@ -35,11 +50,13 @@ import type {
  * Get all pending instructor applications.
  */
 export const getPendingInstructorApplications = async (): Promise<UserProfile[]> => {
-  const snap = await db
-    .collection(Collections.USERS)
-    .where('role', '==', 'instructor')
-    .where('status', '==', 'pending')
-    .get();
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.USERS),
+      where('role', '==', 'instructor'),
+      where('status', '==', 'pending'),
+    ),
+  );
   return fromQuerySnapshot<UserProfile>(snap);
 };
 
@@ -47,7 +64,7 @@ export const getPendingInstructorApplications = async (): Promise<UserProfile[]>
  * Approve an instructor application.
  */
 export const approveInstructor = async (instructorId: string): Promise<void> => {
-  await db.collection(Collections.USERS).doc(instructorId).update({
+  await updateDoc(doc(collection(db, Collections.USERS), instructorId), {
     status: 'active',
     approved: true,
     // Capability flags (matches web firebaseHelpers.ts approveInstructor)
@@ -77,7 +94,7 @@ export const rejectInstructor = async (
   instructorId: string,
   reason?: string,
 ): Promise<void> => {
-  await db.collection(Collections.USERS).doc(instructorId).update({
+  await updateDoc(doc(collection(db, Collections.USERS), instructorId), {
     status: 'rejected',
     rejectionReason: reason || '',
     rejectedAt: serverTimestamp(),
@@ -92,7 +109,7 @@ export const suspendInstructor = async (
   instructorId: string,
   reason?: string,
 ): Promise<void> => {
-  await db.collection(Collections.USERS).doc(instructorId).update({
+  await updateDoc(doc(collection(db, Collections.USERS), instructorId), {
     status: 'suspended',
     suspensionReason: reason || '',
     suspendedAt: serverTimestamp(),
@@ -104,7 +121,7 @@ export const suspendInstructor = async (
  * Reactivate a suspended instructor.
  */
 export const reactivateInstructor = async (instructorId: string): Promise<void> => {
-  await db.collection(Collections.USERS).doc(instructorId).update({
+  await updateDoc(doc(collection(db, Collections.USERS), instructorId), {
     status: 'active',
     reactivatedAt: serverTimestamp(),
     updated_at: serverTimestamp(),
@@ -117,10 +134,9 @@ export const reactivateInstructor = async (instructorId: string): Promise<void> 
  * Get commission settings.
  */
 export const getCommissionSettings = async (): Promise<CommissionSettings | null> => {
-  const snap = await db
-    .collection(Collections.SYSTEM_SETTINGS)
-    .doc('commission')
-    .get();
+  const snap = await getDoc(
+    doc(collection(db, Collections.SYSTEM_SETTINGS), 'commission'),
+  );
   return fromSnapshot<CommissionSettings>(snap);
 };
 
@@ -130,23 +146,20 @@ export const getCommissionSettings = async (): Promise<CommissionSettings | null
 export const updateCommissionSettings = async (
   data: Partial<CommissionSettings>,
 ): Promise<void> => {
-  await db
-    .collection(Collections.SYSTEM_SETTINGS)
-    .doc('commission')
-    .set(
-      { ...data, updatedAt: serverTimestamp() },
-      { merge: true },
-    );
+  await setDoc(
+    doc(collection(db, Collections.SYSTEM_SETTINGS), 'commission'),
+    { ...data, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
 };
 
 /**
  * Get area settings.
  */
 export const getAreaSettings = async (): Promise<AreaSettings | null> => {
-  const snap = await db
-    .collection(Collections.SYSTEM_SETTINGS)
-    .doc('areaSettings')
-    .get();
+  const snap = await getDoc(
+    doc(collection(db, Collections.SYSTEM_SETTINGS), 'areaSettings'),
+  );
   return fromSnapshot<AreaSettings>(snap);
 };
 
@@ -156,23 +169,20 @@ export const getAreaSettings = async (): Promise<AreaSettings | null> => {
 export const updateAreaSettings = async (
   data: Partial<AreaSettings>,
 ): Promise<void> => {
-  await db
-    .collection(Collections.SYSTEM_SETTINGS)
-    .doc('areaSettings')
-    .set(
-      { ...data, updatedAt: serverTimestamp() },
-      { merge: true },
-    );
+  await setDoc(
+    doc(collection(db, Collections.SYSTEM_SETTINGS), 'areaSettings'),
+    { ...data, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
 };
 
 /**
  * Get admin data settings.
  */
 export const getAdminDataSettings = async (): Promise<AdminDataSettings | null> => {
-  const snap = await db
-    .collection(Collections.ADMIN_DATA)
-    .doc('settings')
-    .get();
+  const snap = await getDoc(
+    doc(collection(db, Collections.ADMIN_DATA), 'settings'),
+  );
   return fromSnapshot<AdminDataSettings>(snap);
 };
 
@@ -182,13 +192,15 @@ export const getAdminDataSettings = async (): Promise<AdminDataSettings | null> 
  * Get all transactions.
  */
 export const getAllTransactions = async (
-  limit = 50,
+  limitCount = 50,
 ): Promise<Transaction[]> => {
-  const snap = await db
-    .collection(Collections.TRANSACTIONS)
-    .orderBy('created_at', 'desc')
-    .limit(limit)
-    .get();
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.TRANSACTIONS),
+      orderBy('created_at', 'desc'),
+      limit(limitCount),
+    ),
+  );
   return fromQuerySnapshot<Transaction>(snap);
 };
 
@@ -196,13 +208,15 @@ export const getAllTransactions = async (
  * Get all payments.
  */
 export const getAllPayments = async (
-  limit = 50,
+  limitCount = 50,
 ): Promise<Payment[]> => {
-  const snap = await db
-    .collection(Collections.PAYMENTS)
-    .orderBy('createdAt', 'desc')
-    .limit(limit)
-    .get();
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.PAYMENTS),
+      orderBy('createdAt', 'desc'),
+      limit(limitCount),
+    ),
+  );
   return fromQuerySnapshot<Payment>(snap);
 };
 
@@ -212,11 +226,13 @@ export const getAllPayments = async (
 export const getInstructorPayments = async (
   instructorId: string,
 ): Promise<InstructorPayment[]> => {
-  const snap = await db
-    .collection(Collections.INSTRUCTOR_PAYMENTS)
-    .where('instructorId', '==', instructorId)
-    .orderBy('createdAt', 'desc')
-    .get();
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.INSTRUCTOR_PAYMENTS),
+      where('instructorId', '==', instructorId),
+      orderBy('createdAt', 'desc'),
+    ),
+  );
   return fromQuerySnapshot<InstructorPayment>(snap);
 };
 
@@ -226,11 +242,13 @@ export const getInstructorPayments = async (
 export const getWeeklyInstructorPayments = async (
   instructorId: string,
 ): Promise<WeeklyInstructorPayment[]> => {
-  const snap = await db
-    .collection(Collections.WEEKLY_INSTRUCTOR_PAYMENTS)
-    .where('instructorId', '==', instructorId)
-    .orderBy('weekStart', 'desc')
-    .get();
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.WEEKLY_INSTRUCTOR_PAYMENTS),
+      where('instructorId', '==', instructorId),
+      orderBy('weekStart', 'desc'),
+    ),
+  );
   return fromQuerySnapshot<WeeklyInstructorPayment>(snap);
 };
 
@@ -238,13 +256,15 @@ export const getWeeklyInstructorPayments = async (
  * Get all payouts (admin view).
  */
 export const getAllPayouts = async (
-  limit = 50,
+  limitCount = 50,
 ): Promise<Payout[]> => {
-  const snap = await db
-    .collection(Collections.PAYOUTS)
-    .orderBy('createdAt', 'desc')
-    .limit(limit)
-    .get();
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.PAYOUTS),
+      orderBy('createdAt', 'desc'),
+      limit(limitCount),
+    ),
+  );
   return fromQuerySnapshot<Payout>(snap);
 };
 
@@ -254,12 +274,13 @@ export const getAllPayouts = async (
 export const onAllUsers = (
   callback: (users: UserProfile[]) => void,
 ): (() => void) => {
-  return db
-    .collection(Collections.USERS)
-    .orderBy('createdAt', 'desc')
-    .onSnapshot(
-      (snap) => callback(fromQuerySnapshot<UserProfile>(snap)),
-    );
+  return onSnapshot(
+    query(
+      collection(db, Collections.USERS),
+      orderBy('createdAt', 'desc'),
+    ),
+    (snap) => callback(fromQuerySnapshot<UserProfile>(snap)),
+  );
 };
 
 /**
@@ -272,13 +293,25 @@ export const getDashboardCounts = async (): Promise<{
   activeInstructors: number;
 }> => {
   const [students, instructors, pending] = await Promise.all([
-    db.collection(Collections.USERS).where('role', '==', 'student').get(),
-    db.collection(Collections.USERS).where('role', '==', 'instructor').get(),
-    db
-      .collection(Collections.USERS)
-      .where('role', '==', 'instructor')
-      .where('status', '==', 'pending')
-      .get(),
+    getDocs(
+      query(
+        collection(db, Collections.USERS),
+        where('role', '==', 'student'),
+      ),
+    ),
+    getDocs(
+      query(
+        collection(db, Collections.USERS),
+        where('role', '==', 'instructor'),
+      ),
+    ),
+    getDocs(
+      query(
+        collection(db, Collections.USERS),
+        where('role', '==', 'instructor'),
+        where('status', '==', 'pending'),
+      ),
+    ),
   ]);
 
   const activeCount = instructors.docs.filter(
@@ -299,7 +332,7 @@ export const getDashboardCounts = async (): Promise<{
  * Approve a student account.
  */
 export const approveStudent = async (studentId: string): Promise<void> => {
-  await db.collection(Collections.USERS).doc(studentId).update({
+  await updateDoc(doc(collection(db, Collections.USERS), studentId), {
     status: 'active',
     approved: true,
     approvedAt: serverTimestamp(),
@@ -314,7 +347,7 @@ export const rejectStudent = async (
   studentId: string,
   reason?: string,
 ): Promise<void> => {
-  await db.collection(Collections.USERS).doc(studentId).update({
+  await updateDoc(doc(collection(db, Collections.USERS), studentId), {
     status: 'rejected',
     rejectionReason: reason || '',
     rejectedAt: serverTimestamp(),
@@ -329,7 +362,7 @@ export const suspendStudent = async (
   studentId: string,
   reason?: string,
 ): Promise<void> => {
-  await db.collection(Collections.USERS).doc(studentId).update({
+  await updateDoc(doc(collection(db, Collections.USERS), studentId), {
     status: 'frozen',
     suspensionReason: reason || '',
     suspendedAt: serverTimestamp(),
@@ -341,7 +374,7 @@ export const suspendStudent = async (
  * Activate a suspended student account.
  */
 export const activateStudent = async (studentId: string): Promise<void> => {
-  await db.collection(Collections.USERS).doc(studentId).update({
+  await updateDoc(doc(collection(db, Collections.USERS), studentId), {
     status: 'active',
     reactivatedAt: serverTimestamp(),
     updated_at: serverTimestamp(),
@@ -352,7 +385,7 @@ export const activateStudent = async (studentId: string): Promise<void> => {
  * Delete a student user document.
  */
 export const deleteStudentUser = async (studentId: string): Promise<void> => {
-  await db.collection(Collections.USERS).doc(studentId).delete();
+  await deleteDoc(doc(collection(db, Collections.USERS), studentId));
 };
 
 // ─── Package Management (Admin) ──────────────────────────────────────────────
@@ -361,7 +394,7 @@ export const deleteStudentUser = async (studentId: string): Promise<void> => {
  * Approve a pending package → create/update in availablePackages.
  */
 export const approvePendingPackage = async (packageId: string): Promise<void> => {
-  const snap = await db.collection(Collections.PENDING_PACKAGES).doc(packageId).get();
+  const snap = await getDoc(doc(collection(db, Collections.PENDING_PACKAGES), packageId));
   if (!snap.exists) {throw new Error('Pending package not found');}
   const data = snap.data()!;
 
@@ -372,14 +405,14 @@ export const approvePendingPackage = async (packageId: string): Promise<void> =>
   const instructorEarnings = price - commissionAmount;
 
   // Update the pending package status
-  await db.collection(Collections.PENDING_PACKAGES).doc(packageId).update({
+  await updateDoc(doc(collection(db, Collections.PENDING_PACKAGES), packageId), {
     status: 'approved',
     approvedAt: serverTimestamp(),
   });
 
   // If editing existing, update availablePackages
   if (data.availablePackageId) {
-    await db.collection(Collections.AVAILABLE_PACKAGES).doc(data.availablePackageId).update({
+    await updateDoc(doc(collection(db, Collections.AVAILABLE_PACKAGES), data.availablePackageId), {
       title: data.title,
       description: data.description,
       number_of_lessons: data.number_of_lessons,
@@ -392,7 +425,7 @@ export const approvePendingPackage = async (packageId: string): Promise<void> =>
     });
   } else {
     // New package → create in availablePackages
-    const availRef = await db.collection(Collections.AVAILABLE_PACKAGES).add({
+    const availRef = await addDoc(collection(db, Collections.AVAILABLE_PACKAGES), {
       instructorId: data.instructorId,
       instructor_id: data.instructorId || data.instructor_id || '',
       instructorName: data.instructorName || '',
@@ -411,7 +444,7 @@ export const approvePendingPackage = async (packageId: string): Promise<void> =>
     });
 
     // Also create in `packages` collection (matches web)
-    await db.collection(Collections.PACKAGES).add({
+    await addDoc(collection(db, Collections.PACKAGES), {
       instructorId: data.instructorId,
       instructor_id: data.instructorId || data.instructor_id || '',
       instructorName: data.instructorName || '',
@@ -431,7 +464,7 @@ export const approvePendingPackage = async (packageId: string): Promise<void> =>
   }
 
   // Delete the processed pending package (matches web flow)
-  await db.collection(Collections.PENDING_PACKAGES).doc(packageId).delete();
+  await deleteDoc(doc(collection(db, Collections.PENDING_PACKAGES), packageId));
 };
 
 /**
@@ -441,7 +474,7 @@ export const rejectPendingPackage = async (
   packageId: string,
   reason?: string,
 ): Promise<void> => {
-  await db.collection(Collections.PENDING_PACKAGES).doc(packageId).update({
+  await updateDoc(doc(collection(db, Collections.PENDING_PACKAGES), packageId), {
     status: 'rejected',
     rejectionReason: reason || '',
     rejectedAt: serverTimestamp(),
@@ -455,7 +488,7 @@ export const updatePackageCommission = async (
   packageId: string,
   commissionPercent: number,
 ): Promise<void> => {
-  await db.collection(Collections.AVAILABLE_PACKAGES).doc(packageId).update({
+  await updateDoc(doc(collection(db, Collections.AVAILABLE_PACKAGES), packageId), {
     commission_percent: commissionPercent,
     updatedAt: serverTimestamp(),
   });
@@ -465,7 +498,7 @@ export const updatePackageCommission = async (
  * Deactivate/delete an available package.
  */
 export const deleteAvailablePackage = async (packageId: string): Promise<void> => {
-  await db.collection(Collections.AVAILABLE_PACKAGES).doc(packageId).update({
+  await updateDoc(doc(collection(db, Collections.AVAILABLE_PACKAGES), packageId), {
     available: false,
     updatedAt: serverTimestamp(),
   });
@@ -481,8 +514,20 @@ export const getAllPackagesForAdmin = async (
   available: AvailablePackage[];
 }> => {
   const [pendingSnap, availSnap] = await Promise.all([
-    db.collection(Collections.PENDING_PACKAGES).orderBy('created_at', 'desc').limit(limitCount).get(),
-    db.collection(Collections.AVAILABLE_PACKAGES).orderBy('updatedAt', 'desc').limit(limitCount).get(),
+    getDocs(
+      query(
+        collection(db, Collections.PENDING_PACKAGES),
+        orderBy('created_at', 'desc'),
+        limit(limitCount),
+      ),
+    ),
+    getDocs(
+      query(
+        collection(db, Collections.AVAILABLE_PACKAGES),
+        orderBy('updatedAt', 'desc'),
+        limit(limitCount),
+      ),
+    ),
   ]);
   return {
     pending: fromQuerySnapshot<PendingPackage>(pendingSnap),
@@ -494,10 +539,12 @@ export const getAllPackagesForAdmin = async (
  * Get all active bookings count.
  */
 export const getActiveBookingsCount = async (): Promise<number> => {
-  const snap = await db
-    .collection(Collections.BOOKINGS)
-    .where('status', 'in', ['pending', 'confirmed'])
-    .get();
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.BOOKINGS),
+      where('status', 'in', ['pending', 'confirmed']),
+    ),
+  );
   return snap.size;
 };
 
@@ -507,11 +554,13 @@ export const getActiveBookingsCount = async (): Promise<number> => {
 export const getMonthlyRevenue = async (): Promise<number> => {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const snap = await db
-    .collection(Collections.TRANSACTIONS)
-    .where('status', '==', 'completed')
-    .where('created_at', '>=', startOfMonth)
-    .get();
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.TRANSACTIONS),
+      where('status', '==', 'completed'),
+      where('created_at', '>=', startOfMonth),
+    ),
+  );
   return snap.docs.reduce((sum, d) => sum + (d.data().amount || 0), 0);
 };
 
@@ -519,9 +568,9 @@ export const getMonthlyRevenue = async (): Promise<number> => {
  * Get total pending payouts.
  */
 export const getPendingPayoutsTotal = async (): Promise<number> => {
-  const snap = await db
-    .collection(Collections.WEEKLY_INSTRUCTOR_PAYMENTS)
-    .get();
+  const snap = await getDocs(
+    collection(db, Collections.WEEKLY_INSTRUCTOR_PAYMENTS),
+  );
   return snap.docs.reduce(
     (sum, d) => sum + (d.data().weeklyInstructorPayment || 0),
     0,
@@ -536,8 +585,9 @@ export const getPendingPayoutsTotal = async (): Promise<number> => {
 export const updateAdminDataSettings = async (
   data: Record<string, unknown>,
 ): Promise<void> => {
-  await db
-    .collection(Collections.ADMIN_DATA)
-    .doc('settings')
-    .set({ ...data, updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(
+    doc(collection(db, Collections.ADMIN_DATA), 'settings'),
+    { ...data, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
 };

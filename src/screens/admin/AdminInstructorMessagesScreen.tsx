@@ -5,8 +5,9 @@
  * Opens dedicated AdminChat screen on row tap.
  */
 
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   InteractionManager,
   Pressable,
@@ -40,7 +41,7 @@ const ConversationRow = ({
   theme: AppTheme;
   onPress: () => void;
 }) => {
-  const s = rowStyles(theme);
+  const s = useMemo(() => rowStyles(theme), [theme]);
   const hasUnread = item.unreadCount > 0;
 
   return (
@@ -147,6 +148,15 @@ const AdminInstructorMessagesScreen = () => {
   const conversations = useSelector((state: RootState) => state.admin.conversations);
   const adminId = useSelector((state: RootState) => state.auth.profile?.uid ?? '');
 
+  // Defer heavy render until navigation animation completes
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => setReady(true));
+    });
+    return () => task.cancel();
+  }, []);
+
   useEffect(() => {
     if (!adminId) return;
     const task = InteractionManager.runAfterInteractions(() => {
@@ -171,6 +181,16 @@ const AdminInstructorMessagesScreen = () => {
     });
   }, [dispatch, navigation]);
 
+  const SeparatorComponent = useCallback(() => <View style={styles.separator} />, [styles]);
+
+  if (!ready) {
+    return (
+      <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.screen}>
       {sortedConvos.length === 0 ? (
@@ -185,7 +205,7 @@ const AdminInstructorMessagesScreen = () => {
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ItemSeparatorComponent={SeparatorComponent}
           renderItem={({ item }) => (
             <ConversationRow item={item} theme={theme} onPress={() => openConversation(item)} />
           )}

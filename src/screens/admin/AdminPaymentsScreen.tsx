@@ -4,9 +4,11 @@
  * Revenue summary + transactions list with Stripe integration.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
+  InteractionManager,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -43,6 +45,15 @@ const AdminPaymentsScreen = () => {
   const transactions = useSelector((state: RootState) => state.admin.transactions);
   const instructors = useSelector((state: RootState) => state.admin.instructors);
   const dashboardStats = useSelector((state: RootState) => state.admin.dashboardStats);
+
+  // Defer heavy render until navigation animation completes
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => setReady(true));
+    });
+    return () => task.cancel();
+  }, []);
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
@@ -81,15 +92,15 @@ const AdminPaymentsScreen = () => {
     return [...list].sort((a, b) => b.date.localeCompare(a.date));
   }, [transactions, filter, search]);
 
-  const handleExport = () => {
+  const handleExport = useCallback(() => {
     showToast('info', 'CSV export coming soon');
-  };
+  }, [showToast]);
 
-  const handlePayNow = (instructorId: string, instructorName: string, amount: number) => {
+  const handlePayNow = useCallback((instructorId: string, instructorName: string, amount: number) => {
     dispatch(transferPaymentThunk(instructorId, amount) as any)
       .then(() => showToast('success', `Stripe payout initiated for ${instructorName}`))
       .catch(() => showToast('error', 'Payout failed. Please try again.'));
-  };
+  }, [dispatch, showToast]);
 
   const txnListHeader = useMemo(() => (
     <View style={styles.headerPad}>
@@ -139,8 +150,15 @@ const AdminPaymentsScreen = () => {
       </View>
       <Text style={styles.resultsText}>{filtered.length} transaction{filtered.length !== 1 ? 's' : ''}</Text>
     </View>
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [dashboardStats, stats, stripeStats, filter, filtered.length]);
+  ), [dashboardStats, stats, stripeStats, filter, filtered.length, styles, theme, handleExport, setSearch, setFilter]);
+
+  if (!ready) {
+    return (
+      <View style={[styles.screen, { flex: 1, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <FlatList

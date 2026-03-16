@@ -10,8 +10,17 @@
  * - serverTimestamp() injection on create/update
  */
 
-import firestore from '@react-native-firebase/firestore';
+import {
+  serverTimestamp as firestoreServerTimestamp,
+  collection as firestoreCollection,
+  doc as firestoreDoc,
+  addDoc,
+  setDoc as firestoreSetDoc,
+  updateDoc as firestoreUpdateDoc,
+  getDoc as firestoreGetDoc,
+} from '@react-native-firebase/firestore';
 import type { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
+import { db } from '../config/firebase';
 
 // ─── Timestamp Helpers ────────────────────────────────────────────────────────
 
@@ -41,7 +50,7 @@ export const toISOString = (
 };
 
 /** Get Firestore server timestamp sentinel. */
-export const serverTimestamp = () => firestore.FieldValue.serverTimestamp();
+export const serverTimestamp = () => firestoreServerTimestamp();
 
 // ─── Document Snapshot Converter ──────────────────────────────────────────────
 
@@ -54,7 +63,7 @@ export const serverTimestamp = () => firestore.FieldValue.serverTimestamp();
  * ```
  */
 export const fromSnapshot = <T extends { id: string }>(
-  snapshot: FirebaseFirestoreTypes.DocumentSnapshot,
+  snapshot: FirebaseFirestoreTypes.DocumentSnapshot<any>,
 ): T | null => {
   if (!snapshot.exists) return null;
   const data = {
@@ -73,7 +82,7 @@ export const fromSnapshot = <T extends { id: string }>(
  * ```
  */
 export const fromQuerySnapshot = <T extends { id: string }>(
-  snapshot: FirebaseFirestoreTypes.QuerySnapshot,
+  snapshot: FirebaseFirestoreTypes.QuerySnapshot<any>,
 ): T[] => {
   return snapshot.docs.map(doc => ({
     id: doc.id,
@@ -109,10 +118,10 @@ export const resolveInstructorId = (doc: Record<string, unknown>): string | unde
 // ─── Collection References ───────────────────────────────────────────────────
 
 /** Typed collection reference helper. */
-export const collection = (path: string) => firestore().collection(path);
+export const collection = (path: string) => firestoreCollection(db, path);
 
 /** Typed document reference helper. */
-export const doc = (path: string, docId: string) => firestore().collection(path).doc(docId);
+export const doc = (path: string, docId: string) => firestoreDoc(firestoreCollection(db, path), docId);
 
 // ─── Common Write Helpers ─────────────────────────────────────────────────────
 
@@ -124,7 +133,7 @@ export const createDoc = async (
   collectionPath: string,
   data: Record<string, unknown>,
 ): Promise<string> => {
-  const ref = await firestore().collection(collectionPath).add({
+  const ref = await addDoc(firestoreCollection(db, collectionPath), {
     ...data,
     createdAt: serverTimestamp(),
   });
@@ -140,7 +149,8 @@ export const setDoc = async (
   data: Record<string, unknown>,
   options: { merge?: boolean } = { merge: true },
 ): Promise<void> => {
-  await firestore().collection(collectionPath).doc(docId).set(
+  await firestoreSetDoc(
+    firestoreDoc(firestoreCollection(db, collectionPath), docId),
     {
       ...data,
       updated_at: serverTimestamp(),
@@ -157,10 +167,13 @@ export const updateDoc = async (
   docId: string,
   data: Record<string, unknown>,
 ): Promise<void> => {
-  await firestore().collection(collectionPath).doc(docId).update({
-    ...data,
-    updated_at: serverTimestamp(),
-  });
+  await firestoreUpdateDoc(
+    firestoreDoc(firestoreCollection(db, collectionPath), docId),
+    {
+      ...data,
+      updated_at: serverTimestamp(),
+    },
+  );
 };
 
 /**
@@ -170,7 +183,9 @@ export const getDoc = async <T extends { id: string }>(
   collectionPath: string,
   docId: string,
 ): Promise<T | null> => {
-  const snapshot = await firestore().collection(collectionPath).doc(docId).get();
+  const snapshot = await firestoreGetDoc(
+    firestoreDoc(firestoreCollection(db, collectionPath), docId),
+  );
   return fromSnapshot<T>(snapshot);
 };
 

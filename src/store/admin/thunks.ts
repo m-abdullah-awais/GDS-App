@@ -384,10 +384,12 @@ export const sendAdminMessageThunk = (
   conversationId: string,
   recipientId: string,
   text: string,
-) => async (dispatch: Dispatch) => {
+) => async (dispatch: Dispatch, getState: () => any) => {
   try {
+    const adminId = getState().auth?.profile?.uid ?? '';
     await messageService.sendMessage({
-      recipientId,
+      senderId: adminId,
+      receiverId: recipientId,
       content: text,
       senderRole: 'admin',
     });

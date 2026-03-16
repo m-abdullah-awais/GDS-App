@@ -42,15 +42,9 @@ const AdminDashboardScreen = () => {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Wait for mount + navigation animations to fully complete,
-    // THEN start the data fetch, THEN allow the heavy render.
     const task = InteractionManager.runAfterInteractions(() => {
-      // Extra delay so the drawer opener is responsive immediately after mount
-      setTimeout(() => {
-        dispatch(loadAdminDashboard() as any);
-        // Allow heavy render after another frame yield
-        requestAnimationFrame(() => setReady(true));
-      }, 300);
+      dispatch(loadAdminDashboard() as any);
+      requestAnimationFrame(() => setReady(true));
     });
     return () => task.cancel();
   }, [dispatch]);

@@ -4,9 +4,11 @@
  * Full student roster with suspend / activate / delete actions.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
+  InteractionManager,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -52,6 +54,15 @@ const AdminStudentManagementScreen = () => {
     () => allStudents.filter(s => s.approvalStatus === 'approved'),
     [allStudents],
   );
+
+  // Defer heavy render until navigation animation completes
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => setReady(true));
+    });
+    return () => task.cancel();
+  }, []);
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
@@ -137,6 +148,14 @@ const AdminStudentManagementScreen = () => {
         return { title: '', icon: 'alert-outline' as const, variant: 'primary' as const, label: '' };
     }
   }, [confirmType]);
+
+  if (!ready) {
+    return (
+      <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>

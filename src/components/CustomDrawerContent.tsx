@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
     DrawerContentScrollView,
     DrawerItemList,
@@ -34,52 +34,11 @@ const CustomDrawerContent: React.FC<CustomDrawerContentProps> = ({
     userEmail,
     roleLabel,
     onLogout,
-    ...props
+    ...drawerProps
 }) => {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
     const insets = useSafeAreaInsets();
-
-    // Track whether there is hidden content below the fold
-    const [hasMoreBelow, setHasMoreBelow] = useState(false);
-    const scrollViewHeight = useRef(0);
-    const contentHeight = useRef(0);
-    const currentOffset = useRef(0);
-
-    // Bouncing animation for the chevron
-    const bounceAnim = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-        if (!hasMoreBelow) return;
-        const loop = Animated.loop(
-            Animated.sequence([
-                Animated.timing(bounceAnim, { toValue: 6, duration: 500, useNativeDriver: true }),
-                Animated.timing(bounceAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
-            ]),
-        );
-        loop.start();
-        return () => loop.stop();
-    }, [hasMoreBelow, bounceAnim]);
-
-    const checkMoreBelow = useCallback(() => {
-        const remaining = contentHeight.current - scrollViewHeight.current - currentOffset.current;
-        setHasMoreBelow(remaining > 8);
-    }, []);
-
-    const handleScroll = useCallback((e: any) => {
-        currentOffset.current = e.nativeEvent.contentOffset.y;
-        checkMoreBelow();
-    }, [checkMoreBelow]);
-
-    const handleContentSizeChange = useCallback((_: number, h: number) => {
-        contentHeight.current = h;
-        checkMoreBelow();
-    }, [checkMoreBelow]);
-
-    const handleLayout = useCallback((e: any) => {
-        scrollViewHeight.current = e.nativeEvent.layout.height;
-        checkMoreBelow();
-    }, [checkMoreBelow]);
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -104,33 +63,12 @@ const CustomDrawerContent: React.FC<CustomDrawerContentProps> = ({
             <View style={styles.divider} />
 
             {/* ── Scrollable drawer items ────────────────── */}
-            <View style={styles.scrollWrapper}>
-                <DrawerContentScrollView
-                    {...props}
-                    contentContainerStyle={styles.scrollContent}
-                    style={styles.scrollView}
-                    onScroll={handleScroll}
-                    scrollEventThrottle={16}
-                    onContentSizeChange={handleContentSizeChange}
-                    onLayout={handleLayout}
-                    contentInsetAdjustmentBehavior="never"
-                    automaticallyAdjustContentInsets={false}>
-                    <DrawerItemList {...props} />
-                </DrawerContentScrollView>
-
-                {/* Fade + bouncing chevron hint */}
-                {hasMoreBelow && (
-                    <View style={styles.fadeOverlay} pointerEvents="none">
-                        <Animated.View style={{ transform: [{ translateY: bounceAnim }] }}>
-                            <Ionicons
-                                name="chevron-down"
-                                size={18}
-                                color={theme.colors.textSecondary}
-                            />
-                        </Animated.View>
-                    </View>
-                )}
-            </View>
+            <DrawerContentScrollView
+                {...drawerProps}
+                contentContainerStyle={styles.scrollContent}
+                style={styles.scrollView}>
+                <DrawerItemList {...drawerProps} />
+            </DrawerContentScrollView>
 
             {/* ── Fixed logout at bottom ─────────────────── */}
             {onLogout ? (
@@ -161,26 +99,10 @@ const createStyles = (theme: AppTheme) =>
         },
         scrollView: {
             flex: 1,
-            marginTop: 0,
-        },
-        scrollWrapper: {
-            flex: 1,
-            position: 'relative',
         },
         scrollContent: {
             paddingTop: 0,
             paddingBottom: theme.spacing.sm,
-        },
-        fadeOverlay: {
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 48,
-            backgroundColor: theme.colors.background + 'CC', // ~80% opaque
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            paddingBottom: 6,
         },
         profileSection: {
             alignItems: 'center',

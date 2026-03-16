@@ -7,7 +7,7 @@
 
 import { db } from '../config/firebase';
 import { Collections, fromQuerySnapshot } from '../utils/mappers';
-import { collection, query, where, getDocs } from '@react-native-firebase/firestore';
+import { collection, query, where, getDocs, limit } from '@react-native-firebase/firestore';
 import type { Assignment } from '../types';
 
 /**
@@ -40,15 +40,11 @@ export const getStudentAssignments = async (studentId: string): Promise<Assignme
  * Get assignments for an instructor.
  */
 export const getInstructorAssignments = async (instructorId: string): Promise<Assignment[]> => {
-  const snapshot1 = await db
-    .collection(Collections.ASSIGNMENTS)
-    .where('instructorId', '==', instructorId)
-    .get();
+  const q1 = query(collection(db, Collections.ASSIGNMENTS), where('instructorId', '==', instructorId));
+  const snapshot1 = await getDocs(q1);
 
-  const snapshot2 = await db
-    .collection(Collections.ASSIGNMENTS)
-    .where('instructor_id', '==', instructorId)
-    .get();
+  const q2 = query(collection(db, Collections.ASSIGNMENTS), where('instructor_id', '==', instructorId));
+  const snapshot2 = await getDocs(q2);
 
   const map = new Map<string, Assignment>();
   for (const doc of [...snapshot1.docs, ...snapshot2.docs]) {
@@ -72,21 +68,13 @@ export const getAssignment = async (
   studentId: string,
   instructorId: string,
 ): Promise<Assignment | null> => {
-  const snapshot = await db
-    .collection(Collections.ASSIGNMENTS)
-    .where('studentId', '==', studentId)
-    .where('instructorId', '==', instructorId)
-    .limit(1)
-    .get();
+  const q1 = query(collection(db, Collections.ASSIGNMENTS), where('studentId', '==', studentId), where('instructorId', '==', instructorId), limit(1));
+  const snapshot = await getDocs(q1);
 
   if (snapshot.empty) {
     // Try alternate field names
-    const snapshot2 = await db
-      .collection(Collections.ASSIGNMENTS)
-      .where('student_id', '==', studentId)
-      .where('instructor_id', '==', instructorId)
-      .limit(1)
-      .get();
+    const q2 = query(collection(db, Collections.ASSIGNMENTS), where('student_id', '==', studentId), where('instructor_id', '==', instructorId), limit(1));
+    const snapshot2 = await getDocs(q2);
 
     if (snapshot2.empty) return null;
     const doc = snapshot2.docs[0];

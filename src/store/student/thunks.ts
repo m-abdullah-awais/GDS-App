@@ -54,7 +54,7 @@ export const loadStudentData = (studentId: string) => async (dispatch: Dispatch)
         return await reader();
       } catch (error: any) {
         if (error?.code === 'firestore/permission-denied') {
-          console.warn('[Student] Firestore permission denied for one query, using fallback data.');
+          console.info('[Student] Firestore permission denied for one query, using fallback data.');
           return fallback;
         }
         throw error;

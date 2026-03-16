@@ -86,9 +86,12 @@ const AdminTabs = () => {
           subtitle="Admin Console"
           avatarText="Admin"
           leftAction="menu"
-          onLeftPress={() => navigation.toggleDrawer()}
+          onLeftPress={() => navigation.openDrawer()}
         />
       ),
+      drawerType: 'front' as const,
+      swipeEdgeWidth: 50,
+      overlayColor: 'rgba(0,0,0,0.5)',
       drawerStyle: { backgroundColor: theme.colors.background },
       drawerActiveTintColor: theme.colors.primary,
       drawerInactiveTintColor: theme.colors.textSecondary,
@@ -96,7 +99,6 @@ const AdminTabs = () => {
       drawerLabelStyle: { marginLeft: -10, fontSize: 15, fontWeight: '500' as const },
       sceneStyle: { backgroundColor: theme.colors.background },
       lazy: true,
-      // Freeze screens that are not focused to avoid re-renders during drawer animation
       freezeOnBlur: true,
     }),
     [theme],
@@ -130,6 +132,15 @@ const AdminTabs = () => {
         options={{
           drawerIcon: ({ color, size }) => (
             <Ionicons name="car-outline" size={size} color={color} style={{ marginRight: 6 }} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="Package Approvals"
+        component={AdminPackageApprovalScreen}
+        options={{
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="cube-outline" size={size} color={color} style={{ marginRight: 6 }} />
           ),
         }}
       />

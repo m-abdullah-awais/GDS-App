@@ -4,9 +4,11 @@
  * List pending / all student registrations with approve/reject actions.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
+  InteractionManager,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -45,6 +47,15 @@ const AdminStudentApprovalScreen = () => {
   const { showToast } = useToast();
 
   const students = useSelector((state: RootState) => state.admin.students);
+
+  // Defer heavy render until navigation animation completes
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => setReady(true));
+    });
+    return () => task.cancel();
+  }, []);
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
@@ -112,6 +123,14 @@ const AdminStudentApprovalScreen = () => {
     setSelectedStudent(student);
     setDrawerOpen(true);
   }, []);
+
+  if (!ready) {
+    return (
+      <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>

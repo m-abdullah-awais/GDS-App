@@ -4,9 +4,11 @@
  * Manage approved instructors: suspend / activate, transfer payments.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
+  InteractionManager,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -52,6 +54,15 @@ const AdminInstructorManagementScreen = () => {
     () => allInstructors.filter(i => i.approvalStatus === 'approved'),
     [allInstructors],
   );
+
+  // Defer heavy render until navigation animation completes
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => setReady(true));
+    });
+    return () => task.cancel();
+  }, []);
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
@@ -175,7 +186,15 @@ const AdminInstructorManagementScreen = () => {
       </View>
     </>
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [stats, filter, filtered.length]);
+  ), [stats, filter, filtered.length, styles, theme, setSearch, setFilter]);
+
+  if (!ready) {
+    return (
+      <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>

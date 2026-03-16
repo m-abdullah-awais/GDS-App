@@ -42,9 +42,12 @@ const AdminSettingsScreen = () => {
   const [localSettings, setLocalSettings] = useState<AdminSettings>(settings);
   const [saving, setSaving] = useState(false);
 
+  // Defer heavy render until navigation animation completes
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => {
       dispatch(loadAdminSettings() as any);
+      requestAnimationFrame(() => setReady(true));
     });
     return () => task.cancel();
   }, [dispatch]);
@@ -77,6 +80,14 @@ const AdminSettingsScreen = () => {
     setLocalSettings(settings);
     showToast('info', 'Changes discarded');
   }, [settings, showToast]);
+
+  if (!ready) {
+    return (
+      <View style={[styles.screen, { flex: 1, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView

@@ -41,33 +41,33 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: DRAWER_WIDTH,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
+    const anim = visible
+      ? Animated.parallel([
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ])
+      : Animated.parallel([
+          Animated.timing(slideAnim, {
+            toValue: DRAWER_WIDTH,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+        ]);
+    anim.start();
+    return () => anim.stop();
   }, [visible, slideAnim, fadeAnim]);
 
   return (

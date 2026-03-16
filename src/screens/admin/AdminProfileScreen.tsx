@@ -10,8 +10,10 @@
  *   - Sign out
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
+  InteractionManager,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -91,6 +93,15 @@ const AdminProfileScreen = () => {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const dispatch = useDispatch();
   const authProfile = useSelector((state: RootState) => state.auth.profile);
+
+  // Defer heavy render until navigation animation completes
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => setReady(true));
+    });
+    return () => task.cancel();
+  }, []);
 
   const profileFromAuth: ProfileData = useMemo(() => ({
     name: authProfile?.full_name || '',
@@ -186,6 +197,16 @@ const AdminProfileScreen = () => {
 
   const displayName = editing ? draft.name : profile.name;
   const displayRole = editing ? draft.role : profile.role;
+
+  if (!ready) {
+    return (
+      <ScreenContainer title="Profile">
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer title="Profile">

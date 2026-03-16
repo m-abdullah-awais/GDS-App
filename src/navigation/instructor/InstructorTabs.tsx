@@ -79,15 +79,20 @@ const InstructorTabs = () => {
                         subtitle="Instructor Workspace"
                         avatarText="Instructor"
                         leftAction="menu"
-                        onLeftPress={() => navigation.toggleDrawer()}
+                        onLeftPress={() => navigation.openDrawer()}
                     />
                 ),
+                drawerType: 'front' as const,
+                swipeEdgeWidth: 50,
+                overlayColor: 'rgba(0,0,0,0.5)',
                 drawerStyle: { backgroundColor: theme.colors.background },
                 drawerActiveTintColor: theme.colors.primary,
                 drawerInactiveTintColor: theme.colors.textSecondary,
                 drawerActiveBackgroundColor: theme.colors.primaryLight,
                 drawerLabelStyle: { marginLeft: -10, fontSize: 15, fontWeight: '500' },
                 sceneStyle: { backgroundColor: theme.colors.background },
+                lazy: true,
+                freezeOnBlur: true,
             }}
         >
             <Drawer.Screen

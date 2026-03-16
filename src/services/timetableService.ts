@@ -8,6 +8,7 @@
  * matching the web app's AdvancedDragDropTimetable format.
  */
 
+import { getDoc, setDoc, doc, collection, onSnapshot } from '@react-native-firebase/firestore';
 import { db } from '../config/firebase';
 import { Collections, fromSnapshot, serverTimestamp } from '../utils/mappers';
 
@@ -94,10 +95,7 @@ const legacyDaysToTimeBlocks = (
  * Get timetable for an instructor.
  */
 export const getInstructorTimetable = async (instructorId: string): Promise<Timetable | null> => {
-  const snapshot = await db
-    .collection(Collections.TIMETABLES)
-    .doc(instructorId)
-    .get();
+  const snapshot = await getDoc(doc(collection(db, Collections.TIMETABLES), instructorId));
 
   if (!snapshot.exists) {return null;}
 
@@ -139,18 +137,15 @@ export const saveInstructorTimetable = async (
   timeBlocks: TimeBlock[],
 ): Promise<void> => {
   const availability = timeBlocksToAvailability(timeBlocks);
-  await db
-    .collection(Collections.TIMETABLES)
-    .doc(instructorId)
-    .set(
-      {
-        instructorId,
-        availability,
-        timeBlocks,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
+  await setDoc(doc(collection(db, Collections.TIMETABLES), instructorId),
+    {
+      instructorId,
+      availability,
+      timeBlocks,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
 };
 
 /**
@@ -172,10 +167,7 @@ export const onInstructorTimetable = (
   instructorId: string,
   callback: (timetable: Timetable | null) => void,
 ): (() => void) => {
-  return db
-    .collection(Collections.TIMETABLES)
-    .doc(instructorId)
-    .onSnapshot((snapshot) => {
+  return onSnapshot(doc(collection(db, Collections.TIMETABLES), instructorId), (snapshot) => {
       if (!snapshot.exists) {
         callback(null);
         return;

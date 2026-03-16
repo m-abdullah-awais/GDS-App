@@ -7,6 +7,7 @@
  * All queries MUST filter by sender_id or receiver_id.
  */
 
+import { collection, query, where, getDocs, doc, addDoc, updateDoc, onSnapshot, orderBy, limit } from '@react-native-firebase/firestore';
 import { db } from '../config/firebase';
 import { Collections, fromQuerySnapshot, serverTimestamp } from '../utils/mappers';
 import type { Message } from '../types';
@@ -53,28 +54,19 @@ export const getMessagesForUser = async (
   userId: string,
   limitCount = 50,
 ): Promise<Message[]> => {
+  const messagesCol = collection(db, Collections.MESSAGES);
   const [sentSnapshot, receivedSnapshot] = await Promise.all([
-    db
-      .collection(Collections.MESSAGES)
-      .where('sender_id', '==', userId)
-      .orderBy('createdAt', 'desc')
-      .limit(limitCount)
-      .get(),
-    db
-      .collection(Collections.MESSAGES)
-      .where('receiver_id', '==', userId)
-      .orderBy('createdAt', 'desc')
-      .limit(limitCount)
-      .get(),
+    getDocs(query(messagesCol, where('sender_id', '==', userId), orderBy('createdAt', 'desc'), limit(limitCount))),
+    getDocs(query(messagesCol, where('receiver_id', '==', userId), orderBy('createdAt', 'desc'), limit(limitCount))),
   ]);
 
   const map = new Map<string, Message>();
-  for (const doc of [...sentSnapshot.docs, ...receivedSnapshot.docs]) {
-    if (!map.has(doc.id)) {
-      const data = { id: doc.id, ...doc.data() } as Message;
+  for (const docSnap of [...sentSnapshot.docs, ...receivedSnapshot.docs]) {
+    if (!map.has(docSnap.id)) {
+      const data = { id: docSnap.id, ...docSnap.data() } as Message;
       // Filter out archived messages (matches web)
       if (data.archived === true) {continue;}
-      map.set(doc.id, data);
+      map.set(docSnap.id, data);
     }
   }
 
@@ -88,19 +80,12 @@ export const getConversation = async (
   userId1: string,
   userId2: string,
 ): Promise<Message[]> => {
+  const messagesCol = collection(db, Collections.MESSAGES);
   // Messages sent by user1 to user2
-  const sent = await db
-    .collection(Collections.MESSAGES)
-    .where('sender_id', '==', userId1)
-    .where('receiver_id', '==', userId2)
-    .get();
+  const sent = await getDocs(query(messagesCol, where('sender_id', '==', userId1), where('receiver_id', '==', userId2)));
 
   // Messages sent by user2 to user1
-  const received = await db
-    .collection(Collections.MESSAGES)
-    .where('sender_id', '==', userId2)
-    .where('receiver_id', '==', userId1)
-    .get();
+  const received = await getDocs(query(messagesCol, where('sender_id', '==', userId2), where('receiver_id', '==', userId1)));
 
   const all = [
     ...fromQuerySnapshot<Message>(sent),
@@ -123,7 +108,7 @@ export const sendMessage = async (data: {
   content: string;
   subject?: string;
 }): Promise<string> => {
-  const ref = await db.collection(Collections.MESSAGES).add({
+  const ref = await addDoc(collection(db, Collections.MESSAGES), {
     sender_id: data.senderId,
     receiver_id: data.receiverId,
     sender_name: data.senderName ?? '',
@@ -142,7 +127,7 @@ export const sendMessage = async (data: {
  * Mark a message as read.
  */
 export const markMessageRead = async (messageId: string): Promise<void> => {
-  await db.collection(Collections.MESSAGES).doc(messageId).update({
+  await updateDoc(doc(collection(db, Collections.MESSAGES), messageId), {
     read: true,
     updated_at: serverTimestamp(),
   });
@@ -152,7 +137,7 @@ export const markMessageRead = async (messageId: string): Promise<void> => {
  * Archive a message (matches web archived field).
  */
 export const archiveMessage = async (messageId: string): Promise<void> => {
-  await db.collection(Collections.MESSAGES).doc(messageId).update({
+  await updateDoc(doc(collection(db, Collections.MESSAGES), messageId), {
     archived: true,
     updated_at: serverTimestamp(),
   });
@@ -166,12 +151,10 @@ export const onReceivedMessages = (
   userId: string,
   callback: (messages: Message[]) => void,
 ): (() => void) => {
-  return db
-    .collection(Collections.MESSAGES)
-    .where('receiver_id', '==', userId)
-    .onSnapshot(
-      (snapshot) => callback(sortByCreatedAtDesc(fromQuerySnapshot<Message>(snapshot))),
-    );
+  return onSnapshot(
+    query(collection(db, Collections.MESSAGES), where('receiver_id', '==', userId)),
+    (snapshot) => callback(sortByCreatedAtDesc(fromQuerySnapshot<Message>(snapshot))),
+  );
 };
 
 /**
@@ -182,23 +165,22 @@ export const onConversation = (
   otherUserId: string,
   callback: (messages: Message[]) => void,
 ): (() => void) => {
+  const messagesCol = collection(db, Collections.MESSAGES);
   // Listen to messages sent by current user to other user
-  const unsub1 = db
-    .collection(Collections.MESSAGES)
-    .where('sender_id', '==', currentUserId)
-    .where('receiver_id', '==', otherUserId)
-    .onSnapshot((snapshot) => {
+  const unsub1 = onSnapshot(
+    query(messagesCol, where('sender_id', '==', currentUserId), where('receiver_id', '==', otherUserId)),
+    (snapshot) => {
       // Re-fetch full conversation on any change
       getConversation(currentUserId, otherUserId).then(callback);
-    });
+    },
+  );
 
-  const unsub2 = db
-    .collection(Collections.MESSAGES)
-    .where('sender_id', '==', otherUserId)
-    .where('receiver_id', '==', currentUserId)
-    .onSnapshot(() => {
+  const unsub2 = onSnapshot(
+    query(messagesCol, where('sender_id', '==', otherUserId), where('receiver_id', '==', currentUserId)),
+    () => {
       getConversation(currentUserId, otherUserId).then(callback);
-    });
+    },
+  );
 
   return () => {
     unsub1();

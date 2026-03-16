@@ -8,6 +8,17 @@
 
 import { db } from '../config/firebase';
 import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  addDoc,
+  updateDoc,
+  onSnapshot,
+  orderBy,
+} from '@react-native-firebase/firestore';
+import {
   Collections,
   fromSnapshot,
   fromQuerySnapshot,
@@ -29,11 +40,13 @@ import type {
 export const getStudentLessonCompletions = async (
   studentId: string,
 ): Promise<LessonCompletion[]> => {
-  const snap = await db
-    .collection(Collections.LESSON_COMPLETIONS)
-    .where('studentId', '==', studentId)
-    .orderBy('completedAt', 'desc')
-    .get();
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.LESSON_COMPLETIONS),
+      where('studentId', '==', studentId),
+      orderBy('completedAt', 'desc'),
+    ),
+  );
   return fromQuerySnapshot<LessonCompletion>(snap);
 };
 
@@ -43,11 +56,13 @@ export const getStudentLessonCompletions = async (
 export const getInstructorLessonCompletions = async (
   instructorId: string,
 ): Promise<LessonCompletion[]> => {
-  const snap = await db
-    .collection(Collections.LESSON_COMPLETIONS)
-    .where('instructorId', '==', instructorId)
-    .orderBy('completedAt', 'desc')
-    .get();
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.LESSON_COMPLETIONS),
+      where('instructorId', '==', instructorId),
+      orderBy('completedAt', 'desc'),
+    ),
+  );
   return fromQuerySnapshot<LessonCompletion>(snap);
 };
 
@@ -59,12 +74,14 @@ export const getInstructorLessonCompletions = async (
 export const getPendingFeedback = async (
   studentId: string,
 ): Promise<FeedbackPending[]> => {
-  const snap = await db
-    .collection(Collections.FEEDBACK_PENDING)
-    .where('studentId', '==', studentId)
-    .where('status', '==', 'pending')
-    .orderBy('createdAt', 'desc')
-    .get();
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.FEEDBACK_PENDING),
+      where('studentId', '==', studentId),
+      where('status', '==', 'pending'),
+      orderBy('createdAt', 'desc'),
+    ),
+  );
   return fromQuerySnapshot<FeedbackPending>(snap);
 };
 
@@ -75,14 +92,15 @@ export const onPendingFeedback = (
   studentId: string,
   callback: (items: FeedbackPending[]) => void,
 ): (() => void) => {
-  return db
-    .collection(Collections.FEEDBACK_PENDING)
-    .where('studentId', '==', studentId)
-    .where('status', '==', 'pending')
-    .orderBy('createdAt', 'desc')
-    .onSnapshot(
-      (snap) => callback(fromQuerySnapshot<FeedbackPending>(snap)),
-    );
+  return onSnapshot(
+    query(
+      collection(db, Collections.FEEDBACK_PENDING),
+      where('studentId', '==', studentId),
+      where('status', '==', 'pending'),
+      orderBy('createdAt', 'desc'),
+    ),
+    (snap) => callback(fromQuerySnapshot<FeedbackPending>(snap)),
+  );
 };
 
 /**
@@ -93,11 +111,13 @@ export const onPendingFeedback = (
 export const getInstructorPendingFeedback = async (
   instructorId: string,
 ): Promise<FeedbackPending[]> => {
-  const snap = await db
-    .collection(Collections.FEEDBACK_PENDING)
-    .where('instructorId', '==', instructorId)
-    .where('status', '==', 'pending')
-    .get();
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.FEEDBACK_PENDING),
+      where('instructorId', '==', instructorId),
+      where('status', '==', 'pending'),
+    ),
+  );
   return fromQuerySnapshot<FeedbackPending>(snap);
 };
 
@@ -109,13 +129,14 @@ export const onInstructorPendingFeedback = (
   instructorId: string,
   callback: (items: FeedbackPending[]) => void,
 ): (() => void) => {
-  return db
-    .collection(Collections.FEEDBACK_PENDING)
-    .where('instructorId', '==', instructorId)
-    .where('status', '==', 'pending')
-    .onSnapshot(
-      (snap) => callback(fromQuerySnapshot<FeedbackPending>(snap)),
-    );
+  return onSnapshot(
+    query(
+      collection(db, Collections.FEEDBACK_PENDING),
+      where('instructorId', '==', instructorId),
+      where('status', '==', 'pending'),
+    ),
+    (snap) => callback(fromQuerySnapshot<FeedbackPending>(snap)),
+  );
 };
 
 /**
@@ -126,14 +147,11 @@ export const completePendingFeedback = async (
   feedbackPendingId: string,
   action: 'feedback_submitted' | 'lesson_cancelled' = 'feedback_submitted',
 ): Promise<void> => {
-  await db
-    .collection(Collections.FEEDBACK_PENDING)
-    .doc(feedbackPendingId)
-    .update({
-      status: 'completed',
-      action,
-      completedAt: serverTimestamp(),
-    });
+  await updateDoc(doc(collection(db, Collections.FEEDBACK_PENDING), feedbackPendingId), {
+    status: 'completed',
+    action,
+    completedAt: serverTimestamp(),
+  });
 };
 
 // ─── Submit Feedback ─────────────────────────────────────────────────────────
@@ -160,7 +178,7 @@ export const submitFeedback = async (data: {
   const primarySkill = data.skills?.[0]?.skill || '';
 
   // 1. Write feedback doc — matching web FeedbackModal.tsx structure
-  const feedbackRef = await db.collection(Collections.FEEDBACK).add({
+  const feedbackRef = await addDoc(collection(db, Collections.FEEDBACK), {
     ...withDualIds(data.studentId, data.instructorId),
     bookingId: data.bookingId,
     booking_id: data.bookingId,
@@ -180,14 +198,11 @@ export const submitFeedback = async (data: {
   });
 
   // 2. Mark feedbackPending as completed — matching web status mechanism
-  await db
-    .collection(Collections.FEEDBACK_PENDING)
-    .doc(data.feedbackPendingId)
-    .update({
-      status: 'completed',
-      action: 'feedback_submitted',
-      completedAt: serverTimestamp(),
-    });
+  await updateDoc(doc(collection(db, Collections.FEEDBACK_PENDING), data.feedbackPendingId), {
+    status: 'completed',
+    action: 'feedback_submitted',
+    completedAt: serverTimestamp(),
+  });
 
   return feedbackRef.id;
 };
@@ -200,11 +215,13 @@ export const submitFeedback = async (data: {
 export const getInstructorFeedback = async (
   instructorId: string,
 ): Promise<Feedback[]> => {
-  const snap = await db
-    .collection(Collections.FEEDBACK)
-    .where('instructorId', '==', instructorId)
-    .orderBy('createdAt', 'desc')
-    .get();
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.FEEDBACK),
+      where('instructorId', '==', instructorId),
+      orderBy('createdAt', 'desc'),
+    ),
+  );
   return fromQuerySnapshot<Feedback>(snap);
 };
 
@@ -214,11 +231,13 @@ export const getInstructorFeedback = async (
 export const getStudentFeedback = async (
   studentId: string,
 ): Promise<Feedback[]> => {
-  const snap = await db
-    .collection(Collections.FEEDBACK)
-    .where('studentId', '==', studentId)
-    .orderBy('createdAt', 'desc')
-    .get();
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.FEEDBACK),
+      where('studentId', '==', studentId),
+      orderBy('createdAt', 'desc'),
+    ),
+  );
   return fromQuerySnapshot<Feedback>(snap);
 };
 
@@ -230,10 +249,12 @@ export const getStudentFeedback = async (
 export const getStudentCancellations = async (
   studentId: string,
 ): Promise<LessonCancellation[]> => {
-  const snap = await db
-    .collection(Collections.LESSON_CANCELLATIONS)
-    .where('studentId', '==', studentId)
-    .orderBy('cancelledAt', 'desc')
-    .get();
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.LESSON_CANCELLATIONS),
+      where('studentId', '==', studentId),
+      orderBy('cancelledAt', 'desc'),
+    ),
+  );
   return fromQuerySnapshot<LessonCancellation>(snap);
 };

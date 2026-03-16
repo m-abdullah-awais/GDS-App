@@ -6,6 +6,7 @@
  * and queries with `in` operator to include role-specific + 'all' notifications.
  */
 
+import { getDocs, query, collection, where, orderBy, onSnapshot } from '@react-native-firebase/firestore';
 import { db } from '../config/firebase';
 import { Collections, fromQuerySnapshot } from '../utils/mappers';
 import type { Notification } from '../types';
@@ -33,12 +34,7 @@ const getAudienceValues = (role: string): string[] => {
  * Matches web query: where('targetAudience', 'in', ['<role>s', 'all'])
  */
 export const getNotificationsForRole = async (role: string): Promise<Notification[]> => {
-  const snapshot = await db
-    .collection(Collections.NOTIFICATIONS)
-    .where('isActive', '==', true)
-    .where('targetAudience', 'in', getAudienceValues(role))
-    .orderBy('createdAt', 'desc')
-    .get();
+  const snapshot = await getDocs(query(collection(db, Collections.NOTIFICATIONS), where('isActive', '==', true), where('targetAudience', 'in', getAudienceValues(role)), orderBy('createdAt', 'desc')));
   return fromQuerySnapshot<Notification>(snapshot);
 };
 
@@ -48,12 +44,7 @@ export const getNotificationsForRole = async (role: string): Promise<Notificatio
  */
 export const getNotificationsByAudience = async (audience: string): Promise<Notification[]> => {
   const audienceValues = audience === 'all' ? [audience] : [audience, 'all'];
-  const snapshot = await db
-    .collection(Collections.NOTIFICATIONS)
-    .where('isActive', '==', true)
-    .where('targetAudience', 'in', audienceValues)
-    .orderBy('createdAt', 'desc')
-    .get();
+  const snapshot = await getDocs(query(collection(db, Collections.NOTIFICATIONS), where('isActive', '==', true), where('targetAudience', 'in', audienceValues), orderBy('createdAt', 'desc')));
   return fromQuerySnapshot<Notification>(snapshot);
 };
 
@@ -65,12 +56,7 @@ export const onNotifications = (
   role: string,
   callback: (notifications: Notification[]) => void,
 ): (() => void) => {
-  return db
-    .collection(Collections.NOTIFICATIONS)
-    .where('isActive', '==', true)
-    .where('targetAudience', 'in', getAudienceValues(role))
-    .orderBy('createdAt', 'desc')
-    .onSnapshot(
-      (snapshot) => callback(fromQuerySnapshot<Notification>(snapshot)),
-    );
+  return onSnapshot(query(collection(db, Collections.NOTIFICATIONS), where('isActive', '==', true), where('targetAudience', 'in', getAudienceValues(role)), orderBy('createdAt', 'desc')),
+    (snapshot) => callback(fromQuerySnapshot<Notification>(snapshot)),
+  );
 };

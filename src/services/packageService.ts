@@ -8,6 +8,18 @@
 import { db } from '../config/firebase';
 import { firebaseAuth } from '../config/firebase';
 import {
+  collection,
+  query,
+  where,
+  getDocs,
+  getDoc,
+  doc,
+  addDoc,
+  updateDoc,
+  onSnapshot,
+  orderBy,
+} from '@react-native-firebase/firestore';
+import {
   Collections,
   fromQuerySnapshot,
   fromSnapshot,
@@ -85,14 +97,18 @@ export const getInstructorAvailablePackages = async (
 
   try {
     const [instructorIdSnap, instructorSnakeSnap] = await Promise.all([
-      db
-        .collection(Collections.AVAILABLE_PACKAGES)
-        .where('instructorId', '==', instructorId)
-        .get(),
-      db
-        .collection(Collections.AVAILABLE_PACKAGES)
-        .where('instructor_id', '==', instructorId)
-        .get(),
+      getDocs(
+        query(
+          collection(db, Collections.AVAILABLE_PACKAGES),
+          where('instructorId', '==', instructorId),
+        ),
+      ),
+      getDocs(
+        query(
+          collection(db, Collections.AVAILABLE_PACKAGES),
+          where('instructor_id', '==', instructorId),
+        ),
+      ),
     ]);
 
     const merged = dedupeById<AvailablePackage>([
@@ -140,48 +156,50 @@ export const onInstructorAvailablePackages = (
   });
 
   const unsubscribers = [
-    db
-      .collection(Collections.AVAILABLE_PACKAGES)
-      .where('instructorId', '==', instructorId)
-      .onSnapshot(
-        () => {
-          getInstructorAvailablePackages(instructorId)
-            .then(callback)
-            .catch(error => {
-              console.error('[Firebase][PackageService] Error output: onInstructorAvailablePackages', {
-                instructorId,
-                error,
-              });
-            });
-        },
-        (error) => {
-          console.error('[Firebase][PackageService] Error output: onInstructorAvailablePackages(snapshot)', {
-            instructorId,
-            error,
-          });
-        },
+    onSnapshot(
+      query(
+        collection(db, Collections.AVAILABLE_PACKAGES),
+        where('instructorId', '==', instructorId),
       ),
-    db
-      .collection(Collections.AVAILABLE_PACKAGES)
-      .where('instructor_id', '==', instructorId)
-      .onSnapshot(
-        () => {
-          getInstructorAvailablePackages(instructorId)
-            .then(callback)
-            .catch(error => {
-              console.error('[Firebase][PackageService] Error output: onInstructorAvailablePackages(legacy)', {
-                instructorId,
-                error,
-              });
+      () => {
+        getInstructorAvailablePackages(instructorId)
+          .then(callback)
+          .catch(error => {
+            console.error('[Firebase][PackageService] Error output: onInstructorAvailablePackages', {
+              instructorId,
+              error,
             });
-        },
-        (error) => {
-          console.error('[Firebase][PackageService] Error output: onInstructorAvailablePackages(legacy snapshot)', {
-            instructorId,
-            error,
           });
-        },
+      },
+      (error) => {
+        console.error('[Firebase][PackageService] Error output: onInstructorAvailablePackages(snapshot)', {
+          instructorId,
+          error,
+        });
+      },
+    ),
+    onSnapshot(
+      query(
+        collection(db, Collections.AVAILABLE_PACKAGES),
+        where('instructor_id', '==', instructorId),
       ),
+      () => {
+        getInstructorAvailablePackages(instructorId)
+          .then(callback)
+          .catch(error => {
+            console.error('[Firebase][PackageService] Error output: onInstructorAvailablePackages(legacy)', {
+              instructorId,
+              error,
+            });
+          });
+      },
+      (error) => {
+        console.error('[Firebase][PackageService] Error output: onInstructorAvailablePackages(legacy snapshot)', {
+          instructorId,
+          error,
+        });
+      },
+    ),
   ];
 
   return () => {
@@ -215,7 +233,7 @@ export const createAvailablePackage = async (data: {
     title: data.name,
   });
 
-  const ref = await db.collection(Collections.PENDING_PACKAGES).add({
+  const ref = await addDoc(collection(db, Collections.PENDING_PACKAGES), {
     instructorId: currentUserId,
     instructor_id: currentUserId,
     title: data.name,
@@ -247,26 +265,20 @@ export const updateAvailablePackage = async (
   packageId: string,
   data: Partial<AvailablePackage>,
 ): Promise<void> => {
-  await db
-    .collection(Collections.AVAILABLE_PACKAGES)
-    .doc(packageId)
-    .update({
-      ...data,
-      updatedAt: serverTimestamp(),
-    });
+  await updateDoc(doc(collection(db, Collections.AVAILABLE_PACKAGES), packageId), {
+    ...data,
+    updatedAt: serverTimestamp(),
+  });
 };
 
 /**
  * Deactivate an available package.
  */
 export const deactivateAvailablePackage = async (packageId: string): Promise<void> => {
-  await db
-    .collection(Collections.AVAILABLE_PACKAGES)
-    .doc(packageId)
-    .update({
-      isActive: false,
-      updatedAt: serverTimestamp(),
-    });
+  await updateDoc(doc(collection(db, Collections.AVAILABLE_PACKAGES), packageId), {
+    isActive: false,
+    updatedAt: serverTimestamp(),
+  });
 };
 
 // ─── Pending Packages ────────────────────────────────────────────────────────
@@ -275,10 +287,12 @@ export const deactivateAvailablePackage = async (packageId: string): Promise<voi
  * Get pending packages awaiting admin approval.
  */
 export const getPendingPackages = async (): Promise<PendingPackage[]> => {
-  const snap = await db
-    .collection(Collections.PENDING_PACKAGES)
-    .where('status', '==', 'pending')
-    .get();
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.PENDING_PACKAGES),
+      where('status', '==', 'pending'),
+    ),
+  );
   return fromQuerySnapshot<PendingPackage>(snap)
     .map(normalizePendingPackage)
     .sort(
@@ -293,14 +307,18 @@ export const getInstructorPendingPackages = async (
   instructorId: string,
 ): Promise<PendingPackage[]> => {
   const [camelSnap, snakeSnap] = await Promise.all([
-    db
-      .collection(Collections.PENDING_PACKAGES)
-      .where('instructorId', '==', instructorId)
-      .get(),
-    db
-      .collection(Collections.PENDING_PACKAGES)
-      .where('instructor_id', '==', instructorId)
-      .get(),
+    getDocs(
+      query(
+        collection(db, Collections.PENDING_PACKAGES),
+        where('instructorId', '==', instructorId),
+      ),
+    ),
+    getDocs(
+      query(
+        collection(db, Collections.PENDING_PACKAGES),
+        where('instructor_id', '==', instructorId),
+      ),
+    ),
   ]);
 
   return dedupeById<PendingPackage>([
@@ -324,32 +342,34 @@ export const onInstructorPendingPackages = (
   };
 
   const unsubscribers = [
-    db
-      .collection(Collections.PENDING_PACKAGES)
-      .where('instructorId', '==', instructorId)
-      .onSnapshot(
-        () => {
-          emitMerged().catch(error => {
-            console.error('[Firebase][PackageService] Error output: onInstructorPendingPackages(camel)', {
-              instructorId,
-              error,
-            });
-          });
-        },
+    onSnapshot(
+      query(
+        collection(db, Collections.PENDING_PACKAGES),
+        where('instructorId', '==', instructorId),
       ),
-    db
-      .collection(Collections.PENDING_PACKAGES)
-      .where('instructor_id', '==', instructorId)
-      .onSnapshot(
-        () => {
-          emitMerged().catch(error => {
-            console.error('[Firebase][PackageService] Error output: onInstructorPendingPackages(snake)', {
-              instructorId,
-              error,
-            });
+      () => {
+        emitMerged().catch(error => {
+          console.error('[Firebase][PackageService] Error output: onInstructorPendingPackages(camel)', {
+            instructorId,
+            error,
           });
-        },
+        });
+      },
+    ),
+    onSnapshot(
+      query(
+        collection(db, Collections.PENDING_PACKAGES),
+        where('instructor_id', '==', instructorId),
       ),
+      () => {
+        emitMerged().catch(error => {
+          console.error('[Firebase][PackageService] Error output: onInstructorPendingPackages(snake)', {
+            instructorId,
+            error,
+          });
+        });
+      },
+    ),
   ];
 
   emitMerged().catch(error => {
@@ -374,18 +394,22 @@ export const getStudentPackages = async (
 ): Promise<Package[]> => {
   ensureAuthenticated();
   const [camel, snake] = await Promise.all([
-    db
-      .collection(Collections.PACKAGES)
-      .where('studentId', '==', studentId)
-      .where('status', '==', 'active')
-      .orderBy('purchaseDate', 'desc')
-      .get(),
-    db
-      .collection(Collections.PACKAGES)
-      .where('student_id', '==', studentId)
-      .where('status', '==', 'active')
-      .orderBy('purchaseDate', 'desc')
-      .get(),
+    getDocs(
+      query(
+        collection(db, Collections.PACKAGES),
+        where('studentId', '==', studentId),
+        where('status', '==', 'active'),
+        orderBy('purchaseDate', 'desc'),
+      ),
+    ),
+    getDocs(
+      query(
+        collection(db, Collections.PACKAGES),
+        where('student_id', '==', studentId),
+        where('status', '==', 'active'),
+        orderBy('purchaseDate', 'desc'),
+      ),
+    ),
   ]);
   return dedupeById([
     ...fromQuerySnapshot<Package>(camel),
@@ -401,16 +425,20 @@ export const getAllStudentPackages = async (
 ): Promise<Package[]> => {
   ensureAuthenticated();
   const [camel, snake] = await Promise.all([
-    db
-      .collection(Collections.PACKAGES)
-      .where('studentId', '==', studentId)
-      .orderBy('purchaseDate', 'desc')
-      .get(),
-    db
-      .collection(Collections.PACKAGES)
-      .where('student_id', '==', studentId)
-      .orderBy('purchaseDate', 'desc')
-      .get(),
+    getDocs(
+      query(
+        collection(db, Collections.PACKAGES),
+        where('studentId', '==', studentId),
+        orderBy('purchaseDate', 'desc'),
+      ),
+    ),
+    getDocs(
+      query(
+        collection(db, Collections.PACKAGES),
+        where('student_id', '==', studentId),
+        orderBy('purchaseDate', 'desc'),
+      ),
+    ),
   ]);
   return dedupeById([
     ...fromQuerySnapshot<Package>(camel),
@@ -433,46 +461,48 @@ export const onStudentPackages = (
   };
 
   const unsubscribers = [
-    db
-      .collection(Collections.PACKAGES)
-      .where('studentId', '==', studentId)
-      .orderBy('purchaseDate', 'desc')
-      .onSnapshot(
-        () => {
-          emitMerged().catch(error => {
-            console.error('[Firebase][PackageService] Error output: onStudentPackages(camel)', {
-              studentId,
-              error,
-            });
-          });
-        },
-        (error) => {
-          console.error('[Firebase][PackageService] Error output: onStudentPackages(camel snapshot)', {
+    onSnapshot(
+      query(
+        collection(db, Collections.PACKAGES),
+        where('studentId', '==', studentId),
+        orderBy('purchaseDate', 'desc'),
+      ),
+      () => {
+        emitMerged().catch(error => {
+          console.error('[Firebase][PackageService] Error output: onStudentPackages(camel)', {
             studentId,
             error,
           });
-        },
+        });
+      },
+      (error) => {
+        console.error('[Firebase][PackageService] Error output: onStudentPackages(camel snapshot)', {
+          studentId,
+          error,
+        });
+      },
+    ),
+    onSnapshot(
+      query(
+        collection(db, Collections.PACKAGES),
+        where('student_id', '==', studentId),
+        orderBy('purchaseDate', 'desc'),
       ),
-    db
-      .collection(Collections.PACKAGES)
-      .where('student_id', '==', studentId)
-      .orderBy('purchaseDate', 'desc')
-      .onSnapshot(
-        () => {
-          emitMerged().catch(error => {
-            console.error('[Firebase][PackageService] Error output: onStudentPackages(snake)', {
-              studentId,
-              error,
-            });
-          });
-        },
-        (error) => {
-          console.error('[Firebase][PackageService] Error output: onStudentPackages(snake snapshot)', {
+      () => {
+        emitMerged().catch(error => {
+          console.error('[Firebase][PackageService] Error output: onStudentPackages(snake)', {
             studentId,
             error,
           });
-        },
-      ),
+        });
+      },
+      (error) => {
+        console.error('[Firebase][PackageService] Error output: onStudentPackages(snake snapshot)', {
+          studentId,
+          error,
+        });
+      },
+    ),
   ];
 
   emitMerged().catch(error => {
@@ -491,7 +521,7 @@ export const onStudentPackages = (
  * Get a single package by ID.
  */
 export const getPackage = async (packageId: string): Promise<Package | null> => {
-  const snap = await db.collection(Collections.PACKAGES).doc(packageId).get();
+  const snap = await getDoc(doc(collection(db, Collections.PACKAGES), packageId));
   return fromSnapshot<Package>(snap);
 };
 

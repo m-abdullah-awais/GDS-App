@@ -1,14 +1,10 @@
 /**
  * GDS Driving School — InstructorDiscoveryScreen (Search Instructors)
- * =====================================================================
- *
- * Step 1 of the booking lifecycle.
- * Search and filter instructors, view request status per instructor,
- * send connection requests.  Redux-connected.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Modal,
   Pressable,
@@ -20,12 +16,13 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { StudentStackParamList } from '../../navigation/student/StudentStack';
+import type { StudentStackParamList } from '../../navigation/student/types';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../../store';
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
-import ScreenContainer from '../../components/ScreenContainer';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AppTopHeader from '../../components/AppTopHeader';
 import { Button } from '../../components/Button';
 import { InstructorCard } from '../../components/student';
 import {
@@ -33,8 +30,6 @@ import {
   getInstructorCities,
   getRequestStatus,
 } from '../../services/instructorService';
-import { sendInstructorRequestThunk } from '../../store/student/thunks';
-import { getActivePackagesForInstructor } from '../../services/packageService';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 type Nav = NativeStackNavigationProp<StudentStackParamList>;
@@ -45,22 +40,31 @@ const InstructorDiscoveryScreen = () => {
   const { theme } = useTheme();
   const s = useMemo(() => createStyles(theme), [theme]);
 
-  // Redux ─────────────────────────────────────────────────
-  const instructors = useSelector((state: RootState) => state.student.instructors);
-  const requests = useSelector((state: RootState) => state.student.requests);
-  const purchasedPackages = useSelector((state: RootState) => state.student.purchasedPackages);
-  const studentId = useSelector((state: RootState) => state.auth.profile?.id);
-  const studentName = useSelector((state: RootState) => state.auth.profile?.full_name);
+  // Defer heavy render until navigation animation completes
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      requestAnimationFrame(() => setReady(true));
+    }, 150);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Redux
+  const instructors = useSelector((state: RootState) => state.student.instructors || []);
+  const requests = useSelector((state: RootState) => state.student.requests || []);
+  const purchasedPackages = useSelector((state: RootState) => state.student.purchasedPackages || []);
+  const studentId = useSelector((state: RootState) => state.auth.profile?.uid);
+  const studentName = useSelector((state: RootState) => (state.auth.profile as any)?.full_name);
   const studentEmail = useSelector((state: RootState) => state.auth.profile?.email);
 
-  // Local state ───────────────────────────────────────────
+  // Local state
   const [searchQuery, setSearchQuery] = useState('');
   const [cityFilter, setCityFilter] = useState('All');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [tempCity, setTempCity] = useState('All');
   const [sendingId, setSendingId] = useState<string | null>(null);
 
-  // Derived ───────────────────────────────────────────────
+  // Derived
   const cities = useMemo(() => getInstructorCities(instructors), [instructors]);
   const cityOptions = useMemo(() => ['All', ...cities], [cities]);
 
@@ -75,24 +79,27 @@ const InstructorDiscoveryScreen = () => {
 
   const hasActiveFilters = cityFilter !== 'All';
 
-  // Handlers ──────────────────────────────────────────────
-  const openFilters = () => {
+  // Handlers
+  const openFilters = useCallback(() => {
     setTempCity(cityFilter);
     setShowFilterModal(true);
-  };
-  const applyFilters = () => {
+  }, [cityFilter]);
+
+  const applyFilters = useCallback(() => {
     setCityFilter(tempCity);
     setShowFilterModal(false);
-  };
+  }, [tempCity]);
 
   const handleSendRequest = useCallback(
     async (instructorId: string) => {
       if (!studentId) return;
       setSendingId(instructorId);
       try {
+        // Lazy import to avoid pulling in all services at module load time
+        const { sendInstructorRequestThunk } = require('../../store/student/thunks');
         await (dispatch as any)(sendInstructorRequestThunk(studentId, instructorId, studentName, studentEmail));
       } catch (_e) {
-        // Request failed — thunk already logs the error
+        // thunk already logs error
       } finally {
         setSendingId(null);
       }
@@ -100,10 +107,39 @@ const InstructorDiscoveryScreen = () => {
     [dispatch, studentId, studentName, studentEmail],
   );
 
-  // Render ────────────────────────────────────────────────
+  const getActiveCount = useCallback((instructorId: string) => {
+    return purchasedPackages.filter(
+      (p: any) => p.instructorId === instructorId && p.status === 'active',
+    ).length;
+  }, [purchasedPackages]);
+
+  // Loading state
+  if (!ready) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['bottom']}>
+        <AppTopHeader
+          title="Search Instructors"
+          leftAction="back"
+          onLeftPress={() => navigation.canGoBack() && navigation.goBack()}
+          avatarText="GDS"
+        />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <ScreenContainer showHeader title="Search Instructors">
-      {/* ── Search Bar + Filter ─────────────────────── */}
+    <SafeAreaView style={s.screen} edges={['bottom']}>
+      <AppTopHeader
+        title="Search Instructors"
+        leftAction="back"
+        onLeftPress={() => navigation.canGoBack() && navigation.goBack()}
+        avatarText="GDS"
+      />
+
+      {/* Search Bar + Filter */}
       <View style={s.searchRow}>
         <View style={s.searchBar}>
           <Ionicons name="search-outline" size={18} color={theme.colors.placeholder} style={s.searchIcon} />
@@ -129,9 +165,6 @@ const InstructorDiscoveryScreen = () => {
             size={20}
             color={hasActiveFilters ? theme.colors.primary : theme.colors.textSecondary}
           />
-          {hasActiveFilters && (
-            <View style={s.filterDot} />
-          )}
         </Pressable>
       </View>
 
@@ -150,17 +183,14 @@ const InstructorDiscoveryScreen = () => {
         </View>
       )}
 
-      {/* ── Filter Modal ────────────────────────────── */}
+      {/* Filter Modal */}
       <Modal
         visible={showFilterModal}
         transparent
         animationType="slide"
         onRequestClose={() => setShowFilterModal(false)}>
         <View style={s.modalOverlay}>
-          <Pressable
-            style={s.modalBackdrop}
-            onPress={() => setShowFilterModal(false)}
-          />
+          <Pressable style={s.modalBackdrop} onPress={() => setShowFilterModal(false)} />
           <View style={s.modalContainer}>
             <View style={s.modalHandle} />
             <View style={s.modalHeader}>
@@ -185,7 +215,6 @@ const InstructorDiscoveryScreen = () => {
                   );
                 })}
               </View>
-              <View style={{ height: theme.spacing.xl }} />
             </ScrollView>
             <View style={s.modalFooter}>
               <Button title="Apply" variant="primary" size="lg" fullWidth onPress={applyFilters} />
@@ -194,28 +223,26 @@ const InstructorDiscoveryScreen = () => {
         </View>
       </Modal>
 
-      {/* ── Results ─────────────────────────────────── */}
+      {/* Results */}
       <FlatList
         data={filtered}
         keyExtractor={item => item.id}
         contentContainerStyle={s.listContent}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        windowSize={5}
         renderItem={({ item }) => {
           const reqStatus = getRequestStatus(requests, item.id);
-          const activeCount = getActivePackagesForInstructor(purchasedPackages, item.id).length;
-
+          const activeCount = getActiveCount(item.id);
           return (
             <View style={s.cardWrapper}>
               <InstructorCard
                 instructor={item}
                 requestStatus={reqStatus}
-                onViewProfile={() =>
-                  navigation.navigate('InstructorProfile', { instructorId: item.id })
-                }
+                onViewProfile={() => navigation.navigate('InstructorProfile', { instructorId: item.id })}
                 onSendRequest={() => handleSendRequest(item.id)}
-                onViewPackages={() =>
-                  navigation.navigate('PackageListing', { instructorId: item.id })
-                }
+                onViewPackages={() => navigation.navigate('PackageListing', { instructorId: item.id })}
                 activePackagesCount={activeCount}
                 loading={sendingId === item.id}
               />
@@ -235,14 +262,13 @@ const InstructorDiscoveryScreen = () => {
           </Text>
         }
       />
-    </ScreenContainer>
+    </SafeAreaView>
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
+    screen: { flex: 1, backgroundColor: theme.colors.background },
     searchRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -282,15 +308,6 @@ const createStyles = (theme: AppTheme) =>
       borderColor: theme.colors.primary,
       backgroundColor: theme.colors.primaryLight,
     },
-    filterDot: {
-      position: 'absolute',
-      top: 6,
-      right: 6,
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: theme.colors.primary,
-    },
     activeTagsRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -320,94 +337,47 @@ const createStyles = (theme: AppTheme) =>
       marginLeft: 'auto',
     },
     modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-    modalBackdrop: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0,0,0,0.4)',
-    },
+    modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
     modalContainer: {
       backgroundColor: theme.colors.surface,
       borderTopLeftRadius: theme.borderRadius['2xl'],
       borderTopRightRadius: theme.borderRadius['2xl'],
       maxHeight: '60%',
-      ...theme.shadows.xl,
     },
     modalHandle: {
-      width: 36,
-      height: 4,
-      borderRadius: 2,
+      width: 36, height: 4, borderRadius: 2,
       backgroundColor: theme.colors.neutral300,
-      alignSelf: 'center',
-      marginTop: theme.spacing.sm,
+      alignSelf: 'center', marginTop: theme.spacing.sm,
     },
     modalHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: theme.spacing.lg,
-      paddingTop: theme.spacing.md,
-      paddingBottom: theme.spacing.sm,
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.md, paddingBottom: theme.spacing.sm,
     },
     modalTitle: { ...theme.typography.h2, color: theme.colors.textPrimary },
-    modalReset: {
-      ...theme.typography.bodyMedium,
-      color: theme.colors.error,
-      fontWeight: '600',
-    },
+    modalReset: { ...theme.typography.bodyMedium, color: theme.colors.error, fontWeight: '600' },
     modalBody: { paddingHorizontal: theme.spacing.lg },
-    modalChipGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: theme.spacing.xs,
-      marginTop: theme.spacing.sm,
-    },
+    modalChipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs, marginTop: theme.spacing.sm },
     modalChip: {
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.sm,
-      borderRadius: theme.borderRadius.md,
-      backgroundColor: theme.colors.surfaceSecondary,
-      borderWidth: 1.5,
-      borderColor: 'transparent',
+      paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm,
+      borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surfaceSecondary,
+      borderWidth: 1.5, borderColor: 'transparent',
     },
-    modalChipSelected: {
-      backgroundColor: theme.colors.primaryLight,
-      borderColor: theme.colors.primary,
-    },
-    modalChipText: {
-      ...theme.typography.bodyMedium,
-      color: theme.colors.textSecondary,
-      fontWeight: '500',
-    },
+    modalChipSelected: { backgroundColor: theme.colors.primaryLight, borderColor: theme.colors.primary },
+    modalChipText: { ...theme.typography.bodyMedium, color: theme.colors.textSecondary, fontWeight: '500' },
     modalChipTextSelected: { color: theme.colors.primary, fontWeight: '700' },
     modalFooter: {
-      paddingHorizontal: theme.spacing.lg,
-      paddingVertical: theme.spacing.md,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.divider,
+      paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md,
+      borderTopWidth: 1, borderTopColor: theme.colors.divider,
     },
-    cardWrapper: {
-      marginHorizontal: theme.spacing.md,
-      marginBottom: theme.spacing.sm,
-    },
-    listContent: {
-      paddingTop: theme.spacing.xs,
-      paddingBottom: theme.spacing['3xl'],
-    },
+    cardWrapper: { marginHorizontal: theme.spacing.md, marginBottom: theme.spacing.sm },
+    listContent: { paddingTop: theme.spacing.xs, paddingBottom: theme.spacing['3xl'] },
     resultCount: {
-      ...theme.typography.caption,
-      color: theme.colors.textTertiary,
-      marginHorizontal: theme.spacing.md,
-      marginBottom: theme.spacing.sm,
+      ...theme.typography.caption, color: theme.colors.textTertiary,
+      marginHorizontal: theme.spacing.md, marginBottom: theme.spacing.sm,
     },
-    emptyState: {
-      alignItems: 'center',
-      padding: theme.spacing['3xl'],
-    },
+    emptyState: { alignItems: 'center', padding: theme.spacing['3xl'] },
     emptyTitle: { ...theme.typography.h3, color: theme.colors.textPrimary },
-    emptySubtitle: {
-      ...theme.typography.bodyMedium,
-      color: theme.colors.textTertiary,
-      marginTop: theme.spacing.xxs,
-    },
+    emptySubtitle: { ...theme.typography.bodyMedium, color: theme.colors.textTertiary, marginTop: theme.spacing.xxs },
   });
 
 export default InstructorDiscoveryScreen;

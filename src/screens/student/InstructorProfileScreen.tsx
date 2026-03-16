@@ -6,7 +6,7 @@
  * and navigation to available packages.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { StudentStackParamList } from '../../navigation/student/StudentStack';
+import type { StudentStackParamList } from '../../navigation/student/types';
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
@@ -113,8 +113,17 @@ const InstructorProfileScreen = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { theme } = useTheme();
-  const s = createStyles(theme);
+  const s = useMemo(() => createStyles(theme), [theme]);
   const dispatch = useDispatch();
+
+  // Defer heavy render until navigation animation completes
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      requestAnimationFrame(() => setReady(true));
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const profile = useSelector((state: RootState) => state.auth.profile);
   // Get instructor from Redux store (populated by loadStudentData)
@@ -127,18 +136,24 @@ const InstructorProfileScreen = () => {
   const [instructorDetail, setInstructorDetail] = useState<any>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [sendingRequest, setSendingRequest] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     const fetchDetails = async () => {
       setLoading(true);
+      setLoadError(false);
       try {
-        const [user, fbReviews] = await Promise.all([
-          userService.getUserById(route.params.instructorId),
-          feedbackService.getInstructorFeedback(route.params.instructorId),
-        ]);
+        // Fetch user and reviews in parallel, but don't let review failure block profile
+        const userPromise = userService.getUserById(route.params.instructorId);
+        const reviewsPromise = feedbackService.getInstructorFeedback(route.params.instructorId)
+          .catch(() => [] as any[]); // Reviews failing shouldn't block the profile
+
+        const [user, fbReviews] = await Promise.all([userPromise, reviewsPromise]);
+        if (cancelled) return;
         setInstructorDetail(user);
-        setReviews(fbReviews.map((r: any) => ({
+        setReviews((fbReviews || []).map((r: any) => ({
           id: r.id,
           studentName: r.studentName || r.student_name || 'Student',
           date: r.createdAt ? new Date(r.createdAt as any).toLocaleDateString() : '',
@@ -146,47 +161,47 @@ const InstructorProfileScreen = () => {
           comment: r.comment || r.feedback || '',
         })));
       } catch (err) {
+        if (!cancelled) setLoadError(true);
         console.error('Failed to load instructor details:', err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     fetchDetails();
+    return () => { cancelled = true; };
   }, [route.params.instructorId]);
 
   // Merge data: prefer Firestore detail, fallback to Redux VM
   const instructor = instructorDetail || instructorVM;
 
-  if (loading && !instructor) {
+  if (!ready || (loading && !instructor)) {
     return (
-      <ScreenContainer showHeader title="Instructor">
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
-      </ScreenContainer>
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
     );
   }
 
-  if (!instructor) {
+  if (!instructor || loadError) {
     return (
       <ScreenContainer showHeader title="Instructor">
         <View style={s.emptyState}>
-          <Text style={s.emptyIcon}>😔</Text>
-          <Text style={s.emptyTitle}>Instructor not found</Text>
+          <Text style={s.emptyIcon}>{loadError ? '⚠️' : '😔'}</Text>
+          <Text style={s.emptyTitle}>{loadError ? 'Failed to load' : 'Instructor not found'}</Text>
         </View>
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer showHeader title={instructor.name}>
+    <ScreenContainer showHeader title={instructor.name || 'Instructor'}>
       <ScrollView
         style={s.scroll}
         contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}>
         {/* ── Header Card ──────────────────────────────────── */}
         <View style={s.headerCard}>
-          <Avatar initials={instructor.avatar} size={80} />
+          <Avatar initials={instructor.avatar || (instructor.name || 'I').charAt(0)} size={80} />
           <Text style={s.name}>{instructor.name || ''}</Text>
           <View style={s.ratingRow}>
             <StarRating rating={Math.round(instructor.rating || 0)} theme={theme} />
@@ -338,7 +353,7 @@ const InstructorProfileScreen = () => {
                         await (dispatch as any)(sendInstructorRequestThunk(
                           profile.uid,
                           instructor.id,
-                          profile.displayName || profile.name,
+                          (profile as any).displayName || (profile as any).full_name || (profile as any).name || '',
                           profile.email,
                         ));
                       } catch {} finally {
@@ -365,7 +380,7 @@ const InstructorProfileScreen = () => {
                     await (dispatch as any)(sendInstructorRequestThunk(
                       profile.uid,
                       instructor.id,
-                      profile.displayName || profile.name,
+                      (profile as any).displayName || (profile as any).full_name || (profile as any).name || '',
                       profile.email,
                     ));
                   } catch {} finally {

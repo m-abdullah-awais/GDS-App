@@ -102,7 +102,10 @@ const AdminInstructorApprovalScreen = () => {
           showToast('error', `${selected.name} has been rejected`);
         }
       })
-      .catch(() => showToast('error', 'Operation failed. Please try again.'))
+      .catch((error: any) => {
+        if (__DEV__) console.error('[AdminInstructorApproval] Action failed:', error);
+        showToast('error', 'Operation failed. Please try again.');
+      })
       .finally(() => {
         setConfirmLoading(false);
         setConfirmAction(null);

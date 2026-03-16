@@ -7,7 +7,7 @@
  * Supports cancel action for upcoming lessons.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../../store';
+import { subscribeToStudentBookings } from '../../store/student/thunks';
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
@@ -44,6 +45,14 @@ const MyLessonsScreen = () => {
 
   // Redux
   const lessons = useSelector((st: RootState) => st.student.lessons);
+  const profile = useSelector((st: RootState) => st.auth.profile);
+
+  // Subscribe to real-time booking updates for this screen
+  useEffect(() => {
+    if (!profile?.uid) return;
+    const unsub = (dispatch as any)(subscribeToStudentBookings(profile.uid));
+    return () => { if (typeof unsub === 'function') unsub(); };
+  }, [profile?.uid, dispatch]);
 
   // Filtered + sorted
   const filteredLessons = useMemo(

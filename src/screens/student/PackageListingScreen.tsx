@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { StudentStackParamList } from '../../navigation/student/StudentStack';
+import type { StudentStackParamList } from '../../navigation/student/types';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../../store';
 import { useTheme } from '../../theme';
@@ -42,7 +42,16 @@ const PackageListingScreen = () => {
   const { theme } = useTheme();
   const s = useMemo(() => createStyles(theme), [theme]);
 
-  const instructorId = route.params.instructorId;
+  const instructorId = route.params?.instructorId ?? '';
+
+  // Defer heavy render until navigation animation completes
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      requestAnimationFrame(() => setReady(true));
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Redux ──────────────────────────────────────────────
   const instructors = useSelector((state: RootState) => state.student.instructors || []);
@@ -63,15 +72,24 @@ const PackageListingScreen = () => {
   const [paymentPkg, setPaymentPkg] = useState<InstructorPackage | null>(null);
   const [buyingLoading, setBuyingLoading] = useState(false);
 
-  // Fetch packages on mount
+  // Fetch packages on mount with cleanup
   useEffect(() => {
-    fetchInstructorPackages(instructorId, dispatch);
+    let cancelled = false;
+    const load = async () => {
+      try {
+        await fetchInstructorPackages(instructorId, dispatch);
+      } catch (error) {
+        if (!cancelled && __DEV__) console.error('[PackageListing] Failed to load packages:', error);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
   }, [instructorId, dispatch]);
 
   // Find purchased record for a package
   const findPurchased = useCallback(
     (pkgId: string): PurchasedPackage | undefined =>
-      purchasedPackages.find(
+      (purchasedPackages || []).find(
         p => p.packageId === pkgId && p.instructorId === instructorId,
       ),
     [purchasedPackages, instructorId],
@@ -81,8 +99,13 @@ const PackageListingScreen = () => {
   const handleBuy = useCallback(async () => {
     if (!paymentPkg) { return; }
     setBuyingLoading(true);
-    await buyPackage(paymentPkg, dispatch);
-    setBuyingLoading(false);
+    try {
+      await buyPackage(paymentPkg, dispatch);
+    } catch (error) {
+      if (__DEV__) console.error('[PackageListing] Buy failed:', error);
+    } finally {
+      setBuyingLoading(false);
+    }
   }, [paymentPkg, dispatch]);
 
   const handleBookLesson = useCallback(
@@ -94,6 +117,16 @@ const PackageListingScreen = () => {
     },
     [navigation, instructorId],
   );
+
+  // Loading state during navigation animation — use plain View to avoid
+  // ScreenContainer overhead during transition
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   // Guard: not accepted
   if (!isAccepted) {

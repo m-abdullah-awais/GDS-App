@@ -556,3 +556,56 @@ export const getRemainingLessons = (pkg: Pick<PurchasedPackage, 'totalLessons' |
   const used = pkg.lessonsUsed || 0;
   return Math.max(0, total - used);
 };
+
+// ─── Screen-level wrapper functions ──────────────────────────────────────────
+// These bridge service calls with Redux dispatch for use directly in screens.
+// NOTE: Uses lazy requires to avoid circular dependency with store/student.
+
+import type { InstructorPackage } from '../store/student/types';
+
+/**
+ * Fetch instructor packages and dispatch to Redux.
+ * Used by PackageListingScreen.
+ */
+export const fetchInstructorPackages = async (
+  instructorId: string,
+  dispatch: (action: any) => void,
+): Promise<void> => {
+  const actions = require('../store/student/actions');
+  const { mapAvailablePackageToInstructorPackage } = require('../utils/mappers');
+
+  try {
+    dispatch(actions.setLoading('packagesLoading', true));
+    const packages = await getInstructorAvailablePackages(instructorId);
+    const mapped: InstructorPackage[] = packages.map(mapAvailablePackageToInstructorPackage);
+    dispatch(actions.setPackages(instructorId, mapped));
+  } catch (error) {
+    if (__DEV__) console.error('[PackageService] fetchInstructorPackages error:', error);
+  } finally {
+    dispatch(actions.setLoading('packagesLoading', false));
+  }
+};
+
+/**
+ * Buy a package via Stripe checkout.
+ * Used by PackageListingScreen.
+ */
+export const buyPackage = async (
+  pkg: InstructorPackage,
+  _dispatch: (action: any) => void,
+): Promise<void> => {
+  const paymentService = require('./paymentService');
+
+  try {
+    const result = await paymentService.createCheckoutSession({
+      packageId: pkg.id,
+      instructorId: pkg.instructorId,
+    });
+    if (result.url) {
+      paymentService.openCheckoutInBrowser(result.url);
+    }
+  } catch (error) {
+    if (__DEV__) console.error('[PackageService] buyPackage error:', error);
+    throw error;
+  }
+};

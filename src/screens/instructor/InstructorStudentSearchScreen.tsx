@@ -22,7 +22,7 @@ import type { DrawerScreenProps } from '@react-navigation/drawer';
 import type { InstructorTabsParamList } from '../../navigation/instructor/InstructorTabs';
 import type { InstructorStudent } from '../../types/instructor-views';
 import { useSelector, useDispatch } from 'react-redux';
-import { userService } from '../../services';
+import * as userService from '../../services/userService';
 import { useToast } from '../../components/admin';
 
 type Props = DrawerScreenProps<InstructorTabsParamList, 'Find Students'>;

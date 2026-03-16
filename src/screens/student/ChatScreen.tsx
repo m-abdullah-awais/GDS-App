@@ -19,7 +19,7 @@ import {
   View,
 } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import type { StudentStackParamList } from '../../navigation/student/StudentStack';
+import type { StudentStackParamList } from '../../navigation/student/types';
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';

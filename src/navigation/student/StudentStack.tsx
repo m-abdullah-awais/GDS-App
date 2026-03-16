@@ -10,18 +10,8 @@ import MyLessonsScreen from '../../screens/student/MyLessonsScreen';
 import StudentMessagesScreen from '../../screens/student/StudentMessagesScreen';
 import ChatScreen from '../../screens/student/ChatScreen';
 import { useTheme } from '../../theme';
-
-export type StudentStackParamList = {
-  StudentTabs: undefined;
-  InstructorDiscovery: undefined;
-  InstructorProfile: { instructorId: string };
-  PackageListing: { instructorId: string };
-  MyInstructors: undefined;
-  BookLesson: { instructorId: string; packageId?: string };
-  MyLessons: undefined;
-  StudentMessages: undefined;
-  Chat: { conversationId: string; instructorName: string };
-};
+import type { StudentStackParamList } from './types';
+export type { StudentStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<StudentStackParamList>();
 

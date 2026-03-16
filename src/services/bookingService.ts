@@ -441,3 +441,150 @@ export const cancelLessonBooking = async (
 ): Promise<void> => {
   await cancelBooking(bookingId, cancelledBy);
 };
+
+// ─── Screen-level wrapper functions ──────────────────────────────────────────
+// These bridge service calls with Redux dispatch for use directly in screens.
+// NOTE: Uses lazy requires to avoid circular dependency with store/student.
+
+import type { AvailableSlot, PurchasedPackage, BookedLesson } from '../store/student/types';
+
+/**
+ * Fetch available slots for an instructor and dispatch to Redux.
+ * Used by StudentBookLessonsScreen.
+ */
+export const fetchAvailableSlots = async (
+  instructorId: string,
+  dispatch: (action: any) => void,
+): Promise<void> => {
+  // Lazy require to break circular dependency
+  const actions = require('../store/student/actions');
+  const { mapTimetableToAvailableSlots } = require('../utils/mappers');
+  const timetableService = require('./timetableService');
+
+  try {
+    dispatch(actions.setLoading('slotsLoading', true));
+    const timetable = await timetableService.getInstructorTimetable(instructorId);
+    if (timetable) {
+      const existingBookings = await getInstructorBookings(instructorId);
+      const bookedSlots = existingBookings
+        .filter((b: Booking) => b.status !== 'cancelled')
+        .map((b: Booking) => ({
+          date: b.date ? new Date(b.date as any).toISOString().split('T')[0] : '',
+          startTime: b.startTime || '',
+        }));
+      const slots = mapTimetableToAvailableSlots(timetable, instructorId, bookedSlots);
+      dispatch(actions.setAvailableSlots(slots));
+    } else {
+      dispatch(actions.setAvailableSlots([]));
+    }
+  } catch (error) {
+    if (__DEV__) console.error('[BookingService] fetchAvailableSlots error:', error);
+    dispatch(actions.setAvailableSlots([]));
+  } finally {
+    dispatch(actions.setLoading('slotsLoading', false));
+  }
+};
+
+/**
+ * Get available slots for a specific date (pure client-side filter).
+ * Used by StudentBookLessonsScreen.
+ */
+export const getSlotsForDate = (
+  slots: AvailableSlot[],
+  instructorId: string,
+  date: string,
+): AvailableSlot[] => {
+  return slots.filter(
+    s => s.instructorId === instructorId && s.date === date && !s.booked,
+  );
+};
+
+/**
+ * Validate a booking slot against existing lessons (pure client-side).
+ * Used by StudentBookLessonsScreen.
+ */
+export const validateBooking = (
+  slot: AvailableSlot,
+  lessons: BookedLesson[],
+  purchasedPkg: PurchasedPackage,
+): { valid: boolean; error?: string } => {
+  // Check if slot is already booked
+  if (slot.booked) {
+    return { valid: false, error: 'This slot is already booked.' };
+  }
+
+  // Check if student already has a lesson at this time
+  const conflict = lessons.find(
+    l =>
+      l.date === slot.date &&
+      l.time === slot.startTime &&
+      (l.status === 'pending' || l.status === 'confirmed'),
+  );
+  if (conflict) {
+    return { valid: false, error: 'You already have a lesson at this time.' };
+  }
+
+  // Check if package has remaining lessons
+  const remaining = (purchasedPkg.totalLessons || 0) - (purchasedPkg.lessonsUsed || 0);
+  if (remaining <= 0) {
+    return { valid: false, error: 'No remaining lessons in this package.' };
+  }
+
+  return { valid: true };
+};
+
+/**
+ * Create a booking and dispatch to Redux.
+ * Used by StudentBookLessonsScreen.
+ */
+export const createBooking = async (
+  instructorId: string,
+  instructorName: string,
+  instructorAvatar: string,
+  packageId: string,
+  packageName: string,
+  slot: AvailableSlot,
+  dispatch: (action: any) => void,
+): Promise<string> => {
+  const actions = require('../store/student/actions');
+
+  try {
+    dispatch(actions.setLoading('bookingLoading', true));
+    // Get current user ID for the booking
+    const { firebaseAuth } = require('../config/firebase');
+    const currentUserId = firebaseAuth.currentUser?.uid;
+    if (!currentUserId) {
+      throw new Error('User not authenticated. Please sign in and try again.');
+    }
+    const bookingId = await createBookingRequest({
+      studentId: currentUserId,
+      instructorId,
+      packageId,
+      date: slot.date,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      duration: slot.duration,
+      instructorName,
+    });
+
+    dispatch(actions.bookLesson({
+      id: bookingId,
+      instructorId,
+      instructorName,
+      instructorAvatar,
+      packageId,
+      packageName,
+      date: slot.date,
+      time: slot.startTime,
+      duration: slot.duration,
+      status: 'pending',
+    }));
+
+    return bookingId;
+  } catch (error) {
+    if (__DEV__) console.error('[BookingService] createBooking error:', error);
+    throw error;
+  } finally {
+    dispatch(actions.setLoading('bookingLoading', false));
+  }
+};

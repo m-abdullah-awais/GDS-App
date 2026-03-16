@@ -27,7 +27,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { StudentStackParamList } from '../../navigation/student/StudentStack';
+import type { StudentStackParamList } from '../../navigation/student/types';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../../store';
 import { useTheme } from '../../theme';
@@ -64,6 +64,15 @@ const StudentBookLessonsScreen = () => {
   const instructorId = route.params?.instructorId ?? '';
   const preselectedPackageId = route.params?.packageId;
 
+  // Defer heavy render until navigation animation completes
+  const [screenReady, setScreenReady] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      requestAnimationFrame(() => setScreenReady(true));
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   // ── Redux state ────────────────────────────────────────
   const instructors = useSelector((st: RootState) => st.student.instructors || []);
   const myInstructors = useSelector((st: RootState) => st.student.myInstructors || []);
@@ -98,9 +107,13 @@ const StudentBookLessonsScreen = () => {
 
   // ── Initialize ─────────────────────────────────────────
   useEffect(() => {
+    let cancelled = false;
     if (instructorId) {
-      fetchAvailableSlots(instructorId, dispatch);
+      fetchAvailableSlots(instructorId, dispatch).catch((error) => {
+        if (!cancelled && __DEV__) console.error('[BookLesson] Failed to load slots:', error);
+      });
     }
+    return () => { cancelled = true; };
   }, [instructorId, dispatch]);
 
   // Pre-select package if navigated with packageId
@@ -167,19 +180,25 @@ const StudentBookLessonsScreen = () => {
   }, [selectedSlot, selectedPkg, lessons]);
 
   const handleConfirmBooking = useCallback(async () => {
-    if (!selectedSlot || !selectedPkg || !instructor) { return; }
+    if (!selectedSlot || !selectedPkg || !instructor || !instructorId) { return; }
 
-    await createBooking(
-      instructorId,
-      instructor.name,
-      instructor.avatar,
-      selectedPkg.packageId,
-      selectedPkg.packageName,
-      selectedSlot,
-      dispatch,
-    );
-    setShowConfirm(false);
-    setShowSuccess(true);
+    try {
+      await createBooking(
+        instructorId,
+        instructor.name || '',
+        instructor.avatar || '',
+        selectedPkg.packageId,
+        selectedPkg.packageName || '',
+        selectedSlot,
+        dispatch,
+      );
+      setShowConfirm(false);
+      setShowSuccess(true);
+    } catch (error) {
+      setShowConfirm(false);
+      setValidationError('Booking failed. Please try again.');
+      if (__DEV__) console.error('[BookLesson] Booking failed:', error);
+    }
   }, [selectedSlot, selectedPkg, instructor, instructorId, dispatch]);
 
   const handleSuccessDismiss = useCallback(() => {
@@ -190,6 +209,16 @@ const StudentBookLessonsScreen = () => {
   const remaining = selectedPkg
     ? selectedPkg.totalLessons - selectedPkg.lessonsUsed
     : 0;
+
+  // Loading state during navigation animation — use plain View to avoid
+  // ScreenContainer overhead during transition
+  if (!screenReady) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   // ── Guard: not accepted ────────────────────────────────
   if (!isAccepted || !instructor) {

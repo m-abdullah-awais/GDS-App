@@ -5,6 +5,7 @@
   "scripts": {
     "generate:google-services": "node scripts/generate-google-services.js",
     "preandroid": "npm run generate:google-services",
+    "reset": "npx react-native start --reset-cache",
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "lint": "eslint .",

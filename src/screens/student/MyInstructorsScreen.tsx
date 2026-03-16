@@ -1,17 +1,10 @@
 /**
  * GDS Driving School — MyInstructorsScreen
- * ==========================================
- *
- * Shows accepted instructors only.  From here students can:
- *   - View / buy packages for each instructor
- *   - Book lessons for instructors with active packages
- *   - Navigate to chat
- *
- * Redux-connected.
  */
 
-import React, { useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -20,14 +13,11 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { StudentStackParamList } from '../../navigation/student/StudentStack';
+import type { StudentStackParamList } from '../../navigation/student/types';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
-import ScreenContainer from '../../components/ScreenContainer';
-import Avatar from '../../components/Avatar';
-import { getActivePackagesForInstructor, getRemainingLessons } from '../../services/packageService';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { StudentInstructor, PurchasedPackage } from '../../store/student/types';
 
@@ -36,151 +26,132 @@ type Nav = NativeStackNavigationProp<StudentStackParamList>;
 const MyInstructorsScreen = () => {
   const navigation = useNavigation<Nav>();
   const { theme } = useTheme();
-  const s = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
-  // Redux ──────────────────────────────────────────────
-  const myInstructors = useSelector((state: RootState) => state.student.myInstructors);
-  const purchasedPackages = useSelector((state: RootState) => state.student.purchasedPackages);
+  const myInstructors = useSelector((state: RootState) => state.student.myInstructors || []);
+  const purchasedPackages = useSelector((state: RootState) => state.student.purchasedPackages || []);
 
-  // Render ─────────────────────────────────────────────
-  const renderInstructor = ({ item }: { item: StudentInstructor }) => {
-    const activePkgs = getActivePackagesForInstructor(purchasedPackages, item.id);
-    const totalRemaining = activePkgs.reduce((sum, p) => sum + getRemainingLessons(p), 0);
+  const renderItem = useCallback(({ item }: { item: StudentInstructor }) => {
+    const activePkgs = (purchasedPackages || []).filter(
+      (p: PurchasedPackage) => p.instructorId === item.id && p.status === 'active',
+    );
+    const totalRemaining = activePkgs.reduce(
+      (sum: number, p: PurchasedPackage) => sum + Math.max(0, (p.totalLessons || 0) - (p.lessonsUsed || 0)), 0,
+    );
 
     return (
-      <View style={s.card}>
+      <View style={styles.card}>
         <Pressable
-          style={s.cardHeader}
+          style={styles.cardHeader}
           onPress={() => navigation.navigate('InstructorProfile', { instructorId: item.id })}>
-          <Avatar initials={item.avatar} size={52} />
-          <View style={s.info}>
-            <Text style={s.name}>{item.name}</Text>
-            <View style={s.metaRow}>
-              <Ionicons name="star" size={13} color={theme.colors.warning} />
-              <Text style={s.rating}>{item.rating}</Text>
-              <View style={s.dot} />
-              <Ionicons name="location-outline" size={13} color={theme.colors.textTertiary} />
-              <Text style={s.city}>{item.city}</Text>
-            </View>
-            <Text style={s.experience}>{item.experience}</Text>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {(item.name || 'I').charAt(0).toUpperCase()}
+            </Text>
           </View>
-          <View style={s.connectedBadge}>
-            <Ionicons name="checkmark-circle" size={14} color={theme.colors.success} />
-            <Text style={s.connectedText}>Connected</Text>
+          <View style={styles.info}>
+            <Text style={styles.name}>{item.name || ''}</Text>
+            <Text style={styles.meta}>
+              {item.rating || 0} ★ · {item.city || ''}
+            </Text>
           </View>
         </Pressable>
 
-        {/* Package summary */}
-        {activePkgs.length > 0 ? (
-          <View style={s.packageSummary}>
-            <View style={s.summaryLeft}>
-              <Text style={s.summaryLabel}>
-                {activePkgs.length} active {activePkgs.length === 1 ? 'package' : 'packages'}
-              </Text>
-              <Text style={s.summaryValue}>
-                {totalRemaining} {totalRemaining === 1 ? 'lesson' : 'lessons'} remaining
-              </Text>
-            </View>
-            <Pressable
-              style={[s.actionButton, { backgroundColor: theme.colors.success }]}
-              onPress={() =>
-                navigation.navigate('BookLesson', {
-                  instructorId: item.id,
-                  packageId: activePkgs[0].packageId,
-                })
-              }>
-              <Ionicons name="calendar-outline" size={14} color={theme.colors.textInverse} />
-              <Text style={[s.actionText, { color: theme.colors.textInverse }]}>Book Lesson</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <View style={s.packageSummary}>
-            <Text style={s.noPackageText}>No active packages</Text>
-          </View>
-        )}
+        <View style={styles.summary}>
+          <Text style={styles.summaryText}>
+            {activePkgs.length > 0
+              ? `${activePkgs.length} active package${activePkgs.length !== 1 ? 's' : ''} · ${totalRemaining} lessons left`
+              : 'No active packages'}
+          </Text>
+        </View>
 
-        {/* Actions row */}
-        <View style={s.actionsRow}>
+        <View style={styles.actions}>
           <Pressable
-            style={[s.actionButton, { backgroundColor: theme.colors.primary }]}
-            onPress={() =>
-              navigation.navigate('PackageListing', { instructorId: item.id })
-            }>
-            <Ionicons name="pricetag-outline" size={14} color={theme.colors.textInverse} />
-            <Text style={[s.actionText, { color: theme.colors.textInverse }]}>View Packages</Text>
+            style={[styles.btn, { backgroundColor: theme.colors.primary }]}
+            onPress={() => navigation.navigate('PackageListing', { instructorId: item.id })}>
+            <Text style={styles.btnText}>View Packages</Text>
           </Pressable>
-
           <Pressable
-            style={s.outlineButton}
-            onPress={() =>
-              navigation.navigate('InstructorProfile', { instructorId: item.id })
-            }>
-            <Ionicons name="person-outline" size={14} color={theme.colors.primary} />
-            <Text style={[s.actionText, { color: theme.colors.primary }]}>Profile</Text>
+            style={[styles.btn, styles.btnOutline]}
+            onPress={() => navigation.navigate('InstructorProfile', { instructorId: item.id })}>
+            <Text style={[styles.btnText, { color: theme.colors.primary }]}>Profile</Text>
           </Pressable>
         </View>
       </View>
     );
-  };
+  }, [purchasedPackages, styles, theme, navigation]);
 
   return (
-    <ScreenContainer showHeader title="My Instructors">
+    <View style={styles.screen}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>My Instructors</Text>
+      </View>
       <FlatList
         data={myInstructors}
-        keyExtractor={item => item.id}
-        renderItem={renderInstructor}
-        contentContainerStyle={s.listContent}
-        showsVerticalScrollIndicator={false}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        contentContainerStyle={styles.list}
+        initialNumToRender={3}
+        maxToRenderPerBatch={3}
+        windowSize={3}
         ListEmptyComponent={
-          <View style={s.emptyState}>
-            <Ionicons name="people-outline" size={52} color={theme.colors.textTertiary} />
-            <Text style={s.emptyTitle}>No instructors yet</Text>
-            <Text style={s.emptySubtitle}>
-              Search for instructors and send a connection request to get started
+          <View style={styles.empty}>
+            <Text style={styles.emptyTitle}>No instructors yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Search for instructors and send a connection request
             </Text>
-            <Pressable
-              style={[s.actionButton, { backgroundColor: theme.colors.primary, marginTop: theme.spacing.md }]}
-              onPress={() => navigation.navigate('InstructorDiscovery' as any)}>
-              <Ionicons name="search-outline" size={16} color={theme.colors.textInverse} />
-              <Text style={[s.actionText, { color: theme.colors.textInverse }]}>Search Instructors</Text>
-            </Pressable>
           </View>
         }
-        ListHeaderComponent={
-          myInstructors.length > 0 ? (
-            <Text style={s.headerCount}>
-              {myInstructors.length} connected instructor{myInstructors.length !== 1 ? 's' : ''}
-            </Text>
-          ) : null
-        }
       />
-    </ScreenContainer>
+    </View>
   );
 };
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    listContent: {
-      paddingTop: theme.spacing.sm,
-      paddingBottom: theme.spacing['3xl'],
+    screen: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
     },
-    headerCount: {
-      ...theme.typography.caption,
-      color: theme.colors.textTertiary,
-      marginHorizontal: theme.spacing.md,
-      marginBottom: theme.spacing.sm,
+    header: {
+      padding: theme.spacing.md,
+      paddingTop: theme.spacing.xl,
+      backgroundColor: theme.colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    headerTitle: {
+      ...theme.typography.h2,
+      color: theme.colors.textPrimary,
+    },
+    list: {
+      padding: theme.spacing.md,
+      paddingBottom: theme.spacing['3xl'],
     },
     card: {
       backgroundColor: theme.colors.surface,
       borderRadius: theme.borderRadius.lg,
-      marginHorizontal: theme.spacing.md,
       marginBottom: theme.spacing.sm,
       padding: theme.spacing.md,
-      ...theme.shadows.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
     },
     cardHeader: {
       flexDirection: 'row',
       alignItems: 'center',
+    },
+    avatar: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: theme.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      color: '#fff',
+      fontWeight: '700',
+      fontSize: 18,
     },
     info: {
       flex: 1,
@@ -190,113 +161,55 @@ const createStyles = (theme: AppTheme) =>
       ...theme.typography.h4,
       color: theme.colors.textPrimary,
     },
-    metaRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      marginTop: 3,
-    },
-    rating: {
-      ...theme.typography.bodySmall,
-      color: theme.colors.textPrimary,
-      fontWeight: '600',
-    },
-    dot: {
-      width: 4,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: theme.colors.textTertiary,
-    },
-    city: {
+    meta: {
       ...theme.typography.bodySmall,
       color: theme.colors.textSecondary,
-    },
-    experience: {
-      ...theme.typography.caption,
-      color: theme.colors.textTertiary,
       marginTop: 2,
     },
-    connectedBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: theme.spacing.xs + 2,
-      paddingVertical: 3,
-      borderRadius: theme.borderRadius.full,
-      backgroundColor: theme.colors.success + '14',
-    },
-    connectedText: {
-      ...theme.typography.caption,
-      color: theme.colors.success,
-      fontWeight: '600',
-    },
-    packageSummary: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+    summary: {
       marginTop: theme.spacing.sm,
       paddingTop: theme.spacing.sm,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
     },
-    summaryLeft: {},
-    summaryLabel: {
-      ...theme.typography.caption,
-      color: theme.colors.textSecondary,
-    },
-    summaryValue: {
-      ...theme.typography.bodySmall,
-      color: theme.colors.primary,
-      fontWeight: '600',
-      marginTop: 2,
-    },
-    noPackageText: {
+    summaryText: {
       ...theme.typography.bodySmall,
       color: theme.colors.textTertiary,
     },
-    actionsRow: {
+    actions: {
       flexDirection: 'row',
       gap: theme.spacing.xs,
       marginTop: theme.spacing.sm,
     },
-    actionButton: {
-      flexDirection: 'row',
+    btn: {
+      flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: theme.spacing.xs + 2,
-      paddingHorizontal: theme.spacing.md,
       borderRadius: theme.borderRadius.md,
-      gap: 5,
     },
-    outlineButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: theme.spacing.xs + 2,
-      paddingHorizontal: theme.spacing.md,
-      borderRadius: theme.borderRadius.md,
-      gap: 5,
+    btnOutline: {
+      backgroundColor: 'transparent',
       borderWidth: 1,
       borderColor: theme.colors.primary,
     },
-    actionText: {
+    btnText: {
       ...theme.typography.buttonSmall,
+      color: '#fff',
     },
-    emptyState: {
+    empty: {
       alignItems: 'center',
       padding: theme.spacing['3xl'],
     },
     emptyTitle: {
       ...theme.typography.h3,
       color: theme.colors.textPrimary,
-      marginTop: theme.spacing.md,
     },
     emptySubtitle: {
       ...theme.typography.bodyMedium,
       color: theme.colors.textTertiary,
       marginTop: theme.spacing.xxs,
       textAlign: 'center',
-      lineHeight: 20,
     },
   });
 

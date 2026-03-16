@@ -60,7 +60,13 @@ export const loadStudentData = (studentId: string) => async (dispatch: Dispatch)
           if (__DEV__) console.info('[Student] Firestore permission denied for one query, using fallback data.');
           return fallback;
         }
-        throw error;
+        // Also fallback on network errors to prevent entire dashboard from failing
+        if (error?.code === 'firestore/unavailable' || error?.message?.includes('network')) {
+          if (__DEV__) console.warn('[Student] Network error for one query, using fallback data.');
+          return fallback;
+        }
+        if (__DEV__) console.error('[Student] Unexpected error in query:', error);
+        return fallback;
       }
     };
 

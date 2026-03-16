@@ -56,7 +56,17 @@ export const onNotifications = (
   role: string,
   callback: (notifications: Notification[]) => void,
 ): (() => void) => {
-  return onSnapshot(query(collection(db, Collections.NOTIFICATIONS), where('isActive', '==', true), where('targetAudience', 'in', getAudienceValues(role)), orderBy('createdAt', 'desc')),
+  return onSnapshot(
+    query(
+      collection(db, Collections.NOTIFICATIONS),
+      where('isActive', '==', true),
+      where('targetAudience', 'in', getAudienceValues(role)),
+      orderBy('createdAt', 'desc'),
+    ),
     (snapshot) => callback(fromQuerySnapshot<Notification>(snapshot)),
+    (error) => {
+      if (__DEV__) console.error('[NotificationService] onNotifications error:', error);
+      callback([]);
+    },
   );
 };

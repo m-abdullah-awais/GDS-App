@@ -9,7 +9,6 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Modal,
   Pressable,
@@ -37,7 +36,6 @@ import {
 import { sendInstructorRequestThunk } from '../../store/student/thunks';
 import { getActivePackagesForInstructor } from '../../services/packageService';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import type { InstructorRequestStatus } from '../../store/student/types';
 
 type Nav = NativeStackNavigationProp<StudentStackParamList>;
 
@@ -91,8 +89,13 @@ const InstructorDiscoveryScreen = () => {
     async (instructorId: string) => {
       if (!studentId) return;
       setSendingId(instructorId);
-      await dispatch(sendInstructorRequestThunk(studentId, instructorId, studentName, studentEmail));
-      setSendingId(null);
+      try {
+        await (dispatch as any)(sendInstructorRequestThunk(studentId, instructorId, studentName, studentEmail));
+      } catch (_e) {
+        // Request failed — thunk already logs the error
+      } finally {
+        setSendingId(null);
+      }
     },
     [dispatch, studentId, studentName, studentEmail],
   );
@@ -198,9 +201,7 @@ const InstructorDiscoveryScreen = () => {
         contentContainerStyle={s.listContent}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => {
-          const reqStatus = getRequestStatus(requests, item.id) as
-            | InstructorRequestStatus
-            | 'none';
+          const reqStatus = getRequestStatus(requests, item.id);
           const activeCount = getActivePackagesForInstructor(purchasedPackages, item.id).length;
 
           return (

@@ -28,7 +28,7 @@ export const getStudentAssignments = async (studentId: string): Promise<Assignme
     }
   }
   const assignments = Array.from(map.values());
-  console.log('[Firebase][READ][AssignmentService] getStudentAssignments', {
+  if (__DEV__) console.log('[Firebase][READ][AssignmentService] getStudentAssignments', {
     studentId,
     count: assignments.length,
     data: assignments,
@@ -53,7 +53,7 @@ export const getInstructorAssignments = async (instructorId: string): Promise<As
     }
   }
   const assignments = Array.from(map.values());
-  console.log('[Firebase][READ][AssignmentService] getInstructorAssignments', {
+  if (__DEV__) console.log('[Firebase][READ][AssignmentService] getInstructorAssignments', {
     instructorId,
     count: assignments.length,
     data: assignments,
@@ -79,7 +79,7 @@ export const getAssignment = async (
     if (snapshot2.empty) return null;
     const doc = snapshot2.docs[0];
     const assignment = { id: doc.id, ...doc.data() } as Assignment;
-    console.log('[Firebase][READ][AssignmentService] getAssignment(legacy)', {
+    if (__DEV__) console.log('[Firebase][READ][AssignmentService] getAssignment(legacy)', {
       studentId,
       instructorId,
       data: assignment,
@@ -89,7 +89,7 @@ export const getAssignment = async (
 
   const doc = snapshot.docs[0];
   const assignment = { id: doc.id, ...doc.data() } as Assignment;
-  console.log('[Firebase][READ][AssignmentService] getAssignment', {
+  if (__DEV__) console.log('[Firebase][READ][AssignmentService] getAssignment', {
     studentId,
     instructorId,
     data: assignment,

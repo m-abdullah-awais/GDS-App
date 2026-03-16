@@ -101,12 +101,15 @@ export interface BookedLesson {
 
 export const SET_INSTRUCTORS = 'student/SET_INSTRUCTORS';
 export const SEND_REQUEST = 'student/SEND_REQUEST';
+export const SET_REQUESTS = 'student/SET_REQUESTS';
 export const UPDATE_REQUEST_STATUS = 'student/UPDATE_REQUEST_STATUS';
 export const SET_MY_INSTRUCTORS = 'student/SET_MY_INSTRUCTORS';
 export const SET_PACKAGES = 'student/SET_PACKAGES';
 export const PURCHASE_PACKAGE = 'student/PURCHASE_PACKAGE';
+export const SET_PURCHASED_PACKAGES = 'student/SET_PURCHASED_PACKAGES';
 export const SET_AVAILABLE_SLOTS = 'student/SET_AVAILABLE_SLOTS';
 export const BOOK_LESSON = 'student/BOOK_LESSON';
+export const SET_LESSONS = 'student/SET_LESSONS';
 export const UPDATE_LESSON_STATUS = 'student/UPDATE_LESSON_STATUS';
 export const CANCEL_BOOKING = 'student/CANCEL_BOOKING';
 export const SET_LOADING = 'student/SET_LOADING';
@@ -122,6 +125,11 @@ export interface SetInstructorsAction {
 export interface SendRequestAction {
   type: typeof SEND_REQUEST;
   payload: { request: InstructorRequest };
+}
+
+export interface SetRequestsAction {
+  type: typeof SET_REQUESTS;
+  payload: { requests: InstructorRequest[] };
 }
 
 export interface UpdateRequestStatusAction {
@@ -149,6 +157,11 @@ export interface PurchasePackageAction {
   payload: { purchasedPackage: PurchasedPackage };
 }
 
+export interface SetPurchasedPackagesAction {
+  type: typeof SET_PURCHASED_PACKAGES;
+  payload: { purchasedPackages: PurchasedPackage[] };
+}
+
 export interface SetAvailableSlotsAction {
   type: typeof SET_AVAILABLE_SLOTS;
   payload: { slots: AvailableSlot[] };
@@ -157,6 +170,11 @@ export interface SetAvailableSlotsAction {
 export interface BookLessonAction {
   type: typeof BOOK_LESSON;
   payload: { lesson: BookedLesson };
+}
+
+export interface SetLessonsAction {
+  type: typeof SET_LESSONS;
+  payload: { lessons: BookedLesson[] };
 }
 
 export interface UpdateLessonStatusAction {
@@ -189,12 +207,15 @@ export interface UpdatePackageUsageAction {
 export type StudentAction =
   | SetInstructorsAction
   | SendRequestAction
+  | SetRequestsAction
   | UpdateRequestStatusAction
   | SetMyInstructorsAction
   | SetPackagesAction
   | PurchasePackageAction
+  | SetPurchasedPackagesAction
   | SetAvailableSlotsAction
   | BookLessonAction
+  | SetLessonsAction
   | UpdateLessonStatusAction
   | CancelBookingAction
   | SetLoadingAction

@@ -13,13 +13,13 @@ import {
   serverTimestamp,
   withDualIds,
 } from '../utils/mappers';
-import { collection, query, where, getDocs, orderBy, addDoc, updateDoc, onSnapshot, doc, getDoc } from '@react-native-firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, onSnapshot, doc, getDoc } from '@react-native-firebase/firestore';
 import type { BookingRequest, Booking } from '../types';
 
 const sortBookingsByDateDesc = (bookings: Booking[]): Booking[] => {
   return [...bookings].sort((a, b) => {
-    const aTime = new Date(a.date).getTime();
-    const bTime = new Date(b.date).getTime();
+    const aTime = new Date(a.date as any).getTime();
+    const bTime = new Date(b.date as any).getTime();
     return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
   });
 };
@@ -90,13 +90,13 @@ export const createBookingRequest = async (data: {
 export const getStudentBookingRequests = async (
   studentId: string,
 ): Promise<BookingRequest[]> => {
-  const q = query(
-    collection(db, Collections.BOOKING_REQUESTS),
-    where('studentId', '==', studentId),
-    orderBy('createdAt', 'desc')
+  const snap = await getDocs(
+    query(
+      collection(db, Collections.BOOKING_REQUESTS),
+      where('studentId', '==', studentId),
+    ),
   );
-  const snap = await getDocs(q);
-  return fromQuerySnapshot<BookingRequest>(snap);
+  return sortBookingRequestsByCreatedAtDesc(fromQuerySnapshot<BookingRequest>(snap));
 };
 
 /**
@@ -131,7 +131,7 @@ export const getInstructorBookingRequests = async (
 
     return sortBookingRequestsByCreatedAtDesc(Array.from(merged.values()));
   } catch (error) {
-    console.error('[Firebase][BookingService] Error output: getInstructorBookingRequests', { instructorId, error });
+    if (__DEV__) console.error('[BookingService] getInstructorBookingRequests error:', { instructorId, error });
     throw error;
   }
 };
@@ -143,41 +143,38 @@ export const onInstructorBookingRequests = (
   instructorId: string,
   callback: (requests: BookingRequest[]) => void,
 ): (() => void) => {
-  const emitMerged = async () => {
-    const requests = await getInstructorBookingRequests(instructorId);
-    callback(requests);
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const emitMerged = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      try {
+        const requests = await getInstructorBookingRequests(instructorId);
+        callback(requests);
+      } catch (error) {
+        if (__DEV__) console.error('[BookingService] onInstructorBookingRequests error:', error);
+      }
+    }, 300); // 300ms debounce to prevent cascade
   };
 
   const unsubscribers = [
     onSnapshot(
       query(collection(db, Collections.BOOKING_REQUESTS), where('instructorId', '==', instructorId)),
-      () => {
-        emitMerged().catch(error => {
-          console.error('[Firebase][BookingService] Error output: onInstructorBookingRequests(camel)', { instructorId, error });
-        });
-      },
-      (error) => {
-        console.error('[Firebase][BookingService] Error output: onInstructorBookingRequests(camel snapshot)', { instructorId, error });
-      },
+      () => emitMerged(),
+      (error) => { if (__DEV__) console.error('[BookingService] onInstructorBookingRequests camel error:', error); },
     ),
     onSnapshot(
       query(collection(db, Collections.BOOKING_REQUESTS), where('instructor_id', '==', instructorId)),
-      () => {
-        emitMerged().catch(error => {
-          console.error('[Firebase][BookingService] Error output: onInstructorBookingRequests(snake)', { instructorId, error });
-        });
-      },
-      (error) => {
-        console.error('[Firebase][BookingService] Error output: onInstructorBookingRequests(snake snapshot)', { instructorId, error });
-      },
+      () => emitMerged(),
+      (error) => { if (__DEV__) console.error('[BookingService] onInstructorBookingRequests snake error:', error); },
     ),
   ];
 
-  emitMerged().catch(error => {
-    console.error('[Firebase][BookingService] Error output: onInstructorBookingRequests(initial)', { instructorId, error });
-  });
+  // Initial load
+  emitMerged();
 
   return () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
     unsubscribers.forEach(unsub => unsub());
   };
 };
@@ -193,9 +190,9 @@ export const onStudentBookingRequests = (
     query(
       collection(db, Collections.BOOKING_REQUESTS),
       where('studentId', '==', studentId),
-      orderBy('createdAt', 'desc')
     ),
-    (snap) => callback(fromQuerySnapshot<BookingRequest>(snap)),
+    (snap) => callback(sortBookingRequestsByCreatedAtDesc(fromQuerySnapshot<BookingRequest>(snap))),
+    (error) => { if (__DEV__) console.error('[BookingService] onStudentBookingRequests error:', error); },
   );
 };
 
@@ -258,7 +255,7 @@ export const getStudentBookings = async (
 
     return sortBookingsByDateDesc(Array.from(merged.values()));
   } catch (error) {
-    console.error('[Firebase][BookingService] Error output: getStudentBookings', { studentId, error });
+    if (__DEV__) console.error('[BookingService] getStudentBookings error:', { studentId, error });
     throw error;
   }
 };
@@ -295,7 +292,7 @@ export const getInstructorBookings = async (
 
     return sortBookingsByDateDesc(Array.from(merged.values()));
   } catch (error) {
-    console.error('[Firebase][BookingService] Error output: getInstructorBookings', { instructorId, error });
+    if (__DEV__) console.error('[BookingService] getInstructorBookings error:', { instructorId, error });
     throw error;
   }
 };
@@ -307,41 +304,38 @@ export const onStudentBookings = (
   studentId: string,
   callback: (bookings: Booking[]) => void,
 ): (() => void) => {
-  const emitMerged = async () => {
-    const bookings = await getStudentBookings(studentId);
-    callback(bookings);
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const emitMerged = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      try {
+        const bookings = await getStudentBookings(studentId);
+        callback(bookings);
+      } catch (error) {
+        if (__DEV__) console.error('[BookingService] onStudentBookings error:', error);
+      }
+    }, 300); // 300ms debounce to prevent cascade
   };
 
   const unsubscribers = [
     onSnapshot(
       query(collection(db, Collections.BOOKINGS), where('studentId', '==', studentId)),
-      () => {
-        emitMerged().catch(error => {
-          console.error('[Firebase][BookingService] Error output: onStudentBookings(camel)', { studentId, error });
-        });
-      },
-      (error) => {
-        console.error('[Firebase][BookingService] Error output: onStudentBookings(camel snapshot)', { studentId, error });
-      },
+      () => emitMerged(),
+      (error) => { if (__DEV__) console.error('[BookingService] onStudentBookings camel error:', error); },
     ),
     onSnapshot(
       query(collection(db, Collections.BOOKINGS), where('student_id', '==', studentId)),
-      () => {
-        emitMerged().catch(error => {
-          console.error('[Firebase][BookingService] Error output: onStudentBookings(snake)', { studentId, error });
-        });
-      },
-      (error) => {
-        console.error('[Firebase][BookingService] Error output: onStudentBookings(snake snapshot)', { studentId, error });
-      },
+      () => emitMerged(),
+      (error) => { if (__DEV__) console.error('[BookingService] onStudentBookings snake error:', error); },
     ),
   ];
 
-  emitMerged().catch(error => {
-    console.error('[Firebase][BookingService] Error output: onStudentBookings(initial)', { studentId, error });
-  });
+  // Initial load
+  emitMerged();
 
   return () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
     unsubscribers.forEach(unsub => unsub());
   };
 };
@@ -353,41 +347,38 @@ export const onInstructorBookings = (
   instructorId: string,
   callback: (bookings: Booking[]) => void,
 ): (() => void) => {
-  const emitMerged = async () => {
-    const bookings = await getInstructorBookings(instructorId);
-    callback(bookings);
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const emitMerged = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      try {
+        const bookings = await getInstructorBookings(instructorId);
+        callback(bookings);
+      } catch (error) {
+        if (__DEV__) console.error('[BookingService] onInstructorBookings error:', error);
+      }
+    }, 300); // 300ms debounce to prevent cascade
   };
 
   const unsubscribers = [
     onSnapshot(
       query(collection(db, Collections.BOOKINGS), where('instructorId', '==', instructorId)),
-      () => {
-        emitMerged().catch(error => {
-          console.error('[Firebase][BookingService] Error output: onInstructorBookings(camel)', { instructorId, error });
-        });
-      },
-      (error) => {
-        console.error('[Firebase][BookingService] Error output: onInstructorBookings(camel snapshot)', { instructorId, error });
-      },
+      () => emitMerged(),
+      (error) => { if (__DEV__) console.error('[BookingService] onInstructorBookings camel error:', error); },
     ),
     onSnapshot(
       query(collection(db, Collections.BOOKINGS), where('instructor_id', '==', instructorId)),
-      () => {
-        emitMerged().catch(error => {
-          console.error('[Firebase][BookingService] Error output: onInstructorBookings(snake)', { instructorId, error });
-        });
-      },
-      (error) => {
-        console.error('[Firebase][BookingService] Error output: onInstructorBookings(snake snapshot)', { instructorId, error });
-      },
+      () => emitMerged(),
+      (error) => { if (__DEV__) console.error('[BookingService] onInstructorBookings snake error:', error); },
     ),
   ];
 
-  emitMerged().catch(error => {
-    console.error('[Firebase][BookingService] Error output: onInstructorBookings(initial)', { instructorId, error });
-  });
+  // Initial load
+  emitMerged();
 
   return () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
     unsubscribers.forEach(unsub => unsub());
   };
 };
@@ -426,15 +417,15 @@ export const filterBookings = (
     case 'upcoming':
       return bookings
         .filter(b => b.status === 'pending' || b.status === 'confirmed')
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        .sort((a, b) => new Date(a.date as any).getTime() - new Date(b.date as any).getTime());
     case 'completed':
       return bookings
         .filter(b => b.status === 'completed')
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        .sort((a, b) => new Date(b.date as any).getTime() - new Date(a.date as any).getTime());
     case 'cancelled':
       return bookings
         .filter(b => b.status === 'cancelled')
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        .sort((a, b) => new Date(b.date as any).getTime() - new Date(a.date as any).getTime());
     default:
       return bookings;
   }

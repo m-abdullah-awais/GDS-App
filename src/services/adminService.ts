@@ -197,11 +197,21 @@ export const getAllTransactions = async (
   const snap = await getDocs(
     query(
       collection(db, Collections.TRANSACTIONS),
-      orderBy('created_at', 'desc'),
       limit(limitCount),
     ),
   );
-  return fromQuerySnapshot<Transaction>(snap);
+  const transactions = fromQuerySnapshot<Transaction>(snap);
+  // Sort in memory to avoid composite index requirement
+  return transactions.sort((a, b) => {
+    const toMillis = (val: any): number => {
+      if (!val) return 0;
+      if (typeof val?.toDate === 'function') return val.toDate().getTime();
+      if (val instanceof Date) return val.getTime();
+      if (typeof val === 'string') { const ms = new Date(val).getTime(); return isNaN(ms) ? 0 : ms; }
+      return 0;
+    };
+    return toMillis((b as any).created_at) - toMillis((a as any).created_at);
+  });
 };
 
 /**
@@ -213,11 +223,21 @@ export const getAllPayments = async (
   const snap = await getDocs(
     query(
       collection(db, Collections.PAYMENTS),
-      orderBy('createdAt', 'desc'),
       limit(limitCount),
     ),
   );
-  return fromQuerySnapshot<Payment>(snap);
+  const payments = fromQuerySnapshot<Payment>(snap);
+  // Sort in memory to avoid composite index requirement
+  return payments.sort((a, b) => {
+    const toMillis = (val: any): number => {
+      if (!val) return 0;
+      if (typeof val?.toDate === 'function') return val.toDate().getTime();
+      if (val instanceof Date) return val.getTime();
+      if (typeof val === 'string') { const ms = new Date(val).getTime(); return isNaN(ms) ? 0 : ms; }
+      return 0;
+    };
+    return toMillis((b as any).createdAt) - toMillis((a as any).createdAt);
+  });
 };
 
 /**
@@ -230,26 +250,37 @@ export const getInstructorPayments = async (
     query(
       collection(db, Collections.INSTRUCTOR_PAYMENTS),
       where('instructorId', '==', instructorId),
-      orderBy('createdAt', 'desc'),
     ),
   );
-  return fromQuerySnapshot<InstructorPayment>(snap);
+  const payments = fromQuerySnapshot<InstructorPayment>(snap);
+  // Sort in memory to avoid composite index requirement
+  return payments.sort((a, b) => {
+    const aTime = (a as any).createdAt ? new Date((a as any).createdAt).getTime() : 0;
+    const bTime = (b as any).createdAt ? new Date((b as any).createdAt).getTime() : 0;
+    return bTime - aTime;
+  });
 };
 
 /**
  * Get weekly instructor payment summaries.
+ * The Firestore security rule requires document ID == auth UID,
+ * so we read the single document by instructor ID instead of querying.
  */
 export const getWeeklyInstructorPayments = async (
   instructorId: string,
 ): Promise<WeeklyInstructorPayment[]> => {
-  const snap = await getDocs(
-    query(
-      collection(db, Collections.WEEKLY_INSTRUCTOR_PAYMENTS),
-      where('instructorId', '==', instructorId),
-      orderBy('weekStart', 'desc'),
-    ),
-  );
-  return fromQuerySnapshot<WeeklyInstructorPayment>(snap);
+  try {
+    const snap = await getDoc(
+      doc(collection(db, Collections.WEEKLY_INSTRUCTOR_PAYMENTS), instructorId),
+    );
+    if (!snap.exists) return [];
+    const rawData = snap.data() ?? {};
+    const data = { id: snap.id, ...rawData } as WeeklyInstructorPayment;
+    return [data];
+  } catch (error) {
+    if (__DEV__) console.warn('[AdminService] Failed to read weeklyInstructorPayments:', error);
+    return [];
+  }
 };
 
 /**
@@ -270,6 +301,7 @@ export const getAllPayouts = async (
 
 /**
  * Subscribe to all users for admin dashboard.
+ * Removed orderBy to avoid index issues; sorted in memory in the callback.
  */
 export const onAllUsers = (
   callback: (users: UserProfile[]) => void,
@@ -277,9 +309,22 @@ export const onAllUsers = (
   return onSnapshot(
     query(
       collection(db, Collections.USERS),
-      orderBy('createdAt', 'desc'),
     ),
-    (snap) => callback(fromQuerySnapshot<UserProfile>(snap)),
+    (snap) => {
+      const users = fromQuerySnapshot<UserProfile>(snap);
+      // Sort in memory to avoid index requirement
+      users.sort((a, b) => {
+        const toMillis = (val: any): number => {
+          if (!val) return 0;
+          if (typeof val?.toDate === 'function') return val.toDate().getTime();
+          if (val instanceof Date) return val.getTime();
+          if (typeof val === 'string') { const ms = new Date(val).getTime(); return isNaN(ms) ? 0 : ms; }
+          return 0;
+        };
+        return toMillis((b as any).createdAt) - toMillis((a as any).createdAt);
+      });
+      callback(users);
+    },
   );
 };
 
@@ -315,7 +360,7 @@ export const getDashboardCounts = async (): Promise<{
   ]);
 
   const activeCount = instructors.docs.filter(
-    (d) => d.data().status === 'active',
+    (d: any) => d.data().status === 'active',
   ).length;
 
   return {
@@ -396,7 +441,7 @@ export const deleteStudentUser = async (studentId: string): Promise<void> => {
 export const approvePendingPackage = async (packageId: string): Promise<void> => {
   const snap = await getDoc(doc(collection(db, Collections.PENDING_PACKAGES), packageId));
   if (!snap.exists) {throw new Error('Pending package not found');}
-  const data = snap.data()!;
+  const data = snap.data()! as Record<string, any>;
 
   // Calculate commission fields (matches web AdminPackageManagement)
   const commissionRate = data.commissionRate ?? 20; // default 20%
@@ -506,6 +551,8 @@ export const deleteAvailablePackage = async (packageId: string): Promise<void> =
 
 /**
  * Get all packages for admin review (pending + available combined).
+ * Removed orderBy from queries; sorting in memory to avoid index issues
+ * and to handle both createdAt / created_at field name variants.
  */
 export const getAllPackagesForAdmin = async (
   limitCount = 50,
@@ -517,21 +564,30 @@ export const getAllPackagesForAdmin = async (
     getDocs(
       query(
         collection(db, Collections.PENDING_PACKAGES),
-        orderBy('created_at', 'desc'),
         limit(limitCount),
       ),
     ),
     getDocs(
       query(
         collection(db, Collections.AVAILABLE_PACKAGES),
-        orderBy('updatedAt', 'desc'),
         limit(limitCount),
       ),
     ),
   ]);
+
+  const toMillis = (val: any): number => {
+    if (!val) return 0;
+    if (typeof val?.toDate === 'function') return val.toDate().getTime();
+    if (val instanceof Date) return val.getTime();
+    if (typeof val === 'string') { const ms = new Date(val).getTime(); return isNaN(ms) ? 0 : ms; }
+    return 0;
+  };
+
   return {
-    pending: fromQuerySnapshot<PendingPackage>(pendingSnap),
-    available: fromQuerySnapshot<AvailablePackage>(availSnap),
+    pending: fromQuerySnapshot<PendingPackage>(pendingSnap)
+      .sort((a, b) => toMillis((b as any).createdAt || (b as any).created_at) - toMillis((a as any).createdAt || (a as any).created_at)),
+    available: fromQuerySnapshot<AvailablePackage>(availSnap)
+      .sort((a, b) => toMillis((b as any).updatedAt) - toMillis((a as any).updatedAt)),
   };
 };
 
@@ -550,31 +606,43 @@ export const getActiveBookingsCount = async (): Promise<number> => {
 
 /**
  * Get monthly revenue (sum of completed transactions in current month).
+ * Wrapped in try/catch since this uses a composite query on a server-only collection.
  */
 export const getMonthlyRevenue = async (): Promise<number> => {
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const snap = await getDocs(
-    query(
-      collection(db, Collections.TRANSACTIONS),
-      where('status', '==', 'completed'),
-      where('created_at', '>=', startOfMonth),
-    ),
-  );
-  return snap.docs.reduce((sum, d) => sum + (d.data().amount || 0), 0);
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const snap = await getDocs(
+      query(
+        collection(db, Collections.TRANSACTIONS),
+        where('status', '==', 'completed'),
+        where('created_at', '>=', startOfMonth),
+      ),
+    );
+    return snap.docs.reduce((sum: number, d: any) => sum + (d.data().amount || 0), 0);
+  } catch (error) {
+    if (__DEV__) console.warn('[AdminService] Failed to read monthly revenue:', error);
+    return 0;
+  }
 };
 
 /**
  * Get total pending payouts.
+ * Wrapped in try/catch since only admins can read this collection.
  */
 export const getPendingPayoutsTotal = async (): Promise<number> => {
-  const snap = await getDocs(
-    collection(db, Collections.WEEKLY_INSTRUCTOR_PAYMENTS),
-  );
-  return snap.docs.reduce(
-    (sum, d) => sum + (d.data().weeklyInstructorPayment || 0),
-    0,
-  );
+  try {
+    const snap = await getDocs(
+      collection(db, Collections.WEEKLY_INSTRUCTOR_PAYMENTS),
+    );
+    return snap.docs.reduce(
+      (sum: number, d: any) => sum + (d.data().weeklyInstructorPayment || 0),
+      0,
+    );
+  } catch (error) {
+    if (__DEV__) console.warn('[AdminService] Failed to read pending payouts:', error);
+    return 0;
+  }
 };
 
 // ─── Admin Settings (Extended) ───────────────────────────────────────────────

@@ -7,12 +7,15 @@
 import {
   SET_INSTRUCTORS,
   SEND_REQUEST,
+  SET_REQUESTS,
   UPDATE_REQUEST_STATUS,
   SET_MY_INSTRUCTORS,
   SET_PACKAGES,
   PURCHASE_PACKAGE,
+  SET_PURCHASED_PACKAGES,
   SET_AVAILABLE_SLOTS,
   BOOK_LESSON,
+  SET_LESSONS,
   UPDATE_LESSON_STATUS,
   CANCEL_BOOKING,
   SET_LOADING,
@@ -37,6 +40,11 @@ export const setInstructors = (instructors: StudentInstructor[]) => ({
 export const sendRequest = (request: InstructorRequest) => ({
   type: SEND_REQUEST as typeof SEND_REQUEST,
   payload: { request },
+});
+
+export const setRequests = (requests: InstructorRequest[]) => ({
+  type: SET_REQUESTS as typeof SET_REQUESTS,
+  payload: { requests },
 });
 
 export const updateRequestStatus = (
@@ -66,6 +74,11 @@ export const purchasePackage = (purchasedPackage: PurchasedPackage) => ({
   payload: { purchasedPackage },
 });
 
+export const setPurchasedPackages = (purchasedPackages: PurchasedPackage[]) => ({
+  type: SET_PURCHASED_PACKAGES as typeof SET_PURCHASED_PACKAGES,
+  payload: { purchasedPackages },
+});
+
 export const updatePackageUsage = (purchasedPackageId: string, lessonsUsed: number) => ({
   type: UPDATE_PACKAGE_USAGE as typeof UPDATE_PACKAGE_USAGE,
   payload: { purchasedPackageId, lessonsUsed },
@@ -83,6 +96,11 @@ export const setAvailableSlots = (slots: AvailableSlot[]) => ({
 export const bookLesson = (lesson: BookedLesson) => ({
   type: BOOK_LESSON as typeof BOOK_LESSON,
   payload: { lesson },
+});
+
+export const setLessons = (lessons: BookedLesson[]) => ({
+  type: SET_LESSONS as typeof SET_LESSONS,
+  payload: { lessons },
 });
 
 export const updateLessonStatus = (

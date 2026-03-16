@@ -8,12 +8,15 @@
 import {
   SET_INSTRUCTORS,
   SEND_REQUEST,
+  SET_REQUESTS,
   UPDATE_REQUEST_STATUS,
   SET_MY_INSTRUCTORS,
   SET_PACKAGES,
   PURCHASE_PACKAGE,
+  SET_PURCHASED_PACKAGES,
   SET_AVAILABLE_SLOTS,
   BOOK_LESSON,
+  SET_LESSONS,
   UPDATE_LESSON_STATUS,
   CANCEL_BOOKING,
   SET_LOADING,
@@ -56,6 +59,12 @@ const studentReducer = (
       return {
         ...state,
         requests: [...state.requests, action.payload.request],
+      };
+
+    case SET_REQUESTS:
+      return {
+        ...state,
+        requests: action.payload.requests,
       };
 
     case UPDATE_REQUEST_STATUS: {
@@ -124,6 +133,12 @@ const studentReducer = (
         ],
       };
 
+    case SET_PURCHASED_PACKAGES:
+      return {
+        ...state,
+        purchasedPackages: action.payload.purchasedPackages,
+      };
+
     case SET_AVAILABLE_SLOTS:
       return {
         ...state,
@@ -159,6 +174,12 @@ const studentReducer = (
         purchasedPackages: updatedPurchased,
       };
     }
+
+    case SET_LESSONS:
+      return {
+        ...state,
+        lessons: action.payload.lessons,
+      };
 
     case UPDATE_LESSON_STATUS:
       return {

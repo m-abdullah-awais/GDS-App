@@ -36,6 +36,19 @@ export const loadInstructorData = (instructorId: string) => async (dispatch: Dis
   try {
     dispatch(setInstructorLoading(true));
 
+    const readOrFallback = async <T>(reader: () => Promise<T>, fallback: T): Promise<T> => {
+      try {
+        return await reader();
+      } catch (error: any) {
+        if (error?.code === 'firestore/permission-denied') {
+          if (__DEV__) console.info('[Instructor] Permission denied for one query, using fallback.');
+          return fallback;
+        }
+        if (__DEV__) console.warn('[Instructor] Query failed, using fallback:', error?.message);
+        return fallback;
+      }
+    };
+
     const [
       timetable,
       requests,
@@ -46,14 +59,14 @@ export const loadInstructorData = (instructorId: string) => async (dispatch: Dis
       payments,
       weeklyPayments,
     ] = await Promise.all([
-      timetableService.getInstructorTimetable(instructorId),
-      requestService.getInstructorRequests(instructorId),
-      bookingService.getInstructorBookingRequests(instructorId),
-      bookingService.getInstructorBookings(instructorId),
-      packageService.getInstructorAvailablePackages(instructorId),
-      packageService.getInstructorPendingPackages(instructorId),
-      adminService.getInstructorPayments(instructorId),
-      adminService.getWeeklyInstructorPayments(instructorId),
+      readOrFallback(() => timetableService.getInstructorTimetable(instructorId), null),
+      readOrFallback(() => requestService.getInstructorRequests(instructorId), []),
+      readOrFallback(() => bookingService.getInstructorBookingRequests(instructorId), []),
+      readOrFallback(() => bookingService.getInstructorBookings(instructorId), []),
+      readOrFallback(() => packageService.getInstructorAvailablePackages(instructorId), []),
+      readOrFallback(() => packageService.getInstructorPendingPackages(instructorId), []),
+      readOrFallback(() => adminService.getInstructorPayments(instructorId), []),
+      readOrFallback(() => adminService.getWeeklyInstructorPayments(instructorId), []),
     ]);
 
     dispatch(setTimetable(timetable));
@@ -65,7 +78,7 @@ export const loadInstructorData = (instructorId: string) => async (dispatch: Dis
     dispatch(setInstructorPayments(payments));
     dispatch(setWeeklyPayment(weeklyPayments.length > 0 ? weeklyPayments[0] : null));
   } catch (error: any) {
-    console.error('Failed to load instructor data:', error);
+    if (__DEV__) console.error('Failed to load instructor data:', error);
     dispatch(setInstructorError(error.message || 'Failed to load data'));
   } finally {
     dispatch(setInstructorLoading(false));
@@ -88,7 +101,7 @@ export const saveAvailabilityThunk = (
     const updated = await timetableService.getInstructorTimetable(instructorId);
     dispatch(setTimetable(updated));
   } catch (error: any) {
-    console.error('Failed to save availability:', error);
+    if (__DEV__) console.error('Failed to save availability:', error);
     dispatch(setInstructorError(error.message || 'Failed to save'));
     throw error;
   } finally {
@@ -109,7 +122,7 @@ export const acceptStudentRequestThunk = (
     // Re-fetch requests to get updated list
     // Note: the real-time listener will also pick this up
   } catch (error) {
-    console.error('Failed to accept request:', error);
+    if (__DEV__) console.error('Failed to accept request:', error);
     throw error;
   }
 };
@@ -123,7 +136,7 @@ export const rejectStudentRequestThunk = (
   try {
     await requestService.updateRequestStatus(requestId, 'rejected');
   } catch (error) {
-    console.error('Failed to reject request:', error);
+    if (__DEV__) console.error('Failed to reject request:', error);
     throw error;
   }
 };
@@ -139,7 +152,7 @@ export const confirmBookingRequestThunk = (
   try {
     await bookingService.updateBookingRequestStatus(requestId, 'accepted');
   } catch (error) {
-    console.error('Failed to confirm booking:', error);
+    if (__DEV__) console.error('Failed to confirm booking:', error);
     throw error;
   }
 };
@@ -153,7 +166,7 @@ export const rejectBookingRequestThunk = (
   try {
     await bookingService.updateBookingRequestStatus(requestId, 'declined');
   } catch (error) {
-    console.error('Failed to reject booking:', error);
+    if (__DEV__) console.error('Failed to reject booking:', error);
     throw error;
   }
 };
@@ -168,7 +181,7 @@ export const cancelBookingThunk = (
   try {
     await bookingService.cancelBooking(bookingId, 'instructor', reason);
   } catch (error) {
-    console.error('Failed to cancel booking:', error);
+    if (__DEV__) console.error('Failed to cancel booking:', error);
     throw error;
   }
 };
@@ -198,7 +211,7 @@ export const createPackageThunk = (data: {
     dispatch(setPackages(available));
     dispatch(setPendingPackages(pending));
   } catch (error: any) {
-    console.error('Failed to create package:', error);
+    if (__DEV__) console.error('Failed to create package:', error);
     dispatch(setInstructorError(error.message || 'Failed to create package'));
     throw error;
   } finally {
@@ -221,7 +234,7 @@ export const fetchInstructorPackagesThunk = (
         return await reader();
       } catch (error: any) {
         if (error?.code === 'firestore/permission-denied') {
-          console.warn('[Instructor] Firestore permission denied for one package query, using fallback data.');
+          if (__DEV__) console.warn('[Instructor] Firestore permission denied for one package query, using fallback data.');
           return fallback;
         }
         throw error;
@@ -236,7 +249,7 @@ export const fetchInstructorPackagesThunk = (
     dispatch(setPackages(available));
     dispatch(setPendingPackages(pending));
   } catch (error: any) {
-    console.error('Failed to fetch instructor packages:', error);
+    if (__DEV__) console.error('Failed to fetch instructor packages:', error);
     dispatch(setInstructorError(error.message || 'Failed to fetch packages'));
     throw error;
   } finally {
@@ -258,7 +271,7 @@ export const updatePackageThunk = (
     const available = await packageService.getInstructorAvailablePackages(instructorId);
     dispatch(setPackages(available));
   } catch (error) {
-    console.error('Failed to update package:', error);
+    if (__DEV__) console.error('Failed to update package:', error);
     throw error;
   }
 };
@@ -275,7 +288,7 @@ export const deactivatePackageThunk = (
     const available = await packageService.getInstructorAvailablePackages(instructorId);
     dispatch(setPackages(available));
   } catch (error) {
-    console.error('Failed to deactivate package:', error);
+    if (__DEV__) console.error('Failed to deactivate package:', error);
     throw error;
   }
 };

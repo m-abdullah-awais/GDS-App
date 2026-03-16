@@ -114,7 +114,7 @@ export const loadAdminDashboard = () => async (dispatch: Dispatch) => {
       dashboardStats: stats,
     }));
   } catch (error) {
-    console.error('Failed to load admin dashboard:', error);
+    if (__DEV__) console.error('Failed to load admin dashboard:', error);
   }
 };
 
@@ -137,7 +137,7 @@ export const loadAdminSettings = () => async (dispatch: Dispatch) => {
     };
     dispatch(setAdminSettings(settings));
   } catch (error) {
-    console.error('Failed to load admin settings:', error);
+    if (__DEV__) console.error('Failed to load admin settings:', error);
   }
 };
 
@@ -168,7 +168,7 @@ export const saveAdminSettingsThunk = (
     }
     dispatch(updateSettingsAction(settings));
   } catch (error) {
-    console.error('Failed to save admin settings:', error);
+    if (__DEV__) console.error('Failed to save admin settings:', error);
     throw error;
   }
 };
@@ -180,7 +180,7 @@ export const approveStudentThunk = (studentId: string) => async (dispatch: Dispa
     await adminService.approveStudent(studentId);
     dispatch(approveStudentAction(studentId));
   } catch (error) {
-    console.error('Failed to approve student:', error);
+    if (__DEV__) console.error('Failed to approve student:', error);
     throw error;
   }
 };
@@ -190,7 +190,7 @@ export const rejectStudentThunk = (studentId: string) => async (dispatch: Dispat
     await adminService.rejectStudent(studentId);
     dispatch(rejectStudentAction(studentId));
   } catch (error) {
-    console.error('Failed to reject student:', error);
+    if (__DEV__) console.error('Failed to reject student:', error);
     throw error;
   }
 };
@@ -200,7 +200,7 @@ export const suspendStudentThunk = (studentId: string) => async (dispatch: Dispa
     await adminService.suspendStudent(studentId);
     dispatch(suspendStudentAction(studentId));
   } catch (error) {
-    console.error('Failed to suspend student:', error);
+    if (__DEV__) console.error('Failed to suspend student:', error);
     throw error;
   }
 };
@@ -210,7 +210,7 @@ export const activateStudentThunk = (studentId: string) => async (dispatch: Disp
     await adminService.activateStudent(studentId);
     dispatch(activateStudentAction(studentId));
   } catch (error) {
-    console.error('Failed to activate student:', error);
+    if (__DEV__) console.error('Failed to activate student:', error);
     throw error;
   }
 };
@@ -220,7 +220,7 @@ export const deleteStudentThunk = (studentId: string) => async (dispatch: Dispat
     await adminService.deleteStudentUser(studentId);
     dispatch(deleteStudentAction(studentId));
   } catch (error) {
-    console.error('Failed to delete student:', error);
+    if (__DEV__) console.error('Failed to delete student:', error);
     throw error;
   }
 };
@@ -232,7 +232,7 @@ export const approveInstructorThunk = (instructorId: string) => async (dispatch:
     await adminService.approveInstructor(instructorId);
     dispatch(approveInstructorAction(instructorId));
   } catch (error) {
-    console.error('Failed to approve instructor:', error);
+    if (__DEV__) console.error('Failed to approve instructor:', error);
     throw error;
   }
 };
@@ -245,7 +245,7 @@ export const rejectInstructorThunk = (
     await adminService.rejectInstructor(instructorId, reason);
     dispatch(rejectInstructorAction(instructorId));
   } catch (error) {
-    console.error('Failed to reject instructor:', error);
+    if (__DEV__) console.error('Failed to reject instructor:', error);
     throw error;
   }
 };
@@ -255,7 +255,7 @@ export const suspendInstructorThunk = (instructorId: string) => async (dispatch:
     await adminService.suspendInstructor(instructorId);
     dispatch(suspendInstructorAction(instructorId));
   } catch (error) {
-    console.error('Failed to suspend instructor:', error);
+    if (__DEV__) console.error('Failed to suspend instructor:', error);
     throw error;
   }
 };
@@ -265,7 +265,7 @@ export const activateInstructorThunk = (instructorId: string) => async (dispatch
     await adminService.reactivateInstructor(instructorId);
     dispatch(activateInstructorAction(instructorId));
   } catch (error) {
-    console.error('Failed to activate instructor:', error);
+    if (__DEV__) console.error('Failed to activate instructor:', error);
     throw error;
   }
 };
@@ -277,7 +277,7 @@ export const approvePackageThunk = (packageId: string) => async (dispatch: Dispa
     await adminService.approvePendingPackage(packageId);
     dispatch(approvePackageAction(packageId));
   } catch (error) {
-    console.error('Failed to approve package:', error);
+    if (__DEV__) console.error('Failed to approve package:', error);
     throw error;
   }
 };
@@ -290,7 +290,7 @@ export const rejectPackageThunk = (
     await adminService.rejectPendingPackage(packageId, reason);
     dispatch(rejectPackageAction(packageId));
   } catch (error) {
-    console.error('Failed to reject package:', error);
+    if (__DEV__) console.error('Failed to reject package:', error);
     throw error;
   }
 };
@@ -303,7 +303,7 @@ export const updatePackageCommissionThunk = (
     await adminService.updatePackageCommission(packageId, commissionPercentage);
     dispatch(updatePackageCommissionAction(packageId, commissionPercentage));
   } catch (error) {
-    console.error('Failed to update package commission:', error);
+    if (__DEV__) console.error('Failed to update package commission:', error);
     throw error;
   }
 };
@@ -313,7 +313,7 @@ export const deletePackageThunk = (packageId: string) => async (dispatch: Dispat
     await adminService.deleteAvailablePackage(packageId);
     dispatch(deletePackageAction(packageId));
   } catch (error) {
-    console.error('Failed to delete package:', error);
+    if (__DEV__) console.error('Failed to delete package:', error);
     throw error;
   }
 };
@@ -331,7 +331,7 @@ export const transferPaymentThunk = (
     });
     dispatch(transferPaymentAction(instructorId, amount));
   } catch (error) {
-    console.error('Failed to transfer payment:', error);
+    if (__DEV__) console.error('Failed to transfer payment:', error);
     throw error;
   }
 };
@@ -347,7 +347,7 @@ export const loadAdminConversations = (adminId: string) => async (dispatch: Disp
     const convos = mapMessagesToConversations(messages, adminId);
     dispatch(setConversations(convos));
   } catch (error) {
-    console.error('Failed to load admin conversations:', error);
+    if (__DEV__) console.error('Failed to load admin conversations:', error);
   }
 };
 
@@ -373,7 +373,7 @@ export const loadConversationMessages = (
     }));
     dispatch(setMessages(mapped));
   } catch (error) {
-    console.error('Failed to load conversation messages:', error);
+    if (__DEV__) console.error('Failed to load conversation messages:', error);
   }
 };
 
@@ -395,7 +395,7 @@ export const sendAdminMessageThunk = (
     });
     dispatch(sendMessageAction(conversationId, text));
   } catch (error) {
-    console.error('Failed to send admin message:', error);
+    if (__DEV__) console.error('Failed to send admin message:', error);
     throw error;
   }
 };

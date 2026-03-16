@@ -47,54 +47,24 @@ export const updateUserProfile = async (
 export const getActiveInstructors = async (): Promise<UserDoc[]> => {
   const currentUser = firebaseAuth.currentUser;
   if (!currentUser) {
-    throw new Error('[Firebase][UserService] User not authenticated before getActiveInstructors');
+    throw new Error('[Firebase][UserService] User not authenticated');
   }
 
-  console.log('[Firebase][UserService] Data request triggered: getActiveInstructors', {
-    currentUserId: currentUser.uid,
-  });
-
   try {
-    const [isActiveQuery, approvedQuery, statusApprovedQuery] = await Promise.all([
-      getDocs(
-        query(
-          collection(db, Collections.USERS),
-          where('role', '==', 'instructor'),
-          where('isActive', '==', true),
-        ),
+    // Match web: query approved instructors (the primary query)
+    const approvedSnap = await getDocs(
+      query(
+        collection(db, Collections.USERS),
+        where('role', '==', 'instructor'),
+        where('approved', '==', true),
       ),
-      getDocs(
-        query(
-          collection(db, Collections.USERS),
-          where('role', '==', 'instructor'),
-          where('approved', '==', true),
-        ),
-      ),
-      getDocs(
-        query(
-          collection(db, Collections.USERS),
-          where('role', '==', 'instructor'),
-          where('status', '==', 'active'),
-          where('approved', '==', true),
-        ),
-      ),
-    ]);
+    );
 
-    const merged = new Map<string, UserDoc>();
-    for (const snapshot of [isActiveQuery, approvedQuery, statusApprovedQuery]) {
-      for (const userDoc of fromQuerySnapshot<UserDoc>(snapshot)) {
-        merged.set(userDoc.id, userDoc);
-      }
-    }
-
-    const instructors = Array.from(merged.values());
-    console.log('[Firebase][UserService] Data received: getActiveInstructors', {
-      count: instructors.length,
-    });
-
+    const instructors = fromQuerySnapshot<UserDoc>(approvedSnap);
+    if (__DEV__) console.log('[UserService] Active instructors:', instructors.length);
     return instructors;
   } catch (error) {
-    console.error('[Firebase][UserService] Error output: getActiveInstructors', error);
+    if (__DEV__) console.error('[UserService] getActiveInstructors error:', error);
     throw error;
   }
 };

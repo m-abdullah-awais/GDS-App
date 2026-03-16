@@ -7,7 +7,7 @@
  * All queries MUST filter by sender_id or receiver_id.
  */
 
-import { collection, query, where, getDocs, doc, addDoc, updateDoc, onSnapshot, orderBy, limit } from '@react-native-firebase/firestore';
+import { collection, query, where, getDocs, doc, addDoc, updateDoc, onSnapshot } from '@react-native-firebase/firestore';
 import { db } from '../config/firebase';
 import { Collections, fromQuerySnapshot, serverTimestamp } from '../utils/mappers';
 import type { Message } from '../types';
@@ -56,21 +56,20 @@ export const getMessagesForUser = async (
 ): Promise<Message[]> => {
   const messagesCol = collection(db, Collections.MESSAGES);
   const [sentSnapshot, receivedSnapshot] = await Promise.all([
-    getDocs(query(messagesCol, where('sender_id', '==', userId), orderBy('createdAt', 'desc'), limit(limitCount))),
-    getDocs(query(messagesCol, where('receiver_id', '==', userId), orderBy('createdAt', 'desc'), limit(limitCount))),
+    getDocs(query(messagesCol, where('sender_id', '==', userId))),
+    getDocs(query(messagesCol, where('receiver_id', '==', userId))),
   ]);
 
   const map = new Map<string, Message>();
   for (const docSnap of [...sentSnapshot.docs, ...receivedSnapshot.docs]) {
     if (!map.has(docSnap.id)) {
       const data = { id: docSnap.id, ...docSnap.data() } as Message;
-      // Filter out archived messages (matches web)
-      if (data.archived === true) {continue;}
+      if (data.archived === true) continue;
       map.set(docSnap.id, data);
     }
   }
 
-  return sortByCreatedAtDesc(Array.from(map.values()));
+  return sortByCreatedAtDesc(Array.from(map.values())).slice(0, limitCount);
 };
 
 /**
@@ -166,23 +165,31 @@ export const onConversation = (
   callback: (messages: Message[]) => void,
 ): (() => void) => {
   const messagesCol = collection(db, Collections.MESSAGES);
-  // Listen to messages sent by current user to other user
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const emitRefresh = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      getConversation(currentUserId, otherUserId)
+        .then(callback)
+        .catch((err) => { if (__DEV__) console.error('[MessageService] onConversation error:', err); });
+    }, 300);
+  };
+
   const unsub1 = onSnapshot(
     query(messagesCol, where('sender_id', '==', currentUserId), where('receiver_id', '==', otherUserId)),
-    (snapshot) => {
-      // Re-fetch full conversation on any change
-      getConversation(currentUserId, otherUserId).then(callback);
-    },
+    () => emitRefresh(),
+    (error) => { if (__DEV__) console.error('[MessageService] onConversation sent error:', error); },
   );
 
   const unsub2 = onSnapshot(
     query(messagesCol, where('sender_id', '==', otherUserId), where('receiver_id', '==', currentUserId)),
-    () => {
-      getConversation(currentUserId, otherUserId).then(callback);
-    },
+    () => emitRefresh(),
+    (error) => { if (__DEV__) console.error('[MessageService] onConversation received error:', error); },
   );
 
   return () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
     unsub1();
     unsub2();
   };

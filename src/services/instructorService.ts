@@ -1,22 +1,17 @@
 /**
  * GDS Driving School — Instructor Service
  * ==========================================
- * Firestore operations for instructor discovery and requests.
- * Replaces the legacy mock-data version.
+ * Client-side helpers for instructor discovery and requests.
  *
- * Heavy lifting is in userService.ts (searchInstructors, getActiveInstructors).
- * This module provides client-side helpers and request helpers that
- * consume the Firestore requestService.
+ * These operate on the Redux store view-model types (StudentInstructor,
+ * InstructorRequest) — NOT raw Firestore types.
  */
 
-import { db } from '../config/firebase';
-import {
-  Collections,
-  fromQuerySnapshot,
-  withDualIds,
-  serverTimestamp,
-} from '../utils/mappers';
-import type { UserProfile, StudentInstructorRequest } from '../types';
+import type {
+  StudentInstructor,
+  InstructorRequest,
+  InstructorRequestStatus,
+} from '../store/student/types';
 
 // ─── Search & Filter (client-side on pre-fetched list) ───────────────────────
 
@@ -28,70 +23,65 @@ export interface InstructorFilters {
 }
 
 export const searchInstructors = (
-  instructors: UserProfile[],
+  instructors: StudentInstructor[],
   filters: InstructorFilters,
-): UserProfile[] => {
+): StudentInstructor[] => {
   let results = [...instructors];
 
   if (filters.query && filters.query.trim().length > 0) {
     const q = filters.query.toLowerCase().trim();
     results = results.filter(
       i =>
-        (i.fullName || i.full_name || '').toLowerCase().includes(q) ||
-        (i.postcode || '').toLowerCase().includes(q) ||
-        (i.email || '').toLowerCase().includes(q),
+        (i.name || '').toLowerCase().includes(q) ||
+        (i.city || '').toLowerCase().includes(q),
     );
   }
 
   if (filters.city && filters.city !== 'all') {
     results = results.filter(
-      i => (i.postcode || '').toLowerCase().startsWith(filters.city!.toLowerCase()),
+      i => (i.city || '').toLowerCase().startsWith(filters.city!.toLowerCase()),
     );
   }
 
   if (filters.minRating && filters.minRating > 0) {
-    results = results.filter(i => (i.averageRating || 0) >= filters.minRating!);
+    results = results.filter(i => (i.rating || 0) >= filters.minRating!);
   }
 
   if (filters.transmission && filters.transmission !== 'all') {
     results = results.filter(
-      i => (i.transmission || '').toLowerCase() === filters.transmission!.toLowerCase(),
+      i => (i.transmissionType || '').toLowerCase() === filters.transmission!.toLowerCase(),
     );
   }
 
   return results;
 };
 
-// ─── Get unique postcodes (used as "city" filter) ────────────────────────────
+// ─── Get unique cities from instructor list ──────────────────────────────────
 
-export const getInstructorCities = (instructors: UserProfile[]): string[] => {
-  const postcodes = new Set(
+export const getInstructorCities = (instructors: StudentInstructor[]): string[] => {
+  const cities = new Set(
     instructors
-      .map(i => i.postcode || '')
-      .filter(Boolean)
-      .map(p => p.substring(0, 3).toUpperCase()),
+      .map(i => (i.city || '').trim())
+      .filter(Boolean),
   );
-  return Array.from(postcodes).sort();
+  return Array.from(cities).sort();
 };
 
 // ─── Request status from local list ──────────────────────────────────────────
 
 export const getRequestStatus = (
-  requests: StudentInstructorRequest[],
+  requests: InstructorRequest[],
   instructorId: string,
-): StudentInstructorRequest['status'] | 'none' => {
-  const request = requests.find(
-    r =>
-      r.instructorId === instructorId || r.instructor_id === instructorId,
-  );
+): InstructorRequestStatus | 'none' => {
+  const request = requests.find(r => r.instructorId === instructorId);
   return request ? request.status : 'none';
 };
 
 // ─── Get instructor by ID from local list ────────────────────────────────────
 
 export const getInstructorById = (
-  instructors: UserProfile[],
+  instructors: StudentInstructor[],
   instructorId: string,
-): UserProfile | undefined => {
+): StudentInstructor | undefined => {
   return instructors.find(i => i.id === instructorId);
 };

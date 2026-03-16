@@ -16,7 +16,6 @@ import {
   addDoc,
   updateDoc,
   onSnapshot,
-  orderBy,
 } from '@react-native-firebase/firestore';
 import {
   Collections,
@@ -32,6 +31,21 @@ import type {
   LessonCancellation,
 } from '../types';
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Safely convert any Firestore timestamp / Date / string / number to epoch ms. */
+const toMillis = (value: unknown): number => {
+  if (!value) return 0;
+  const v = value as any;
+  if (typeof v.toDate === 'function') return v.toDate().getTime();
+  if (v instanceof Date) return v.getTime();
+  if (typeof v === 'string' || typeof v === 'number') {
+    const ms = new Date(v).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
+  }
+  return 0;
+};
+
 // ─── Lesson Completions ──────────────────────────────────────────────────────
 
 /**
@@ -44,10 +58,10 @@ export const getStudentLessonCompletions = async (
     query(
       collection(db, Collections.LESSON_COMPLETIONS),
       where('studentId', '==', studentId),
-      orderBy('completedAt', 'desc'),
     ),
   );
-  return fromQuerySnapshot<LessonCompletion>(snap);
+  const results = fromQuerySnapshot<LessonCompletion>(snap);
+  return results.sort((a, b) => toMillis(b.completedAt) - toMillis(a.completedAt));
 };
 
 /**
@@ -60,10 +74,10 @@ export const getInstructorLessonCompletions = async (
     query(
       collection(db, Collections.LESSON_COMPLETIONS),
       where('instructorId', '==', instructorId),
-      orderBy('completedAt', 'desc'),
     ),
   );
-  return fromQuerySnapshot<LessonCompletion>(snap);
+  const results = fromQuerySnapshot<LessonCompletion>(snap);
+  return results.sort((a, b) => toMillis(b.completedAt) - toMillis(a.completedAt));
 };
 
 // ─── Feedback Pending ────────────────────────────────────────────────────────
@@ -79,10 +93,10 @@ export const getPendingFeedback = async (
       collection(db, Collections.FEEDBACK_PENDING),
       where('studentId', '==', studentId),
       where('status', '==', 'pending'),
-      orderBy('createdAt', 'desc'),
     ),
   );
-  return fromQuerySnapshot<FeedbackPending>(snap);
+  const results = fromQuerySnapshot<FeedbackPending>(snap);
+  return results.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 };
 
 /**
@@ -97,9 +111,11 @@ export const onPendingFeedback = (
       collection(db, Collections.FEEDBACK_PENDING),
       where('studentId', '==', studentId),
       where('status', '==', 'pending'),
-      orderBy('createdAt', 'desc'),
     ),
-    (snap) => callback(fromQuerySnapshot<FeedbackPending>(snap)),
+    (snap) => {
+      const results = fromQuerySnapshot<FeedbackPending>(snap);
+      callback(results.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt)));
+    },
   );
 };
 
@@ -219,10 +235,10 @@ export const getInstructorFeedback = async (
     query(
       collection(db, Collections.FEEDBACK),
       where('instructorId', '==', instructorId),
-      orderBy('createdAt', 'desc'),
     ),
   );
-  return fromQuerySnapshot<Feedback>(snap);
+  const results = fromQuerySnapshot<Feedback>(snap);
+  return results.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 };
 
 /**
@@ -235,10 +251,10 @@ export const getStudentFeedback = async (
     query(
       collection(db, Collections.FEEDBACK),
       where('studentId', '==', studentId),
-      orderBy('createdAt', 'desc'),
     ),
   );
-  return fromQuerySnapshot<Feedback>(snap);
+  const results = fromQuerySnapshot<Feedback>(snap);
+  return results.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 };
 
 // ─── Lesson Cancellations ────────────────────────────────────────────────────
@@ -253,8 +269,8 @@ export const getStudentCancellations = async (
     query(
       collection(db, Collections.LESSON_CANCELLATIONS),
       where('studentId', '==', studentId),
-      orderBy('cancelledAt', 'desc'),
     ),
   );
-  return fromQuerySnapshot<LessonCancellation>(snap);
+  const results = fromQuerySnapshot<LessonCancellation>(snap);
+  return results.sort((a, b) => toMillis(b.cancelledAt) - toMillis(a.cancelledAt));
 };

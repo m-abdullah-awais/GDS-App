@@ -17,7 +17,6 @@ import {
   addDoc,
   updateDoc,
   onSnapshot,
-  orderBy,
 } from '@react-native-firebase/firestore';
 import {
   Collections,
@@ -90,7 +89,7 @@ export const getInstructorAvailablePackages = async (
   instructorId: string,
 ): Promise<AvailablePackage[]> => {
   const currentUserId = ensureAuthenticated();
-  console.log('[Firebase][PackageService] Data request triggered: getInstructorAvailablePackages', {
+  if (__DEV__) console.log('[Firebase][PackageService] Data request triggered: getInstructorAvailablePackages', {
     instructorId,
     currentUserId,
   });
@@ -128,14 +127,14 @@ export const getInstructorAvailablePackages = async (
         return bMs - aMs;
       });
 
-    console.log('[Firebase][PackageService] Data received: getInstructorAvailablePackages', {
+    if (__DEV__) console.log('[Firebase][PackageService] Data received: getInstructorAvailablePackages', {
       instructorId,
       count: merged.length,
     });
 
     return merged;
   } catch (error) {
-    console.error('[Firebase][PackageService] Error output: getInstructorAvailablePackages', {
+    if (__DEV__) console.error('[Firebase][PackageService] Error output: getInstructorAvailablePackages', {
       instructorId,
       error,
     });
@@ -151,9 +150,26 @@ export const onInstructorAvailablePackages = (
   callback: (packages: AvailablePackage[]) => void,
 ): (() => void) => {
   ensureAuthenticated();
-  console.log('[Firebase][PackageService] Data request triggered: onInstructorAvailablePackages', {
+  if (__DEV__) console.log('[Firebase][PackageService] Data request triggered: onInstructorAvailablePackages', {
     instructorId,
   });
+
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const emitMerged = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      try {
+        const packages = await getInstructorAvailablePackages(instructorId);
+        callback(packages);
+      } catch (error) {
+        if (__DEV__) console.error('[Firebase][PackageService] Error output: onInstructorAvailablePackages', {
+          instructorId,
+          error,
+        });
+      }
+    }, 300);
+  };
 
   const unsubscribers = [
     onSnapshot(
@@ -161,18 +177,9 @@ export const onInstructorAvailablePackages = (
         collection(db, Collections.AVAILABLE_PACKAGES),
         where('instructorId', '==', instructorId),
       ),
-      () => {
-        getInstructorAvailablePackages(instructorId)
-          .then(callback)
-          .catch(error => {
-            console.error('[Firebase][PackageService] Error output: onInstructorAvailablePackages', {
-              instructorId,
-              error,
-            });
-          });
-      },
+      () => emitMerged(),
       (error) => {
-        console.error('[Firebase][PackageService] Error output: onInstructorAvailablePackages(snapshot)', {
+        if (__DEV__) console.error('[Firebase][PackageService] Error output: onInstructorAvailablePackages(snapshot)', {
           instructorId,
           error,
         });
@@ -183,18 +190,9 @@ export const onInstructorAvailablePackages = (
         collection(db, Collections.AVAILABLE_PACKAGES),
         where('instructor_id', '==', instructorId),
       ),
-      () => {
-        getInstructorAvailablePackages(instructorId)
-          .then(callback)
-          .catch(error => {
-            console.error('[Firebase][PackageService] Error output: onInstructorAvailablePackages(legacy)', {
-              instructorId,
-              error,
-            });
-          });
-      },
+      () => emitMerged(),
       (error) => {
-        console.error('[Firebase][PackageService] Error output: onInstructorAvailablePackages(legacy snapshot)', {
+        if (__DEV__) console.error('[Firebase][PackageService] Error output: onInstructorAvailablePackages(legacy snapshot)', {
           instructorId,
           error,
         });
@@ -202,7 +200,10 @@ export const onInstructorAvailablePackages = (
     ),
   ];
 
+  emitMerged();
+
   return () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
     unsubscribers.forEach(unsub => unsub());
   };
 };
@@ -222,13 +223,13 @@ export const createAvailablePackage = async (data: {
   const currentUserId = ensureAuthenticated();
 
   if (data.instructorId !== currentUserId) {
-    console.warn('[Firebase][PackageService] instructorId mismatch; using authenticated uid for package submission', {
+    if (__DEV__) console.warn('[Firebase][PackageService] instructorId mismatch; using authenticated uid for package submission', {
       providedInstructorId: data.instructorId,
       currentUserId,
     });
   }
 
-  console.log('[Firebase][PackageService] Data request triggered: createPackageSubmission', {
+  if (__DEV__) console.log('[Firebase][PackageService] Data request triggered: createPackageSubmission', {
     instructorId: currentUserId,
     title: data.name,
   });
@@ -250,7 +251,7 @@ export const createAvailablePackage = async (data: {
     createdAt: serverTimestamp(),
   });
 
-  console.log('[Firebase][PackageService] Data received: createPackageSubmission', {
+  if (__DEV__) console.log('[Firebase][PackageService] Data received: createPackageSubmission', {
     pendingPackageId: ref.id,
     instructorId: currentUserId,
   });
@@ -336,9 +337,21 @@ export const onInstructorPendingPackages = (
   instructorId: string,
   callback: (packages: PendingPackage[]) => void,
 ): (() => void) => {
-  const emitMerged = async () => {
-    const packages = await getInstructorPendingPackages(instructorId);
-    callback(packages);
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const emitMerged = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      try {
+        const packages = await getInstructorPendingPackages(instructorId);
+        callback(packages);
+      } catch (error) {
+        if (__DEV__) console.error('[Firebase][PackageService] Error output: onInstructorPendingPackages', {
+          instructorId,
+          error,
+        });
+      }
+    }, 300);
   };
 
   const unsubscribers = [
@@ -347,12 +360,11 @@ export const onInstructorPendingPackages = (
         collection(db, Collections.PENDING_PACKAGES),
         where('instructorId', '==', instructorId),
       ),
-      () => {
-        emitMerged().catch(error => {
-          console.error('[Firebase][PackageService] Error output: onInstructorPendingPackages(camel)', {
-            instructorId,
-            error,
-          });
+      () => emitMerged(),
+      (error) => {
+        if (__DEV__) console.error('[Firebase][PackageService] Error output: onInstructorPendingPackages(camel snapshot)', {
+          instructorId,
+          error,
         });
       },
     ),
@@ -361,25 +373,20 @@ export const onInstructorPendingPackages = (
         collection(db, Collections.PENDING_PACKAGES),
         where('instructor_id', '==', instructorId),
       ),
-      () => {
-        emitMerged().catch(error => {
-          console.error('[Firebase][PackageService] Error output: onInstructorPendingPackages(snake)', {
-            instructorId,
-            error,
-          });
+      () => emitMerged(),
+      (error) => {
+        if (__DEV__) console.error('[Firebase][PackageService] Error output: onInstructorPendingPackages(snake snapshot)', {
+          instructorId,
+          error,
         });
       },
     ),
   ];
 
-  emitMerged().catch(error => {
-    console.error('[Firebase][PackageService] Error output: onInstructorPendingPackages(initial)', {
-      instructorId,
-      error,
-    });
-  });
+  emitMerged();
 
   return () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
     unsubscribers.forEach(unsub => unsub());
   };
 };
@@ -393,28 +400,39 @@ export const getStudentPackages = async (
   studentId: string,
 ): Promise<Package[]> => {
   ensureAuthenticated();
-  const [camel, snake] = await Promise.all([
-    getDocs(
-      query(
-        collection(db, Collections.PACKAGES),
-        where('studentId', '==', studentId),
-        where('status', '==', 'active'),
-        orderBy('purchaseDate', 'desc'),
+  try {
+    // The packages collection may not have studentId-filtered docs.
+    // Student purchases are tracked in assignments, but some views use this.
+    // Query both field variants without orderBy (sort in memory).
+    const [camel, snake] = await Promise.all([
+      getDocs(
+        query(
+          collection(db, Collections.PACKAGES),
+          where('studentId', '==', studentId),
+          where('status', '==', 'active'),
+        ),
       ),
-    ),
-    getDocs(
-      query(
-        collection(db, Collections.PACKAGES),
-        where('student_id', '==', studentId),
-        where('status', '==', 'active'),
-        orderBy('purchaseDate', 'desc'),
+      getDocs(
+        query(
+          collection(db, Collections.PACKAGES),
+          where('student_id', '==', studentId),
+          where('status', '==', 'active'),
+        ),
       ),
-    ),
-  ]);
-  return dedupeById([
-    ...fromQuerySnapshot<Package>(camel),
-    ...fromQuerySnapshot<Package>(snake),
-  ]);
+    ]);
+    const result = dedupeById([
+      ...fromQuerySnapshot<Package>(camel),
+      ...fromQuerySnapshot<Package>(snake),
+    ]);
+    // Sort in memory to avoid composite index requirement
+    return result.sort((a, b) => toMillis((b as any).purchaseDate) - toMillis((a as any).purchaseDate));
+  } catch (error: any) {
+    if (error?.code === 'firestore/permission-denied') {
+      if (__DEV__) console.warn('[PackageService] Permission denied for student packages');
+      return [];
+    }
+    throw error;
+  }
 };
 
 /**
@@ -424,26 +442,35 @@ export const getAllStudentPackages = async (
   studentId: string,
 ): Promise<Package[]> => {
   ensureAuthenticated();
-  const [camel, snake] = await Promise.all([
-    getDocs(
-      query(
-        collection(db, Collections.PACKAGES),
-        where('studentId', '==', studentId),
-        orderBy('purchaseDate', 'desc'),
+  try {
+    // Query both field variants without orderBy (sort in memory).
+    const [camel, snake] = await Promise.all([
+      getDocs(
+        query(
+          collection(db, Collections.PACKAGES),
+          where('studentId', '==', studentId),
+        ),
       ),
-    ),
-    getDocs(
-      query(
-        collection(db, Collections.PACKAGES),
-        where('student_id', '==', studentId),
-        orderBy('purchaseDate', 'desc'),
+      getDocs(
+        query(
+          collection(db, Collections.PACKAGES),
+          where('student_id', '==', studentId),
+        ),
       ),
-    ),
-  ]);
-  return dedupeById([
-    ...fromQuerySnapshot<Package>(camel),
-    ...fromQuerySnapshot<Package>(snake),
-  ]);
+    ]);
+    const result = dedupeById([
+      ...fromQuerySnapshot<Package>(camel),
+      ...fromQuerySnapshot<Package>(snake),
+    ]);
+    // Sort in memory to avoid composite index requirement
+    return result.sort((a, b) => toMillis((b as any).purchaseDate) - toMillis((a as any).purchaseDate));
+  } catch (error: any) {
+    if (error?.code === 'firestore/permission-denied') {
+      if (__DEV__) console.warn('[PackageService] Permission denied for all student packages');
+      return [];
+    }
+    throw error;
+  }
 };
 
 /**
@@ -454,65 +481,37 @@ export const onStudentPackages = (
   callback: (packages: Package[]) => void,
 ): (() => void) => {
   ensureAuthenticated();
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const emitMerged = async () => {
-    const merged = await getAllStudentPackages(studentId);
-    callback(merged);
+  const emitMerged = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      try {
+        const merged = await getAllStudentPackages(studentId);
+        callback(merged);
+      } catch (error) {
+        if (__DEV__) console.error('[PackageService] onStudentPackages error:', error);
+      }
+    }, 300);
   };
 
   const unsubscribers = [
     onSnapshot(
-      query(
-        collection(db, Collections.PACKAGES),
-        where('studentId', '==', studentId),
-        orderBy('purchaseDate', 'desc'),
-      ),
-      () => {
-        emitMerged().catch(error => {
-          console.error('[Firebase][PackageService] Error output: onStudentPackages(camel)', {
-            studentId,
-            error,
-          });
-        });
-      },
-      (error) => {
-        console.error('[Firebase][PackageService] Error output: onStudentPackages(camel snapshot)', {
-          studentId,
-          error,
-        });
-      },
+      query(collection(db, Collections.PACKAGES), where('studentId', '==', studentId)),
+      () => emitMerged(),
+      (error) => { if (__DEV__) console.error('[PackageService] onStudentPackages camel error:', error); },
     ),
     onSnapshot(
-      query(
-        collection(db, Collections.PACKAGES),
-        where('student_id', '==', studentId),
-        orderBy('purchaseDate', 'desc'),
-      ),
-      () => {
-        emitMerged().catch(error => {
-          console.error('[Firebase][PackageService] Error output: onStudentPackages(snake)', {
-            studentId,
-            error,
-          });
-        });
-      },
-      (error) => {
-        console.error('[Firebase][PackageService] Error output: onStudentPackages(snake snapshot)', {
-          studentId,
-          error,
-        });
-      },
+      query(collection(db, Collections.PACKAGES), where('student_id', '==', studentId)),
+      () => emitMerged(),
+      (error) => { if (__DEV__) console.error('[PackageService] onStudentPackages snake error:', error); },
     ),
   ];
 
-  emitMerged().catch(error => {
-    console.error('[Firebase][PackageService] Error output: onStudentPackages(initial)', {
-      studentId,
-      error,
-    });
-  });
+  emitMerged();
 
   return () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
     unsubscribers.forEach(unsub => unsub());
   };
 };

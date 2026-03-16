@@ -61,7 +61,7 @@ const StudentDashboardScreen = () => {
 
   // Compute hours from purchased packages
   const totalHours = purchasedPackages.reduce((sum, p) => sum + (p.totalLessons || 0), 0);
-  const usedHours = purchasedPackages.reduce((sum, p) => sum + (p.completedLessons || 0), 0);
+  const usedHours = purchasedPackages.reduce((sum, p) => sum + (p.lessonsUsed || 0), 0);
   const remainingHours = totalHours - usedHours;
   const progress = totalHours > 0 ? usedHours / totalHours : 0;
   const QUICK_ACTION_COLORS = ['#2F6BFF', '#1FBF5B', '#F97316'];

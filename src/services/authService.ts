@@ -13,7 +13,7 @@ import {
   signOut as signOutAuth,
   sendPasswordResetEmail,
 } from '@react-native-firebase/auth';
-import { collection, doc, setDoc, getDoc } from '@react-native-firebase/firestore';
+import { collection, doc, setDoc, getDoc, addDoc } from '@react-native-firebase/firestore';
 import { serverTimestamp } from '../utils/mappers';
 import type { UserRole } from '../types';
 
@@ -80,6 +80,24 @@ export const signUpInstructor = async (
     createdAt: serverTimestamp(),
   });
 
+  // Send welcome message (matches web AuthContext signUp)
+  try {
+    await addDoc(collection(db, 'messages'), {
+      sender_id: 'system',
+      sender_name: 'GDS Team',
+      sender_role: 'admin',
+      receiver_id: uid,
+      receiver_role: 'instructor',
+      subject: 'Welcome to GDS - Complete Your Profile',
+      content: `Hi ${fullName},\n\nWelcome to GDS! Your instructor account has been created successfully.\n\nTo get started, please complete your profile by providing:\n\u2022 Your personal information\n\u2022 Required documents (instructor badge, insurance)\n\u2022 Profile picture\n\u2022 About me section\n\nOnce you submit your application, our admin team will review it and get back to you within 2-3 business days.\n\nIf you have any questions, please don't hesitate to contact us.\n\nBest regards,\nThe GDS Team`,
+      read: false,
+      createdAt: serverTimestamp(),
+    });
+  } catch (error) {
+    // Non-critical: don't block signup if welcome message fails
+    if (__DEV__) console.warn('[AuthService] Failed to send welcome message:', error);
+  }
+
   return credential.user;
 };
 
@@ -113,7 +131,7 @@ export const getUserProfile = async (uid: string) => {
   if (!snapshot.exists) return null;
   const data = (snapshot.data() ?? {}) as Record<string, unknown>;
   const profile = { id: snapshot.id, ...data };
-  console.log('[Firebase][READ][AuthService] getUserProfile', {
+  if (__DEV__) console.log('[Firebase][READ][AuthService] getUserProfile', {
     uid,
     data: profile,
   });

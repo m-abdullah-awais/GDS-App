@@ -10,10 +10,13 @@ import {
   setInstructors,
   setMyInstructors,
   sendRequest,
+  setRequests,
   setPackages,
   purchasePackage,
+  setPurchasedPackages,
   setAvailableSlots,
   bookLesson,
+  setLessons,
   cancelBooking,
   setLoading,
   updateRequestStatus,
@@ -47,14 +50,14 @@ import type { RootState } from '../index';
 export const loadStudentData = (studentId: string) => async (dispatch: Dispatch) => {
   try {
     dispatch(setLoading('searchLoading', true));
-    console.log('[Firebase][StudentThunk] Data request triggered: loadStudentData', { studentId });
+    if (__DEV__) console.log('[Firebase][StudentThunk] Data request triggered: loadStudentData', { studentId });
 
     const readOrFallback = async <T>(reader: () => Promise<T>, fallback: T): Promise<T> => {
       try {
         return await reader();
       } catch (error: any) {
         if (error?.code === 'firestore/permission-denied') {
-          console.info('[Student] Firestore permission denied for one query, using fallback data.');
+          if (__DEV__) console.info('[Student] Firestore permission denied for one query, using fallback data.');
           return fallback;
         }
         throw error;
@@ -69,7 +72,7 @@ export const loadStudentData = (studentId: string) => async (dispatch: Dispatch)
       readOrFallback(() => bookingService.getStudentBookings(studentId), []),
     ]);
 
-    console.log('[Firebase][StudentThunk] Data received: loadStudentData', {
+    if (__DEV__) console.log('[Firebase][StudentThunk] Data received: loadStudentData', {
       studentId,
       instructors: activeInstructors.length,
       requests: studentRequests.length,
@@ -91,22 +94,16 @@ export const loadStudentData = (studentId: string) => async (dispatch: Dispatch)
     const myInstructorVMs = instructorVMs.filter(i => acceptedInstructorIds.includes(i.id));
     dispatch(setMyInstructors(myInstructorVMs));
 
-    // Set requests
-    for (const req of requestVMs) {
-      dispatch(sendRequest(req));
-    }
+    // Bulk set requests (replaces, not appends — safe on re-load)
+    dispatch(setRequests(requestVMs));
 
-    // Map assignments to purchased packages
+    // Map assignments to purchased packages (bulk replace)
     const purchasedVMs = studentAssignments.map(a => mapAssignmentToPurchasedPackage(a));
-    for (const pkg of purchasedVMs) {
-      dispatch(purchasePackage(pkg));
-    }
+    dispatch(setPurchasedPackages(purchasedVMs));
 
-    // Map bookings to lessons
+    // Map bookings to lessons (bulk replace)
     const lessonVMs = studentBookings.map(b => mapBookingToBookedLesson(b));
-    for (const lesson of lessonVMs) {
-      dispatch(bookLesson(lesson));
-    }
+    dispatch(setLessons(lessonVMs));
 
     // Fetch packages for each connected instructor
     for (const instructorId of acceptedInstructorIds) {
@@ -121,7 +118,7 @@ export const loadStudentData = (studentId: string) => async (dispatch: Dispatch)
       }
     }
   } catch (error) {
-    console.error('[Firebase][StudentThunk] Error output: loadStudentData', { studentId, error });
+    if (__DEV__) console.error('[Firebase][StudentThunk] Error output: loadStudentData', { studentId, error });
   } finally {
     dispatch(setLoading('searchLoading', false));
   }
@@ -139,7 +136,7 @@ export const searchInstructorsThunk = () => async (dispatch: Dispatch) => {
     const mapped = instructors.map(u => mapUserToStudentInstructor(u));
     dispatch(setInstructors(mapped));
   } catch (error) {
-    console.error('Failed to search instructors:', error);
+    if (__DEV__) console.error('Failed to search instructors:', error);
   } finally {
     dispatch(setLoading('searchLoading', false));
   }
@@ -172,7 +169,7 @@ export const sendInstructorRequestThunk = (
       sentDate: new Date().toISOString(),
     }));
   } catch (error) {
-    console.error('Failed to send request:', error);
+    if (__DEV__) console.error('Failed to send request:', error);
     throw error;
   } finally {
     dispatch(setLoading('requestLoading', false));
@@ -191,7 +188,7 @@ export const fetchInstructorPackagesThunk = (instructorId: string) => async (dis
     const mapped = packages.map(mapAvailablePackageToInstructorPackage);
     dispatch(setPackages(instructorId, mapped));
   } catch (error) {
-    console.error('Failed to fetch packages:', error);
+    if (__DEV__) console.error('Failed to fetch packages:', error);
     throw error;
   } finally {
     dispatch(setLoading('packagesLoading', false));
@@ -219,7 +216,7 @@ export const buyPackageThunk = (
 
     return result;
   } catch (error) {
-    console.error('Failed to buy package:', error);
+    if (__DEV__) console.error('Failed to buy package:', error);
     throw error;
   } finally {
     dispatch(setLoading('packagesLoading', false));
@@ -253,7 +250,7 @@ export const fetchAvailableSlotsThunk = (
       dispatch(setAvailableSlots([]));
     }
   } catch (error) {
-    console.error('Failed to fetch available slots:', error);
+    if (__DEV__) console.error('Failed to fetch available slots:', error);
     throw error;
   } finally {
     dispatch(setLoading('slotsLoading', false));
@@ -297,7 +294,7 @@ export const createBookingThunk = (data: {
 
     return bookingId;
   } catch (error) {
-    console.error('Failed to create booking:', error);
+    if (__DEV__) console.error('Failed to create booking:', error);
     throw error;
   } finally {
     dispatch(setLoading('bookingLoading', false));
@@ -315,7 +312,7 @@ export const cancelLessonThunk = (
     await bookingService.cancelBooking(bookingId, 'student', reason);
     dispatch(cancelBooking(bookingId, 'student'));
   } catch (error) {
-    console.error('Failed to cancel booking:', error);
+    if (__DEV__) console.error('Failed to cancel booking:', error);
     throw error;
   }
 };
@@ -325,16 +322,22 @@ export const cancelLessonThunk = (
 /**
  * Subscribe to real-time booking updates.
  * Returns unsubscribe function.
+ *
+ * NOTE: The listener keeps the Firestore subscription alive so the
+ * unsubscribe handle can be used for cleanup, but it does NOT
+ * dispatch updates to the store because there is no bulk
+ * SET_LESSONS / setLessons action available in the student slice.
+ * The initial data is already loaded by `loadStudentData`.
+ *
+ * TODO: Add a `setLessons` (bulk replace) action to the student
+ * slice, then use it here to dispatch `mapped` on every snapshot
+ * so the UI reflects real-time booking changes.
  */
 export const subscribeToStudentBookings = (
   studentId: string,
-) => (dispatch: Dispatch) => {
-  return bookingService.onStudentBookings(studentId, (bookings) => {
-    const mapped = bookings.map(b => mapBookingToBookedLesson(b));
-    // Re-set lessons (replace all)
-    // We use a workaround: dispatch setInstructors-style bulk set
-    // Since there's no SET_LESSONS action, we'll update via individual actions
-    // For now, the thunk-based initial load handles this
+) => (_dispatch: Dispatch) => {
+  return bookingService.onStudentBookings(studentId, (_bookings) => {
+    // Intentionally empty — see TODO above.
   });
 };
 

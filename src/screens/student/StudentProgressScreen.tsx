@@ -198,10 +198,10 @@ const StudentProgressScreen = () => {
       .finally(() => setLoading(false));
   }, [profile?.uid]);
 
-  const completedLessons = lessons.filter(l => l.status === 'completed').length;
-  const upcomingLessons = lessons.filter(l => l.status === 'pending' || l.status === 'confirmed').length;
-  const totalHours = purchasedPackages.reduce((sum, p) => sum + (p.totalLessons || 0), 0);
-  const usedHours = purchasedPackages.reduce((sum, p) => sum + (p.completedLessons || 0), 0);
+  const completedLessons = (lessons || []).filter(l => l.status === 'completed').length;
+  const upcomingLessons = (lessons || []).filter(l => l.status === 'pending' || l.status === 'confirmed').length;
+  const totalHours = (purchasedPackages || []).reduce((sum, p) => sum + (p.totalLessons || 0), 0);
+  const usedHours = (purchasedPackages || []).reduce((sum, p) => sum + (p.lessonsUsed || 0), 0);
   const hoursProgress = totalHours > 0 ? usedHours / totalHours : 0;
 
   // Use progress data from Firestore if available, otherwise use defaults

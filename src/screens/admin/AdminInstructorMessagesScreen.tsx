@@ -145,7 +145,7 @@ const AdminInstructorMessagesScreen = () => {
   const dispatch = useDispatch();
   const navigation = useNavigation<Nav>();
 
-  const conversations = useSelector((state: RootState) => state.admin.conversations);
+  const conversations = useSelector((state: RootState) => state.admin.conversations || []);
   const adminId = useSelector((state: RootState) => state.auth.profile?.uid ?? '');
 
   // Defer heavy render until navigation animation completes
@@ -166,7 +166,7 @@ const AdminInstructorMessagesScreen = () => {
   }, [dispatch, adminId]);
 
   const sortedConvos = useMemo(
-    () => [...conversations].sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
+    () => [...conversations].sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || '')),
     [conversations],
   );
 

@@ -56,12 +56,12 @@ const StudentDashboardScreen = () => {
     }
   }, [profile?.uid, dispatch]);
 
-  const upcomingLessons = lessons.filter(l => l.status === 'pending' || l.status === 'confirmed');
-  const activeInstructor = myInstructors.length > 0 ? myInstructors[0] : null;
+  const upcomingLessons = (lessons || []).filter(l => l.status === 'pending' || l.status === 'confirmed');
+  const activeInstructor = (myInstructors || []).length > 0 ? myInstructors[0] : null;
 
   // Compute hours from purchased packages
-  const totalHours = purchasedPackages.reduce((sum, p) => sum + (p.totalLessons || 0), 0);
-  const usedHours = purchasedPackages.reduce((sum, p) => sum + (p.lessonsUsed || 0), 0);
+  const totalHours = (purchasedPackages || []).reduce((sum, p) => sum + (p.totalLessons || 0), 0);
+  const usedHours = (purchasedPackages || []).reduce((sum, p) => sum + (p.lessonsUsed || 0), 0);
   const remainingHours = totalHours - usedHours;
   const progress = totalHours > 0 ? usedHours / totalHours : 0;
   const QUICK_ACTION_COLORS = ['#2F6BFF', '#1FBF5B', '#F97316'];
@@ -191,12 +191,14 @@ const StudentDashboardScreen = () => {
               <View style={s.lessonCard}>
                 <View style={s.lessonDateBadge}>
                   <Text style={s.lessonDateDay}>
-                    {new Date(item.date).getDate()}
+                    {item.date ? new Date(item.date).getDate() : '--'}
                   </Text>
                   <Text style={s.lessonDateMonth}>
-                    {new Date(item.date).toLocaleString('en-GB', {
-                      month: 'short',
-                    })}
+                    {item.date
+                      ? new Date(item.date).toLocaleString('en-GB', {
+                          month: 'short',
+                        })
+                      : '---'}
                   </Text>
                 </View>
                 <View style={s.lessonDetails}>

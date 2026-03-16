@@ -80,9 +80,9 @@ const AdminStudentManagementScreen = () => {
       const q = search.toLowerCase();
       list = list.filter(
         s =>
-          s.name.toLowerCase().includes(q) ||
-          s.email.toLowerCase().includes(q) ||
-          s.city.toLowerCase().includes(q),
+          (s.name || '').toLowerCase().includes(q) ||
+          (s.email || '').toLowerCase().includes(q) ||
+          (s.city || '').toLowerCase().includes(q),
       );
     }
     return list;

@@ -65,11 +65,11 @@ const StudentBookLessonsScreen = () => {
   const preselectedPackageId = route.params?.packageId;
 
   // ── Redux state ────────────────────────────────────────
-  const instructors = useSelector((st: RootState) => st.student.instructors);
-  const myInstructors = useSelector((st: RootState) => st.student.myInstructors);
-  const purchasedPackages = useSelector((st: RootState) => st.student.purchasedPackages);
-  const availableSlots = useSelector((st: RootState) => st.student.availableSlots);
-  const lessons = useSelector((st: RootState) => st.student.lessons);
+  const instructors = useSelector((st: RootState) => st.student.instructors || []);
+  const myInstructors = useSelector((st: RootState) => st.student.myInstructors || []);
+  const purchasedPackages = useSelector((st: RootState) => st.student.purchasedPackages || []);
+  const availableSlots = useSelector((st: RootState) => st.student.availableSlots || []);
+  const lessons = useSelector((st: RootState) => st.student.lessons || []);
   const slotsLoading = useSelector((st: RootState) => st.student.slotsLoading);
   const bookingLoading = useSelector((st: RootState) => st.student.bookingLoading);
 

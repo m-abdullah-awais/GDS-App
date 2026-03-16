@@ -26,6 +26,7 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import * as messageService from '../../services/messageService';
 import { mapMessagesToConversations } from '../../utils/mappers';
+import type { Conversation } from '../../store/admin/types';
 
 type Nav = NativeStackNavigationProp<StudentStackParamList>;
 

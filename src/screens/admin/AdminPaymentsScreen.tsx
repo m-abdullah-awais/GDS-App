@@ -84,9 +84,9 @@ const AdminPaymentsScreen = () => {
       const q = search.toLowerCase();
       list = list.filter(
         t =>
-          t.instructorName.toLowerCase().includes(q) ||
-          t.description.toLowerCase().includes(q) ||
-          t.method.toLowerCase().includes(q),
+          (t.instructorName || '').toLowerCase().includes(q) ||
+          (t.description || '').toLowerCase().includes(q) ||
+          (t.method || '').toLowerCase().includes(q),
       );
     }
     return [...list].sort((a, b) => b.date.localeCompare(a.date));

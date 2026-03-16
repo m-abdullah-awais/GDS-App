@@ -141,7 +141,7 @@ const ChatScreen = () => {
 
   // Load conversation messages from Firebase
   useEffect(() => {
-    if (!profile?.uid || !route.params.conversationId) return;
+    if (!profile?.uid || !route.params?.conversationId) return;
     setLoading(true);
     // conversationId is the other user's ID
     const otherUserId = route.params.conversationId;
@@ -160,11 +160,11 @@ const ChatScreen = () => {
       })
       .catch(err => console.error('Failed to load conversation:', err))
       .finally(() => setLoading(false));
-  }, [profile?.uid, route.params.conversationId]);
+  }, [profile?.uid, route.params?.conversationId]);
 
   // Set up real-time listener
   useEffect(() => {
-    if (!profile?.uid) return;
+    if (!profile?.uid || !route.params?.conversationId) return;
     const otherUserId = route.params.conversationId;
     const unsubscribe = messageService.onConversation(
       profile.uid,
@@ -183,7 +183,7 @@ const ChatScreen = () => {
       },
     );
     return () => unsubscribe();
-  }, [profile?.uid, route.params.conversationId]);
+  }, [profile?.uid, route.params?.conversationId]);
 
   const handleSend = async () => {
     if (!inputText.trim() || !profile?.uid) return;
@@ -191,7 +191,7 @@ const ChatScreen = () => {
     const text = inputText.trim();
     const newMessage: ChatMessage = {
       id: `MSG-LOCAL-${Date.now()}`,
-      conversationId: route.params.conversationId,
+      conversationId: route.params?.conversationId ?? '',
       text,
       sender: 'student',
       timestamp: new Date().toLocaleTimeString('en-GB', {
@@ -205,7 +205,7 @@ const ChatScreen = () => {
 
     try {
       await messageService.sendMessage({
-        recipientId: route.params.conversationId,
+        recipientId: route.params?.conversationId ?? '',
         content: text,
         senderRole: 'student',
       });
@@ -219,7 +219,7 @@ const ChatScreen = () => {
   };
 
   return (
-    <ScreenContainer showHeader title={route.params.instructorName}>
+    <ScreenContainer showHeader title={route.params?.instructorName ?? ''}>
       <KeyboardAvoidingView
         style={s.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -247,7 +247,7 @@ const ChatScreen = () => {
               <Text style={s.emptyIcon}>💬</Text>
               <Text style={s.emptyTitle}>Start the conversation</Text>
               <Text style={s.emptySubtitle}>
-                Send a message to {route.params.instructorName}
+                Send a message to {route.params?.instructorName ?? ''}
               </Text>
             </View>
           }

@@ -135,7 +135,7 @@ const StudentProfileScreen = () => {
   const totalHours = activePackage?.totalLessons ?? 0;
   const hoursUsed = Math.min(activePackage?.lessonsUsed ?? 0, totalHours);
   const remainingHours = Math.max(totalHours - hoursUsed, 0);
-  const completedLessons = lessons.filter((lesson) => lesson.status === 'completed').length;
+  const completedLessons = (lessons || []).filter((lesson) => lesson.status === 'completed').length;
   const progressPercent = totalHours > 0 ? Math.round((hoursUsed / totalHours) * 100) : 0;
   const activeInstructorName = activeInstructor?.name ?? 'No instructor assigned';
   const activeInstructorAvatar = activeInstructor?.avatar ?? getInitials(activeInstructorName);

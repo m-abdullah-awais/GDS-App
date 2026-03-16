@@ -47,11 +47,11 @@ interface ProfileData {
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const getInitials = (name: string) =>
-  name
+  (name || '')
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
+    .map((w) => w[0]?.toUpperCase() ?? '')
     .join('') || 'AD';
 
 // ─── Constants ──────────────────────────────────────────────────────────────

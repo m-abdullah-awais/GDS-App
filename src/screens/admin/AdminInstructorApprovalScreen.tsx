@@ -72,9 +72,9 @@ const AdminInstructorApprovalScreen = () => {
       const q = search.toLowerCase();
       list = list.filter(
         i =>
-          i.name.toLowerCase().includes(q) ||
-          i.email.toLowerCase().includes(q) ||
-          i.city.toLowerCase().includes(q),
+          (i.name || '').toLowerCase().includes(q) ||
+          (i.email || '').toLowerCase().includes(q) ||
+          (i.city || '').toLowerCase().includes(q),
       );
     }
     return list;

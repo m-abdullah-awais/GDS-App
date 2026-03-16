@@ -103,8 +103,6 @@ const instructorSlice = createSlice({
     },
     setInstructorLoading(state, action: PayloadAction<boolean>) {
       state.loading = action.payload;
-      state.packages = state.packages.map(pkg => sanitizePackageForStore(pkg));
-      state.pendingPackages = state.pendingPackages.map(pkg => sanitizePackageForStore(pkg));
     },
     setInstructorError(state, action: PayloadAction<string | null>) {
       state.error = action.payload;

@@ -128,13 +128,13 @@ const AdminInstructorChatScreen = () => {
   const adminId = useSelector((state: RootState) => state.auth.profile?.uid ?? '');
 
   const conversation = useSelector((state: RootState) =>
-    state.admin.conversations.find(c => c.id === route.params.conversationId),
+    (state.admin.conversations || []).find(c => c.id === route.params.conversationId),
   );
 
   const messages = useSelector((state: RootState) =>
-    state.admin.messages
+    (state.admin.messages || [])
       .filter(m => m.conversationId === route.params.conversationId)
-      .sort((a, b) => a.timestamp.localeCompare(b.timestamp)),
+      .sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || '')),
   );
 
   // Load messages from Firebase on mount

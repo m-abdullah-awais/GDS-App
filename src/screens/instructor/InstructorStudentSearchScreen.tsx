@@ -48,7 +48,7 @@ const InstructorStudentSearchScreen = ({ navigation }: Props) => {
       setResults(users.map((u: any) => ({
         id: u.id || u.uid,
         name: u.full_name || '',
-        avatar: (u.full_name || '').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'ST',
+        avatar: (u.full_name || '').split(' ').filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'ST',
         postcode: u.postcode || '',
         email: u.email || '',
         phone: u.phone || '',

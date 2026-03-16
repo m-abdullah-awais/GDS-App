@@ -65,7 +65,7 @@ const InstructorEarningsScreen = ({ navigation }: Props) => {
       packageName: '',
       amount: p.instructorPayout || p.instructorPayment || 0,
       date: p.completedAt
-        ? new Date(p.completedAt.seconds ? p.completedAt.seconds * 1000 : p.completedAt).toISOString().split('T')[0]
+        ? new Date(p.completedAt?.seconds ? p.completedAt.seconds * 1000 : p.completedAt).toISOString().split('T')[0]
         : '',
       status: (p.status === 'completed' ? 'completed' : 'pending') as 'completed' | 'pending',
     })),
@@ -175,7 +175,7 @@ const InstructorEarningsScreen = ({ navigation }: Props) => {
     </View>
   );
 
-  const renderTransaction = ({ item }: { item: Transaction }) => {
+  const renderTransaction = ({ item }: { item: TransactionView }) => {
     const statusStyle = getStatusStyle(item.status);
     return (
       <View style={styles.transactionCard}>

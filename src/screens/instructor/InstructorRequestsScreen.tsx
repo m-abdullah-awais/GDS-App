@@ -94,12 +94,12 @@ const InstructorRequestsScreen = ({ navigation }: Props) => {
     id: r.id,
     studentId: r.studentId || r.student_id || '',
     studentName: r.studentName || '',
-    studentAvatar: (r.studentName || '').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'ST',
+    studentAvatar: (r.studentName || '').split(' ').filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'ST',
     postcode: r.studentPostcode || '',
     status: r.status === 'confirmed' ? 'accepted' : r.status,
     direction: r.initiatedBy === 'student' ? 'incoming' : 'outgoing',
-    sentDate: r.createdAt ? new Date(r.createdAt.seconds ? r.createdAt.seconds * 1000 : r.createdAt).toISOString().split('T')[0] : '',
-    responseDate: r.acceptedAt || r.rejectedAt ? new Date((r.acceptedAt || r.rejectedAt).seconds ? (r.acceptedAt || r.rejectedAt).seconds * 1000 : (r.acceptedAt || r.rejectedAt)).toISOString().split('T')[0] : undefined,
+    sentDate: r.createdAt ? new Date(r.createdAt?.seconds ? r.createdAt.seconds * 1000 : r.createdAt).toISOString().split('T')[0] : '',
+    responseDate: r.acceptedAt || r.rejectedAt ? new Date((r.acceptedAt || r.rejectedAt)?.seconds ? (r.acceptedAt || r.rejectedAt).seconds * 1000 : (r.acceptedAt || r.rejectedAt)).toISOString().split('T')[0] : undefined,
   })), [studentRequests]);
 
   const filteredRequests = useMemo(
@@ -126,7 +126,7 @@ const InstructorRequestsScreen = ({ navigation }: Props) => {
     }
   };
 
-  const renderRequest = ({ item }: { item: StudentRequest }) => {
+  const renderRequest = ({ item }: { item: any }) => {
     const badge = getStatusStyle(item.status, theme);
     return (
       <View style={styles.card}>

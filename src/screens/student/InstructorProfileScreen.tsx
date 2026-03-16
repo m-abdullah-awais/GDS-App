@@ -119,9 +119,9 @@ const InstructorProfileScreen = () => {
   const profile = useSelector((state: RootState) => state.auth.profile);
   // Get instructor from Redux store (populated by loadStudentData)
   const instructorVM = useSelector((state: RootState) =>
-    state.student.instructors.find(i => i.id === route.params.instructorId),
+    (state.student.instructors || []).find(i => i.id === route.params.instructorId),
   );
-  const requests = useSelector((state: RootState) => state.student.requests);
+  const requests = useSelector((state: RootState) => state.student.requests || []);
 
   // Fetch full profile + reviews from Firestore
   const [instructorDetail, setInstructorDetail] = useState<any>(null);
@@ -187,9 +187,9 @@ const InstructorProfileScreen = () => {
         {/* ── Header Card ──────────────────────────────────── */}
         <View style={s.headerCard}>
           <Avatar initials={instructor.avatar} size={80} />
-          <Text style={s.name}>{instructor.name}</Text>
+          <Text style={s.name}>{instructor.name || ''}</Text>
           <View style={s.ratingRow}>
-            <StarRating rating={Math.round(instructor.rating)} theme={theme} />
+            <StarRating rating={Math.round(instructor.rating || 0)} theme={theme} />
             <Text style={s.ratingText}>
               {instructor.rating || 0} ({reviews.length} reviews)
             </Text>

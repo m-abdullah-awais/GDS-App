@@ -93,9 +93,9 @@ const AdminPackageApprovalScreen = () => {
       const q = search.toLowerCase();
       list = list.filter(
         p =>
-          p.title.toLowerCase().includes(q) ||
-          p.instructorName.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q),
+          (p.title || '').toLowerCase().includes(q) ||
+          (p.instructorName || '').toLowerCase().includes(q) ||
+          (p.description || '').toLowerCase().includes(q),
       );
     }
     return [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));

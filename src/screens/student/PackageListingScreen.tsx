@@ -45,11 +45,11 @@ const PackageListingScreen = () => {
   const instructorId = route.params.instructorId;
 
   // Redux ──────────────────────────────────────────────
-  const instructors = useSelector((state: RootState) => state.student.instructors);
-  const myInstructors = useSelector((state: RootState) => state.student.myInstructors);
-  const packages = useSelector((state: RootState) => state.student.packages);
+  const instructors = useSelector((state: RootState) => state.student.instructors || []);
+  const myInstructors = useSelector((state: RootState) => state.student.myInstructors || []);
+  const packages = useSelector((state: RootState) => state.student.packages || {});
   const purchasedPackages = useSelector(
-    (state: RootState) => state.student.purchasedPackages,
+    (state: RootState) => state.student.purchasedPackages || [],
   );
   const loadingPackages = useSelector(
     (state: RootState) => state.student.packagesLoading,

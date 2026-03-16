@@ -335,9 +335,10 @@ export const cancelLessonThunk = (
  */
 export const subscribeToStudentBookings = (
   studentId: string,
-) => (_dispatch: Dispatch) => {
-  return bookingService.onStudentBookings(studentId, (_bookings) => {
-    // Intentionally empty — see TODO above.
+) => (dispatch: Dispatch) => {
+  return bookingService.onStudentBookings(studentId, (bookings) => {
+    const mapped = bookings.map(b => mapBookingToBookedLesson(b));
+    dispatch(setLessons(mapped));
   });
 };
 

@@ -325,6 +325,9 @@ export const onAllUsers = (
       });
       callback(users);
     },
+    (error) => {
+      if (__DEV__) console.error('onAllUsers listener error:', error);
+    },
   );
 };
 

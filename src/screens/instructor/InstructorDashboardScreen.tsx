@@ -122,8 +122,8 @@ const InstructorDashboardScreen = ({ navigation }: Props) => {
             renderItem={({ item }: { item: InstructorLesson }) => (
               <View style={s.lessonCard}>
                 <View style={s.lessonDateBadge}>
-                  <Text style={s.lessonDateDay}>{new Date(item.date).getDate()}</Text>
-                  <Text style={s.lessonDateMonth}>{new Date(item.date).toLocaleString('en-GB', { month: 'short' })}</Text>
+                  <Text style={s.lessonDateDay}>{item.date ? new Date(item.date).getDate() : '--'}</Text>
+                  <Text style={s.lessonDateMonth}>{item.date ? new Date(item.date).toLocaleString('en-GB', { month: 'short' }) : '---'}</Text>
                 </View>
                 <View style={s.lessonDetails}>
                   <Text style={s.lessonTime}>{item.time}</Text>

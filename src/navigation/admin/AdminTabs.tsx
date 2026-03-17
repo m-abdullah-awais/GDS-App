@@ -20,6 +20,7 @@ import AdminPaymentsScreen from '../../screens/admin/AdminPaymentsScreen';
 import AdminReportsScreen from '../../screens/admin/AdminReportsScreen';
 import AdminInstructorMessagesScreen from '../../screens/admin/AdminInstructorMessagesScreen';
 import AdminProfileScreen from '../../screens/admin/AdminProfileScreen';
+import AdminOffersManagementScreen from '../../screens/admin/AdminOffersManagementScreen';
 
 export type AdminTabsParamList = {
   Dashboard: undefined;
@@ -28,6 +29,7 @@ export type AdminTabsParamList = {
   'Package Approvals': undefined;
   'Student Management': undefined;
   'Instructor Management': undefined;
+  'Exclusive Offers': undefined;
   Messages: undefined;
   Payments: undefined;
   Reports: undefined;
@@ -154,6 +156,15 @@ const AdminTabs = () => {
         options={{
           drawerIcon: ({ color, size }) => (
             <Ionicons name="briefcase-outline" size={size} color={color} style={{ marginRight: 6 }} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="Exclusive Offers"
+        component={AdminOffersManagementScreen}
+        options={{
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="gift-outline" size={size} color={color} style={{ marginRight: 6 }} />
           ),
         }}
       />

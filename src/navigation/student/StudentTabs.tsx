@@ -16,6 +16,7 @@ import { clearAuth } from '../../store/auth/authSlice';
 import * as authService from '../../services/authService';
 import CustomDrawerContent from '../../components/CustomDrawerContent';
 import StudentBookLessonsScreen from '../../screens/student/StudentBookLessonsScreen';
+import StudentOffersScreen from '../../screens/student/StudentOffersScreen';
 import { useConfirmation } from '../../components/common';
 
 const Drawer = createDrawerNavigator();
@@ -124,6 +125,16 @@ const StudentTabs = () => {
                     headerShown: false,
                     drawerIcon: ({ color, size }) => (
                         <Ionicons name="add-circle-outline" size={size} color={color} style={{ marginRight: 6 }} />
+                    ),
+                }}
+            />
+            <Drawer.Screen
+                name="Exclusive Offers"
+                component={StudentOffersScreen}
+                options={{
+                    headerShown: false,
+                    drawerIcon: ({ color, size }) => (
+                        <Ionicons name="gift-outline" size={size} color={color} style={{ marginRight: 6 }} />
                     ),
                 }}
             />

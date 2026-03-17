@@ -13,6 +13,7 @@ import adminReducer from './admin/reducer';
 import studentReducer from './student/reducer';
 import { authReducer } from './auth';
 import { instructorReducer } from './instructor';
+import offersReducer from './offers/offersSlice';
 
 // ─── Root Reducer ─────────────────────────────────────────────────────────────
 const rootReducer = combineReducers({
@@ -20,6 +21,7 @@ const rootReducer = combineReducers({
   admin: adminReducer,
   student: studentReducer,
   instructor: instructorReducer,
+  offers: offersReducer,
 });
 
 // ─── Persist Configuration ───────────────────────────────────────────────────

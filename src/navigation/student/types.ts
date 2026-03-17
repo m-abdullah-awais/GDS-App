@@ -15,4 +15,6 @@ export type StudentStackParamList = {
   MyLessons: undefined;
   StudentMessages: undefined;
   Chat: { conversationId: string; instructorName: string };
+  StudentOffers: undefined;
+  StudentOfferDetail: { offerId: string };
 };

@@ -274,6 +274,7 @@ export const Collections = {
   PAYOUTS: 'payouts',
   SYSTEM_SETTINGS: 'systemSettings',
   ADMIN_DATA: 'adminData',
+  ADS: 'ads',
 } as const;
 
 // ─── View-Model Mapper Functions ──────────────────────────────────────────────

@@ -9,6 +9,8 @@ import StudentBookLessonsScreen from '../../screens/student/StudentBookLessonsSc
 import MyLessonsScreen from '../../screens/student/MyLessonsScreen';
 import StudentMessagesScreen from '../../screens/student/StudentMessagesScreen';
 import ChatScreen from '../../screens/student/ChatScreen';
+import StudentOffersScreen from '../../screens/student/StudentOffersScreen';
+import StudentOfferDetailScreen from '../../screens/student/StudentOfferDetailScreen';
 import { useTheme } from '../../theme';
 import type { StudentStackParamList } from './types';
 export type { StudentStackParamList } from './types';
@@ -34,6 +36,8 @@ const StudentStack = () => {
       <Stack.Screen name="MyLessons" component={MyLessonsScreen} />
       <Stack.Screen name="StudentMessages" component={StudentMessagesScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="StudentOffers" component={StudentOffersScreen} />
+      <Stack.Screen name="StudentOfferDetail" component={StudentOfferDetailScreen} />
     </Stack.Navigator>
   );
 };

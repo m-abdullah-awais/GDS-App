@@ -11,6 +11,7 @@ import InstructorMessagesScreen from "../../screens/instructor/InstructorMessage
 import InstructorProfileScreen from "../../screens/instructor/InstructorProfileScreen";
 import InstructorPackageScreen from "../../screens/instructor/InstructorPackageScreen";
 import InstructorAreasScreen from "../../screens/instructor/InstructorAreasScreen";
+import InstructorOffersScreen from "../../screens/instructor/InstructorOffersScreen";
 import { useTheme } from "../../theme";
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AppTopHeader from '../../components/AppTopHeader';
@@ -27,6 +28,7 @@ export type InstructorTabsParamList = {
     Availability: undefined;
     'Areas Covered': undefined;
     Packages: undefined;
+    'Exclusive Offers': undefined;
     Earnings: undefined;
     Requests: undefined;
     'Pending Reviews': undefined;
@@ -141,6 +143,16 @@ const InstructorTabs = () => {
                     headerShown: false,
                     drawerIcon: ({ color, size }) => (
                         <Ionicons name="cube-outline" size={size} color={color} style={{ marginRight: 6 }} />
+                    ),
+                }}
+            />
+            <Drawer.Screen
+                name="Exclusive Offers"
+                component={InstructorOffersScreen}
+                options={{
+                    headerShown: false,
+                    drawerIcon: ({ color, size }) => (
+                        <Ionicons name="gift-outline" size={size} color={color} style={{ marginRight: 6 }} />
                     ),
                 }}
             />

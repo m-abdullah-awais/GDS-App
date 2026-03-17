@@ -10,6 +10,8 @@ import InstructorAvailabilityScreen from '../../screens/instructor/InstructorAva
 import InstructorScheduleScreen from '../../screens/instructor/InstructorScheduleScreen';
 import InstructorRequestsScreen from '../../screens/instructor/InstructorRequestsScreen';
 import InstructorEarningsScreen from '../../screens/instructor/InstructorEarningsScreen';
+import InstructorOffersScreen from '../../screens/instructor/InstructorOffersScreen';
+import InstructorOfferDetailScreen from '../../screens/instructor/InstructorOfferDetailScreen';
 import { useTheme } from '../../theme';
 
 export type InstructorStackParamList = {
@@ -23,6 +25,8 @@ export type InstructorStackParamList = {
   Requests: undefined;
   Earnings: undefined;
   Chat: { conversationId: string; studentName: string };
+  InstructorOffers: undefined;
+  InstructorOfferDetail: { offerId: string };
 };
 
 const Stack = createNativeStackNavigator<InstructorStackParamList>();
@@ -47,6 +51,8 @@ const InstructorStack = () => {
       <Stack.Screen name="Requests" component={InstructorRequestsScreen} />
       <Stack.Screen name="Earnings" component={InstructorEarningsScreen} />
       <Stack.Screen name="Chat" component={InstructorChatScreen} />
+      <Stack.Screen name="InstructorOffers" component={InstructorOffersScreen} />
+      <Stack.Screen name="InstructorOfferDetail" component={InstructorOfferDetailScreen} />
     </Stack.Navigator>
   );
 };

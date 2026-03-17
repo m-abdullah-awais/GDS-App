@@ -4,6 +4,9 @@
  * Re-exports all Firestore-aligned domain types.
  */
 
+// Ads / Exclusive Offers
+export type { Ad } from './ad';
+
 // User & Auth
 export type { UserProfile, UserDoc, UserRole, UserStatus, StripeAccountStatus, TransmissionType } from './user';
 

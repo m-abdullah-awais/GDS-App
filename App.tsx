@@ -16,6 +16,7 @@ import { ConfirmationProvider } from './src/components/common';
 import RootNavigator from './src/navigation/RootNavigator';
 import { ThemeProvider, useTheme } from './src/theme';
 import { useAuthStateListener } from './src/hooks';
+import { useOffersSubscription } from './src/hooks/useOffersSubscription';
 import { linkingConfig } from './src/navigation/linking';
 
 function App() {
@@ -47,6 +48,9 @@ function AppContent() {
 
   // Subscribe to Firebase Auth state + Firestore user profile
   useAuthStateListener();
+
+  // Subscribe to exclusive offers (ads collection) in real-time
+  useOffersSubscription();
 
   const navigationTheme = {
     ...(theme.dark ? DarkTheme : DefaultTheme),

@@ -50,6 +50,7 @@ const ConversationRow = ({
       onPress={onPress}>
       <Avatar
         initials={conversation.instructorAvatar}
+        name={conversation.instructorName}
         size={48}
       />
       <View style={s.content}>

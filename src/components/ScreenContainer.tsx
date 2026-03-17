@@ -2,6 +2,8 @@ import React, { ReactNode } from 'react';
 import { StyleProp, StyleSheet, ViewStyle } from 'react-native';
 import { Edge, SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../store';
 import { useTheme } from '../theme';
 import AppTopHeader from './AppTopHeader';
 
@@ -26,6 +28,7 @@ const ScreenContainer = ({
 }: ScreenContainerProps) => {
     const navigation = useNavigation();
     const { theme } = useTheme();
+    const profileName = useSelector((state: RootState) => state.auth.profile?.full_name);
     const resolvedBackgroundColor = backgroundColor ?? theme.colors.background;
 
     const handleBack = () => {
@@ -56,7 +59,7 @@ const ScreenContainer = ({
                     title={title ?? ''}
                     leftAction={canShowBack ? 'back' : canOpenDrawer ? 'menu' : 'none'}
                     onLeftPress={canShowBack ? handleBack : canOpenDrawer ? handleMenu : undefined}
-                    avatarText={title ?? 'GDS'}
+                    avatarText={profileName || 'GDS'}
 
                 />
             )}

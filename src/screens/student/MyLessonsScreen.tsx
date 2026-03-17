@@ -121,7 +121,12 @@ const MyLessonsScreen = () => {
           <View style={s.cardWrapper}>
             <LessonCard
               lesson={item}
-              onCancel={() => handleCancel(item)}
+              instructorName={item.instructorName}
+              onCancel={
+                (item.status === 'pending' || item.status === 'confirmed')
+                  ? () => handleCancel(item)
+                  : undefined
+              }
             />
           </View>
         )}

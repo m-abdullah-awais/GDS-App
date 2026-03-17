@@ -10,6 +10,7 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
+    "log-android": "npx react-native log-android",
     "test": "jest",
     "clean-android": "cd android && gradlew.bat clean",
     "postinstall": "node scripts/fix-drawer-assets.js"
@@ -64,6 +65,7 @@
     "jest": "^29.6.3",
     "prettier": "2.8.8",
     "react-test-renderer": "19.1.1",
+    "sharp": "^0.34.5",
     "typescript": "^5.8.3"
   },
   "engines": {

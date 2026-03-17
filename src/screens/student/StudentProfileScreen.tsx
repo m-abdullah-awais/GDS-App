@@ -16,7 +16,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -38,7 +37,7 @@ interface ProfileData {
   name: string;
   email: string;
   phone: string;
-  licenceNumber: string;
+  postcode: string;
   transmissionPreference: string;
 }
 
@@ -58,7 +57,7 @@ const INITIAL_PROFILE: ProfileData = {
   name: '',
   email: '',
   phone: '',
-  licenceNumber: '',
+  postcode: '',
   transmissionPreference: 'Manual',
 };
 
@@ -78,7 +77,7 @@ const PROFILE_FIELDS: {
   { key: 'name', label: 'Full Name', icon: 'person-outline', capitalize: 'words' },
   { key: 'email', label: 'Email Address', icon: 'mail-outline', keyboard: 'email-address', capitalize: 'none' },
   { key: 'phone', label: 'Phone Number', icon: 'call-outline', keyboard: 'phone-pad' },
-  { key: 'licenceNumber', label: 'Licence Number', icon: 'id-card-outline', capitalize: 'none' },
+  { key: 'postcode', label: 'Post Code', icon: 'location-outline', capitalize: 'none' },
   { key: 'transmissionPreference', label: 'Transmission Preference', icon: 'car-outline' },
 ];
 
@@ -104,23 +103,17 @@ const StudentProfileScreen = () => {
   useEffect(() => {
     if (authProfile) {
       const loaded: ProfileData = {
-        name: authProfile.displayName || authProfile.name || '',
+        name: authProfile.full_name || '',
         email: authProfile.email || '',
-        phone: authProfile.phone || authProfile.phoneNumber || '',
-        licenceNumber: (authProfile as any).licenceNumber || '',
-        transmissionPreference: (authProfile as any).transmissionPreference || 'Manual',
+        phone: authProfile.phone || '',
+        postcode: authProfile.postcode || '',
+        transmissionPreference: authProfile.transmissionType || 'Manual',
       };
       setProfile(loaded);
       setDraft(loaded);
       setProfileImage((authProfile as any).photoURL || null);
     }
   }, [authProfile]);
-
-  // Notification toggles
-  const [notifLessons, setNotifLessons] = useState(true);
-  const [notifMessages, setNotifMessages] = useState(true);
-  const [notifBookings, setNotifBookings] = useState(false);
-  const [notifPromotions, setNotifPromotions] = useState(false);
 
   const activePackage = useMemo(
     () => purchasedPackages.find((pkg) => pkg.status === 'active') ?? purchasedPackages[0] ?? null,
@@ -155,7 +148,7 @@ const StudentProfileScreen = () => {
       name: draft.name.trim(),
       email: draft.email.trim(),
       phone: draft.phone.trim(),
-      licenceNumber: draft.licenceNumber.trim(),
+      postcode: draft.postcode.trim(),
       transmissionPreference: draft.transmissionPreference.trim(),
     };
     if (!trimmed.name) {
@@ -177,12 +170,11 @@ const StudentProfileScreen = () => {
     try {
       if (authProfile?.uid) {
         await userService.updateUserProfile(authProfile.uid, {
-          displayName: trimmed.name,
-          name: trimmed.name,
+          full_name: trimmed.name,
           email: trimmed.email,
           phone: trimmed.phone,
-          licenceNumber: trimmed.licenceNumber,
-          transmissionPreference: trimmed.transmissionPreference,
+          postcode: trimmed.postcode,
+          transmissionType: trimmed.transmissionPreference as any,
         });
       }
       setProfile(trimmed);
@@ -392,30 +384,6 @@ const StudentProfileScreen = () => {
               })}
             </View>
           </View>
-        </View>
-
-        {/* ── Notifications ─────────────────────── */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Notifications</Text>
-          {[
-            { label: 'Lesson Reminders', val: notifLessons, set: setNotifLessons },
-            { label: 'Messages', val: notifMessages, set: setNotifMessages },
-            { label: 'Booking Updates', val: notifBookings, set: setNotifBookings },
-            { label: 'Promotions & Offers', val: notifPromotions, set: setNotifPromotions },
-          ].map((item, idx, arr) => (
-            <React.Fragment key={item.label}>
-              <View style={styles.toggleRow}>
-                <Text style={styles.toggleLabel}>{item.label}</Text>
-                <Switch
-                  value={item.val}
-                  onValueChange={item.set}
-                  trackColor={{ false: theme.colors.border, true: theme.colors.primaryLight }}
-                  thumbColor={item.val ? theme.colors.primary : theme.colors.textTertiary}
-                />
-              </View>
-              {idx < arr.length - 1 && <View style={styles.divider} />}
-            </React.Fragment>
-          ))}
         </View>
 
         {/* ── Sign Out ──────────────────────────── */}
@@ -727,22 +695,6 @@ const createStyles = (theme: AppTheme) =>
     segTextActive: {
       color: '#FFF',
       fontWeight: '700',
-    },
-
-    // Toggles
-    toggleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 6,
-    },
-    toggleLabel: {
-      ...theme.typography.bodyMedium,
-      color: theme.colors.textPrimary,
-    },
-    divider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: theme.colors.border,
     },
 
     // Sign Out

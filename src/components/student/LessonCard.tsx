@@ -60,12 +60,14 @@ const LessonCard: React.FC<LessonCardProps> = ({
         {/* Header row */}
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
-            <Text style={styles.packageName} numberOfLines={1}>
-              {lesson.packageName}
-            </Text>
-            {instructorName && (
+            {!!lesson.packageName && (
+              <Text style={styles.packageName} numberOfLines={1}>
+                {lesson.packageName}
+              </Text>
+            )}
+            {!!(instructorName || lesson.instructorName) && (
               <Text style={styles.instructorName} numberOfLines={1}>
-                {instructorName}
+                {instructorName || lesson.instructorName}
               </Text>
             )}
           </View>
@@ -92,10 +94,12 @@ const LessonCard: React.FC<LessonCardProps> = ({
         </View>
 
         {/* Location */}
-        <View style={styles.infoItem}>
-          <Ionicons name="location-outline" size={14} color={theme.colors.textSecondary} />
-          <Text style={styles.infoText}>{lesson.location}</Text>
-        </View>
+        {!!lesson.location && (
+          <View style={styles.infoItem}>
+            <Ionicons name="location-outline" size={14} color={theme.colors.textSecondary} />
+            <Text style={styles.infoText}>{lesson.location}</Text>
+          </View>
+        )}
 
         {/* Cancellation info */}
         {lesson.status === 'cancelled' && lesson.cancelledBy && (

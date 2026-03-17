@@ -409,10 +409,10 @@ export const cancelBooking = async (
 
 // ─── Utility: filter bookings by status (client-side) ────────────────────────
 
-export const filterBookings = (
-  bookings: Booking[],
+export const filterBookings = <T extends { status: string; date?: any }>(
+  bookings: T[],
   filter: 'upcoming' | 'completed' | 'cancelled',
-): Booking[] => {
+): T[] => {
   switch (filter) {
     case 'upcoming':
       return bookings

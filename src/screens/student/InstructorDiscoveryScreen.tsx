@@ -121,7 +121,7 @@ const InstructorDiscoveryScreen = () => {
           title="Search Instructors"
           leftAction="back"
           onLeftPress={() => navigation.canGoBack() && navigation.goBack()}
-          avatarText="GDS"
+          avatarText={studentName || 'GDS'}
         />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -136,7 +136,7 @@ const InstructorDiscoveryScreen = () => {
         title="Search Instructors"
         leftAction="back"
         onLeftPress={() => navigation.canGoBack() && navigation.goBack()}
-        avatarText="GDS"
+        avatarText={studentName || 'GDS'}
       />
 
       {/* Search Bar + Filter */}

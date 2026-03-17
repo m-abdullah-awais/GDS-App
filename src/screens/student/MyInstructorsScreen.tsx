@@ -2,9 +2,8 @@
  * GDS Driving School — MyInstructorsScreen
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -18,7 +17,8 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import ScreenContainer from '../../components/ScreenContainer';
+import Avatar from '../../components/Avatar';
 import type { StudentInstructor, PurchasedPackage } from '../../store/student/types';
 
 type Nav = NativeStackNavigationProp<StudentStackParamList>;
@@ -44,11 +44,7 @@ const MyInstructorsScreen = () => {
         <Pressable
           style={styles.cardHeader}
           onPress={() => navigation.navigate('InstructorProfile', { instructorId: item.id })}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {(item.name || 'I').charAt(0).toUpperCase()}
-            </Text>
-          </View>
+          <Avatar initials={item.avatar || ''} name={item.name} size={48} />
           <View style={styles.info}>
             <Text style={styles.name}>{item.name || ''}</Text>
             <Text style={styles.meta}>
@@ -82,10 +78,7 @@ const MyInstructorsScreen = () => {
   }, [purchasedPackages, styles, theme, navigation]);
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Instructors</Text>
-      </View>
+    <ScreenContainer showHeader title="My Instructors">
       <FlatList
         data={myInstructors}
         keyExtractor={(item) => item.id}
@@ -103,27 +96,12 @@ const MyInstructorsScreen = () => {
           </View>
         }
       />
-    </View>
+    </ScreenContainer>
   );
 };
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    screen: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    header: {
-      padding: theme.spacing.md,
-      paddingTop: theme.spacing.xl,
-      backgroundColor: theme.colors.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
-    },
-    headerTitle: {
-      ...theme.typography.h2,
-      color: theme.colors.textPrimary,
-    },
     list: {
       padding: theme.spacing.md,
       paddingBottom: theme.spacing['3xl'],
@@ -139,19 +117,6 @@ const createStyles = (theme: AppTheme) =>
     cardHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-    },
-    avatar: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: theme.colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    avatarText: {
-      color: '#fff',
-      fontWeight: '700',
-      fontSize: 18,
     },
     info: {
       flex: 1,

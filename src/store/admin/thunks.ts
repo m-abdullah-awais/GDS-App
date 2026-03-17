@@ -309,9 +309,13 @@ export const updatePackageCommissionThunk = (
   }
 };
 
-export const deletePackageThunk = (packageId: string) => async (dispatch: Dispatch) => {
+export const deletePackageThunk = (packageId: string, status: 'pending' | 'approved' | 'rejected') => async (dispatch: Dispatch) => {
   try {
-    await adminService.deleteAvailablePackage(packageId);
+    if (status === 'pending') {
+      await adminService.rejectPendingPackage(packageId);
+    } else {
+      await adminService.deleteAvailablePackage(packageId);
+    }
     dispatch(deletePackageAction(packageId));
   } catch (error) {
     if (__DEV__) console.error('Failed to delete package:', error);

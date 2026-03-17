@@ -116,7 +116,7 @@ const AdminPackageApprovalScreen = () => {
     switch (confirmType) {
       case 'approve': thunk = approvePackageThunk(selected.id); break;
       case 'reject': thunk = rejectPackageThunk(selected.id); break;
-      case 'delete': thunk = deletePackageThunk(selected.id); break;
+      case 'delete': thunk = deletePackageThunk(selected.id, selected.status); break;
     }
     dispatch(thunk as any)
       .then(() => {
@@ -284,9 +284,9 @@ const AdminPackageApprovalScreen = () => {
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.commissionTap} onPress={() => { setEditingId(pkg.id); setEditCommission(String(pkg.commissionPercentage)); }}>
-                    <Text style={[styles.metricValue, { color: theme.colors.primary }]}>{pkg.commissionPercentage}%</Text>
-                    <Ionicons name="pencil-outline" size={10} color={theme.colors.primary} />
+                  <TouchableOpacity style={styles.commissionTap} disabled={pkg.status === 'pending'} onPress={() => { setEditingId(pkg.id); setEditCommission(String(pkg.commissionPercentage)); }}>
+                    <Text style={[styles.metricValue, { color: pkg.status === 'pending' ? theme.colors.textTertiary : theme.colors.primary }]}>{pkg.commissionPercentage}%</Text>
+                    {pkg.status !== 'pending' && <Ionicons name="pencil-outline" size={10} color={theme.colors.primary} />}
                   </TouchableOpacity>
                 )}
                 <Text style={styles.metricLabel}>Commission</Text>

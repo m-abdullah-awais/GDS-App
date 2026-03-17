@@ -460,72 +460,114 @@ export const approvePendingPackage = async (packageId: string): Promise<void> =>
   if (!snap.exists) {throw new Error('Pending package not found');}
   const data = snap.data()! as Record<string, any>;
 
-  // Calculate commission fields (matches web AdminPackageManagement)
-  const commissionRate = data.commissionRate ?? 20; // default 20%
+  // Calculate commission fields (matches web AdminPendingPackages)
+  const commissionRate = data.commissionRate ?? data.commission_percent ?? 0;
   const price = data.price ?? 0;
   const commissionAmount = (price * commissionRate) / 100;
-  const instructorEarnings = price - commissionAmount;
+  const finalPrice = price + commissionAmount;
 
-  // Update the pending package status
-  await updateDoc(doc(collection(db, Collections.PENDING_PACKAGES), packageId), {
-    status: 'approved',
-    approvedAt: serverTimestamp(),
-  });
+  // Fetch instructor name (matches web approach)
+  let instructorName = data.instructorName || '';
+  if (!instructorName) {
+    try {
+      const instructorSnap = await getDoc(doc(collection(db, Collections.USERS), data.instructorId));
+      if (instructorSnap.exists) {
+        const instructorData = instructorSnap.data() as Record<string, any>;
+        instructorName = instructorData?.full_name || instructorData?.name || instructorData?.fullName || '';
+      }
+    } catch (_) {
+      // Use empty string if fetch fails
+    }
+  }
 
   // If editing existing, update availablePackages
-  if (data.availablePackageId) {
-    await updateDoc(doc(collection(db, Collections.AVAILABLE_PACKAGES), data.availablePackageId), {
-      title: data.title,
-      description: data.description,
-      number_of_lessons: data.number_of_lessons,
-      price: data.price,
-      commission_rate: commissionRate,
-      commission_amount: commissionAmount,
-      instructor_earnings: instructorEarnings,
-      status: 'approved',
-      updatedAt: serverTimestamp(),
-    });
-  } else {
-    // New package → create in availablePackages
-    const availRef = await addDoc(collection(db, Collections.AVAILABLE_PACKAGES), {
-      instructorId: data.instructorId,
-      instructor_id: data.instructorId || data.instructor_id || '',
-      instructorName: data.instructorName || '',
-      title: data.title,
-      description: data.description,
-      number_of_lessons: data.number_of_lessons,
-      price: data.price,
-      commission_rate: commissionRate,
-      commission_amount: commissionAmount,
-      instructor_earnings: instructorEarnings,
-      status: 'approved',
-      available: true,
-      approvedAt: serverTimestamp(),
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+  if (data.type === 'edit' && data.availablePackageId) {
+    try {
+      const availRef = doc(collection(db, Collections.AVAILABLE_PACKAGES), data.availablePackageId);
+      const availSnap = await getDoc(availRef);
 
-    // Also create in `packages` collection (matches web)
+      if (availSnap.exists) {
+        await updateDoc(availRef, {
+          title: instructorName ? `${instructorName} - ${data.title}` : data.title,
+          description: data.description,
+          number_of_lessons: data.number_of_lessons,
+          price: finalPrice,
+          originalPrice: data.price,
+          commission_percent: commissionRate,
+          commission_amount: commissionAmount,
+          status: 'approved',
+          available: true,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        // Document doesn't exist, create new one
+        await addDoc(collection(db, Collections.AVAILABLE_PACKAGES), {
+          instructorId: data.instructorId,
+          instructorName: instructorName,
+          title: instructorName ? `${instructorName} - ${data.title}` : data.title,
+          description: data.description,
+          number_of_lessons: data.number_of_lessons,
+          price: finalPrice,
+          originalPrice: data.price,
+          commission_percent: commissionRate,
+          commission_amount: commissionAmount,
+          approvedAt: serverTimestamp(),
+          status: 'approved',
+          available: true,
+        });
+      }
+    } catch (_) {
+      // Fallback: create new available package
+      await addDoc(collection(db, Collections.AVAILABLE_PACKAGES), {
+        instructorId: data.instructorId,
+        instructorName: instructorName,
+        title: instructorName ? `${instructorName} - ${data.title}` : data.title,
+        description: data.description,
+        number_of_lessons: data.number_of_lessons,
+        price: finalPrice,
+        originalPrice: data.price,
+        commission_percent: commissionRate,
+        commission_amount: commissionAmount,
+        approvedAt: serverTimestamp(),
+        status: 'approved',
+        available: true,
+      });
+    }
+  } else {
+    // New package approval flow (matches web AdminPendingPackages)
+    // Create in packages collection (admin reference)
     await addDoc(collection(db, Collections.PACKAGES), {
       instructorId: data.instructorId,
-      instructor_id: data.instructorId || data.instructor_id || '',
-      instructorName: data.instructorName || '',
+      instructorName: instructorName,
       title: data.title,
       description: data.description,
       number_of_lessons: data.number_of_lessons,
       price: data.price,
-      commission_rate: commissionRate,
+      commission_percent: commissionRate,
       commission_amount: commissionAmount,
-      instructor_earnings: instructorEarnings,
-      availablePackageId: availRef.id,
+      finalPrice: finalPrice,
+      approvedAt: serverTimestamp(),
+      status: 'approved',
+    });
+
+    // Create in availablePackages collection (student-facing)
+    await addDoc(collection(db, Collections.AVAILABLE_PACKAGES), {
+      instructorId: data.instructorId,
+      instructorName: instructorName,
+      title: instructorName ? `${instructorName} - ${data.title}` : data.title,
+      description: data.description,
+      number_of_lessons: data.number_of_lessons,
+      price: finalPrice,
+      originalPrice: data.price,
+      commission_percent: commissionRate,
+      commission_amount: commissionAmount,
+      approvedAt: serverTimestamp(),
       status: 'approved',
       available: true,
-      approvedAt: serverTimestamp(),
-      createdAt: serverTimestamp(),
     });
   }
 
-  // Delete the processed pending package (matches web flow)
+  // Delete the pending package (matches web — web only uses deleteDoc, never updateDoc)
   await deleteDoc(doc(collection(db, Collections.PENDING_PACKAGES), packageId));
 };
 
@@ -534,13 +576,11 @@ export const approvePendingPackage = async (packageId: string): Promise<void> =>
  */
 export const rejectPendingPackage = async (
   packageId: string,
-  reason?: string,
+  _reason?: string,
 ): Promise<void> => {
-  await updateDoc(doc(collection(db, Collections.PENDING_PACKAGES), packageId), {
-    status: 'rejected',
-    rejectionReason: reason || '',
-    rejectedAt: serverTimestamp(),
-  });
+  // Web uses deleteDoc for rejection (no update permission on pendingPackages).
+  // Firestore rules only grant admins read + delete on pendingPackages, not update.
+  await deleteDoc(doc(collection(db, Collections.PENDING_PACKAGES), packageId));
 };
 
 /**

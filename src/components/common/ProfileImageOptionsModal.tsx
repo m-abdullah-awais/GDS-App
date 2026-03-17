@@ -7,7 +7,6 @@ import type { AppTheme } from '../../constants/theme';
 interface ProfileImageOptionsModalProps {
   visible: boolean;
   onClose: () => void;
-  onTakePhoto: () => void;
   onChooseFromGallery: () => void;
   onRemovePhoto?: () => void;
 }
@@ -15,7 +14,6 @@ interface ProfileImageOptionsModalProps {
 const ProfileImageOptionsModal: React.FC<ProfileImageOptionsModalProps> = ({
   visible,
   onClose,
-  onTakePhoto,
   onChooseFromGallery,
   onRemovePhoto,
 }) => {
@@ -32,18 +30,13 @@ const ProfileImageOptionsModal: React.FC<ProfileImageOptionsModalProps> = ({
       <View style={styles.overlay}>
         <Pressable style={styles.overlayBg} onPress={onClose} />
         <View style={styles.card}>
-          <View style={[styles.iconCircle, { backgroundColor: theme.colors.primaryLight }]}> 
-            <Ionicons name="camera-outline" size={26} color={theme.colors.primary} />
+          <View style={[styles.iconCircle, { backgroundColor: theme.colors.primaryLight }]}>
+            <Ionicons name="images-outline" size={26} color={theme.colors.primary} />
           </View>
           <Text style={styles.title}>Profile Picture</Text>
           <Text style={styles.message}>Choose an option</Text>
 
           <View style={styles.optionList}>
-            <Pressable style={styles.optionBtn} onPress={onTakePhoto}>
-              <Ionicons name="camera" size={16} color={theme.colors.textPrimary} />
-              <Text style={styles.optionText}>Take Photo</Text>
-            </Pressable>
-
             <Pressable style={styles.optionBtn} onPress={onChooseFromGallery}>
               <Ionicons name="images-outline" size={16} color={theme.colors.textPrimary} />
               <Text style={styles.optionText}>Choose from Gallery</Text>

@@ -134,7 +134,7 @@ const InstructorProfileScreen = () => {
   const [profile, setProfile] = useState<ProfileData>(initial);
   const [draft, setDraft] = useState<ProfileData>(initial);
   const [editing, setEditing] = useState(false);
-  const { profileImage, imageOptionsVisible, setImageOptionsVisible, uploading, openPicker, takePhoto, chooseFromGallery, removePhoto } = useProfileImage(authProfile?.uid, authProfile?.profile_picture_url || null);
+  const { profileImage, imageOptionsVisible, setImageOptionsVisible, uploading, openPicker, chooseFromGallery, removePhoto } = useProfileImage(authProfile?.uid, authProfile?.profile_picture_url || null);
 
   // Notification toggles
   const [notifLessons, setNotifLessons] = useState(true);
@@ -569,7 +569,6 @@ const InstructorProfileScreen = () => {
       <ProfileImageOptionsModal
         visible={imageOptionsVisible}
         onClose={() => setImageOptionsVisible(false)}
-        onTakePhoto={takePhoto}
         onChooseFromGallery={chooseFromGallery}
         onRemovePhoto={profileImage ? removePhoto : undefined}
       />

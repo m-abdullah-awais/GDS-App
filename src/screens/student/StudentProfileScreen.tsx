@@ -98,7 +98,7 @@ const StudentProfileScreen = () => {
   const [profile, setProfile] = useState<ProfileData>(INITIAL_PROFILE);
   const [draft, setDraft] = useState<ProfileData>(INITIAL_PROFILE);
   const [editing, setEditing] = useState(false);
-  const { profileImage, imageOptionsVisible, setImageOptionsVisible, uploading, openPicker, takePhoto, chooseFromGallery, removePhoto } = useProfileImage(authProfile?.uid, (authProfile as any)?.photoURL || authProfile?.profile_picture_url || null);
+  const { profileImage, imageOptionsVisible, setImageOptionsVisible, uploading, openPicker, chooseFromGallery, removePhoto } = useProfileImage(authProfile?.uid, (authProfile as any)?.photoURL || authProfile?.profile_picture_url || null);
 
   // Load profile from auth state
   useEffect(() => {
@@ -396,7 +396,6 @@ const StudentProfileScreen = () => {
       <ProfileImageOptionsModal
         visible={imageOptionsVisible}
         onClose={() => setImageOptionsVisible(false)}
-        onTakePhoto={takePhoto}
         onChooseFromGallery={chooseFromGallery}
         onRemovePhoto={profileImage ? removePhoto : undefined}
       />

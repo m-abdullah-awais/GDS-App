@@ -116,7 +116,7 @@ const AdminProfileScreen = () => {
   const [profile, setProfile] = useState<ProfileData>(profileFromAuth);
   const [draft, setDraft] = useState<ProfileData>(profileFromAuth);
   const [editing, setEditing] = useState(false);
-  const { profileImage, imageOptionsVisible, setImageOptionsVisible, uploading, openPicker, takePhoto, chooseFromGallery, removePhoto } = useProfileImage(authProfile?.uid, authProfile?.profile_picture_url || authProfile?.profileImage || null);
+  const { profileImage, imageOptionsVisible, setImageOptionsVisible, uploading, openPicker, chooseFromGallery, removePhoto } = useProfileImage(authProfile?.uid, authProfile?.profile_picture_url || authProfile?.profileImage || null);
   const [notifSystem, setNotifSystem] = useState(true);
   const [notifEmails, setNotifEmails] = useState(true);
 
@@ -376,7 +376,6 @@ const AdminProfileScreen = () => {
         <ProfileImageOptionsModal
           visible={imageOptionsVisible}
           onClose={() => setImageOptionsVisible(false)}
-          onTakePhoto={takePhoto}
           onChooseFromGallery={chooseFromGallery}
           onRemovePhoto={profileImage ? removePhoto : undefined}
         />

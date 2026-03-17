@@ -145,11 +145,19 @@ export const completeInstructorProfile = async (
  */
 export const uploadProfileImage = async (
   uid: string,
-  imageUri: string,
+  base64Data: string,
 ): Promise<string> => {
-  const ref = firebaseStorage.ref(`profileImages/${uid}`);
-  await ref.putFile(imageUri);
-  const downloadUrl = await ref.getDownloadURL();
+  const storageRef = firebaseStorage.ref(`profileImages/${uid}`);
+  const task = storageRef.putString(base64Data, 'base64', { contentType: 'image/jpeg' });
+  await new Promise<void>((resolve, reject) => {
+    task.on(
+      'state_changed',
+      null,
+      (error: Error) => reject(error),
+      () => resolve(),
+    );
+  });
+  const downloadUrl = await storageRef.getDownloadURL();
   await updateDoc(doc(collection(db, Collections.USERS), uid), {
     profileImage: downloadUrl,
     profile_picture_url: downloadUrl,

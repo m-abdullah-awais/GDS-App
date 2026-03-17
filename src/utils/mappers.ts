@@ -586,9 +586,15 @@ export const mapPackageToAdminPackage = (
   price: pkg.price || 0,
   commissionPercentage: ('commission_percent' in pkg ? (pkg as AvailablePackage).commission_percent : 0) || 0,
   status: (pkg.status === 'approved' ? 'approved' : pkg.status === 'rejected' ? 'rejected' : 'pending') as 'pending' | 'approved' | 'rejected',
-  createdAt: ('created_at' in pkg && pkg.created_at)
-    ? (typeof pkg.created_at === 'string' ? pkg.created_at : toISOString(pkg.created_at) || '')
-    : '',
+  createdAt: (() => {
+    const raw = ('created_at' in pkg && pkg.created_at)
+      ? pkg.created_at
+      : ('approvedAt' in pkg && pkg.approvedAt)
+        ? pkg.approvedAt
+        : null;
+    if (!raw) { return ''; }
+    return typeof raw === 'string' ? raw : toISOString(raw) || '';
+  })(),
 });
 
 /**

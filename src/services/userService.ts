@@ -74,12 +74,13 @@ export const getActiveInstructors = async (): Promise<UserDoc[]> => {
  * to prevent megabytes of data from flooding the JS thread and Redux state.
  */
 const stripHeavyFields = <T extends Record<string, any>>(doc: T): T => {
-  const copy = { ...doc };
+  const copy: Record<string, any> = { ...doc };
+  // Preserve existence flags for document URLs before stripping heavy data
+  if (copy.badge_url) { copy.badge_url = 'exists'; }
+  if (copy.insurance_url) { copy.insurance_url = 'exists'; }
   delete copy.profile_picture_url;
   delete copy.profileImage;
-  delete copy.badge_url;
-  delete copy.insurance_url;
-  return copy;
+  return copy as T;
 };
 
 /**

@@ -249,12 +249,12 @@ const AdminPackageApprovalScreen = () => {
               </View>
               <View style={styles.cardInfoCol}>
                 <Text style={styles.cardName} numberOfLines={1}>{pkg.title}</Text>
-                <Text style={styles.cardSub} numberOfLines={1}>{pkg.instructorName}</Text>
+                <Text style={styles.cardSub} numberOfLines={1}>{pkg.instructorName || 'N/A'}</Text>
               </View>
               <StatusBadge status={pkg.status} />
             </View>
 
-            <Text style={styles.cardDesc} numberOfLines={2}>{pkg.description}</Text>
+            <Text style={styles.cardDesc} numberOfLines={2}>{pkg.description || 'N/A'}</Text>
 
             <View style={styles.metricsRow}>
               <View style={styles.metric}>
@@ -262,7 +262,7 @@ const AdminPackageApprovalScreen = () => {
                 <Text style={styles.metricLabel}>Lessons</Text>
               </View>
               <View style={styles.metric}>
-                <Text style={styles.metricValue}>{'\u00A3'}{pkg.price}</Text>
+                <Text style={styles.metricValue}>{'\u00A3'}{pkg.price.toFixed(2)}</Text>
                 <Text style={styles.metricLabel}>Price</Text>
               </View>
               <View style={styles.metric}>
@@ -292,7 +292,7 @@ const AdminPackageApprovalScreen = () => {
                 <Text style={styles.metricLabel}>Commission</Text>
               </View>
               <View style={styles.metric}>
-                <Text style={styles.metricValue}>{pkg.createdAt}</Text>
+                <Text style={styles.metricValue}>{pkg.createdAt ? new Date(pkg.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}</Text>
                 <Text style={styles.metricLabel}>Created</Text>
               </View>
             </View>
@@ -354,15 +354,15 @@ const AdminPackageApprovalScreen = () => {
             </View>
 
             <SectionHeader title="Details" />
-            <DetailRow label="Description" value={selected.description} theme={theme} />
-            <DetailRow label="Instructor" value={selected.instructorName} theme={theme} />
+            <DetailRow label="Description" value={selected.description || 'N/A'} theme={theme} />
+            <DetailRow label="Instructor" value={selected.instructorName || 'N/A'} theme={theme} />
             <DetailRow label="Lessons" value={String(selected.lessonCount)} theme={theme} />
-            <DetailRow label="Price" value={`\u00A3${selected.price}`} theme={theme} />
+            <DetailRow label="Price" value={`\u00A3${selected.price.toFixed(2)}`} theme={theme} />
             <DetailRow label="Commission" value={`${selected.commissionPercentage}%`} theme={theme} />
-            <DetailRow label="Created" value={selected.createdAt} theme={theme} />
+            <DetailRow label="Created" value={selected.createdAt ? new Date(selected.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'} theme={theme} />
             <DetailRow
               label="Per-lesson Price"
-              value={`\u00A3${(selected.price / selected.lessonCount).toFixed(2)}`}
+              value={`\u00A3${(selected.lessonCount ? selected.price / selected.lessonCount : 0).toFixed(2)}`}
               theme={theme}
             />
             <DetailRow

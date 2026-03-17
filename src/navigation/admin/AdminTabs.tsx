@@ -18,7 +18,6 @@ import AdminStudentManagementScreen from '../../screens/admin/AdminStudentManage
 import AdminInstructorManagementScreen from '../../screens/admin/AdminInstructorManagementScreen';
 import AdminPaymentsScreen from '../../screens/admin/AdminPaymentsScreen';
 import AdminReportsScreen from '../../screens/admin/AdminReportsScreen';
-import AdminSettingsScreen from '../../screens/admin/AdminSettingsScreen';
 import AdminInstructorMessagesScreen from '../../screens/admin/AdminInstructorMessagesScreen';
 import AdminProfileScreen from '../../screens/admin/AdminProfileScreen';
 
@@ -32,7 +31,6 @@ export type AdminTabsParamList = {
   Messages: undefined;
   Payments: undefined;
   Reports: undefined;
-  Settings: undefined;
   Profile: undefined;
 };
 
@@ -183,15 +181,6 @@ const AdminTabs = () => {
         options={{
           drawerIcon: ({ color, size }) => (
             <Ionicons name="analytics-outline" size={size} color={color} style={{ marginRight: 6 }} />
-          ),
-        }}
-      />
-      <Drawer.Screen
-        name="Settings"
-        component={AdminSettingsScreen}
-        options={{
-          drawerIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} style={{ marginRight: 6 }} />
           ),
         }}
       />

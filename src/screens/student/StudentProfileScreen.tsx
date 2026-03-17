@@ -13,6 +13,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -30,6 +31,7 @@ import * as userService from '../../services/userService';
 import * as authService from '../../services/authService';
 import { useToast } from '../../components/admin';
 import { ProfileImageOptionsModal, useConfirmation } from '../../components/common';
+import { useProfileImage } from '../../hooks';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -96,8 +98,7 @@ const StudentProfileScreen = () => {
   const [profile, setProfile] = useState<ProfileData>(INITIAL_PROFILE);
   const [draft, setDraft] = useState<ProfileData>(INITIAL_PROFILE);
   const [editing, setEditing] = useState(false);
-  const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [imageOptionsVisible, setImageOptionsVisible] = useState(false);
+  const { profileImage, imageOptionsVisible, setImageOptionsVisible, uploading, openPicker, takePhoto, chooseFromGallery, removePhoto } = useProfileImage(authProfile?.uid, (authProfile as any)?.photoURL || authProfile?.profile_picture_url || null);
 
   // Load profile from auth state
   useEffect(() => {
@@ -111,7 +112,7 @@ const StudentProfileScreen = () => {
       };
       setProfile(loaded);
       setDraft(loaded);
-      setProfileImage((authProfile as any).photoURL || null);
+
     }
   }, [authProfile]);
 
@@ -187,9 +188,6 @@ const StudentProfileScreen = () => {
     }
   };
 
-  const handlePickImage = () => {
-    setImageOptionsVisible(true);
-  };
 
   const handleSignOut = async () => {
     const shouldSignOut = await confirm({
@@ -229,12 +227,10 @@ const StudentProfileScreen = () => {
       >
         {/* ── Hero ──────────────────────────────── */}
         <View style={styles.hero}>
-          <Pressable onPress={handlePickImage} style={styles.avatarWrap}>
+          <Pressable onPress={openPicker} style={styles.avatarWrap}>
             <View style={styles.avatarRing}>
               {profileImage ? (
-                <View style={styles.avatarCircle}>
-                  <Ionicons name="person" size={36} color={theme.colors.textInverse} />
-                </View>
+                <Image source={{ uri: profileImage }} style={styles.avatarCircle} />
               ) : (
                 <View style={styles.avatarCircle}>
                   <Text style={styles.avatarText}>{getInitials(displayName)}</Text>
@@ -400,20 +396,9 @@ const StudentProfileScreen = () => {
       <ProfileImageOptionsModal
         visible={imageOptionsVisible}
         onClose={() => setImageOptionsVisible(false)}
-        onTakePhoto={() => {
-          setProfileImage('camera_photo');
-          setImageOptionsVisible(false);
-        }}
-        onChooseFromGallery={() => {
-          setProfileImage('gallery_photo');
-          setImageOptionsVisible(false);
-        }}
-        onRemovePhoto={profileImage
-          ? () => {
-              setProfileImage(null);
-              setImageOptionsVisible(false);
-            }
-          : undefined}
+        onTakePhoto={takePhoto}
+        onChooseFromGallery={chooseFromGallery}
+        onRemovePhoto={profileImage ? removePhoto : undefined}
       />
     </ScreenContainer>
   );

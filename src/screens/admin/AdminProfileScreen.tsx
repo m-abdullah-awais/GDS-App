@@ -13,6 +13,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   InteractionManager,
   Pressable,
   ScrollView,
@@ -33,6 +34,7 @@ import { ProfileImageOptionsModal, useConfirmation } from '../../components/comm
 import * as authService from '../../services/authService';
 import * as userService from '../../services/userService';
 import { clearAuth } from '../../store/auth/authSlice';
+import { useProfileImage } from '../../hooks';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -114,8 +116,7 @@ const AdminProfileScreen = () => {
   const [profile, setProfile] = useState<ProfileData>(profileFromAuth);
   const [draft, setDraft] = useState<ProfileData>(profileFromAuth);
   const [editing, setEditing] = useState(false);
-  const [profileImage, setProfileImage] = useState<string | null>(authProfile?.profile_picture_url || authProfile?.profileImage || null);
-  const [imageOptionsVisible, setImageOptionsVisible] = useState(false);
+  const { profileImage, imageOptionsVisible, setImageOptionsVisible, uploading, openPicker, takePhoto, chooseFromGallery, removePhoto } = useProfileImage(authProfile?.uid, authProfile?.profile_picture_url || authProfile?.profileImage || null);
   const [notifSystem, setNotifSystem] = useState(true);
   const [notifEmails, setNotifEmails] = useState(true);
 
@@ -170,10 +171,6 @@ const AdminProfileScreen = () => {
     }
   };
 
-  const handlePickImage = () => {
-    setImageOptionsVisible(true);
-  };
-
   const handleSignOut = async () => {
     const shouldSignOut = await confirm({
       title: 'Sign Out',
@@ -218,12 +215,10 @@ const AdminProfileScreen = () => {
       >
         {/* ── Hero ──────────────────────────────── */}
         <View style={styles.hero}>
-          <Pressable onPress={handlePickImage} style={styles.avatarWrap}>
+          <Pressable onPress={openPicker} style={styles.avatarWrap}>
             <View style={styles.avatarRing}>
               {profileImage ? (
-                <View style={styles.avatarCircle}>
-                  <Ionicons name="person" size={36} color={theme.colors.textInverse} />
-                </View>
+                <Image source={{ uri: profileImage }} style={styles.avatarCircle} />
               ) : (
                 <View style={styles.avatarCircle}>
                   <Text style={styles.avatarText}>{getInitials(displayName)}</Text>
@@ -381,20 +376,9 @@ const AdminProfileScreen = () => {
         <ProfileImageOptionsModal
           visible={imageOptionsVisible}
           onClose={() => setImageOptionsVisible(false)}
-          onTakePhoto={() => {
-            setProfileImage('camera_photo');
-            setImageOptionsVisible(false);
-          }}
-          onChooseFromGallery={() => {
-            setProfileImage('gallery_photo');
-            setImageOptionsVisible(false);
-          }}
-          onRemovePhoto={profileImage
-            ? () => {
-                setProfileImage(null);
-                setImageOptionsVisible(false);
-              }
-            : undefined}
+          onTakePhoto={takePhoto}
+          onChooseFromGallery={chooseFromGallery}
+          onRemovePhoto={profileImage ? removePhoto : undefined}
         />
     </ScreenContainer>
   );

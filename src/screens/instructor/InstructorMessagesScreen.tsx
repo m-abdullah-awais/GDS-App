@@ -22,42 +22,13 @@ import type { InstructorStackParamList } from '../../navigation/instructor/Instr
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
+import Avatar from '../../components/Avatar';
 import type { InstructorConversation } from '../../types/instructor-views';
 import { useSelector } from 'react-redux';
 import * as messageService from '../../services/messageService';
 import { mapMessagesToConversations } from '../../utils/mappers';
 
 type Nav = NativeStackNavigationProp<InstructorStackParamList>;
-
-// ─── Avatar ───────────────────────────────────────────────────────────────────
-
-const Avatar = ({
-  initials,
-  size = 48,
-  theme,
-}: {
-  initials: string;
-  size?: number;
-  theme: AppTheme;
-}) => (
-  <View
-    style={{
-      width: size,
-      height: size,
-      borderRadius: size / 2,
-      backgroundColor: theme.colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-    <Text
-      style={[
-        theme.typography.buttonSmall,
-        { color: theme.colors.textInverse, fontSize: size * 0.36 },
-      ]}>
-      {initials}
-    </Text>
-  </View>
-);
 
 // ─── Conversation Row ─────────────────────────────────────────────────────────
 
@@ -78,16 +49,16 @@ const ConversationRow = ({
       style={({ pressed }) => [s.row, pressed && s.rowPressed]}
       onPress={onPress}>
       <Avatar
-        initials={conversation.studentAvatar}
+        initials={(conversation as any).instructorAvatar || conversation.studentAvatar}
+        name={(conversation as any).instructorName || conversation.studentName}
         size={48}
-        theme={theme}
       />
       <View style={s.content}>
         <View style={s.topRow}>
           <Text
             style={[s.name, hasUnread && s.nameBold]}
             numberOfLines={1}>
-            {conversation.studentName}
+            {(conversation as any).instructorName || conversation.studentName}
           </Text>
           <Text style={[s.time, hasUnread && s.timeBold]}>
             {conversation.timestamp}

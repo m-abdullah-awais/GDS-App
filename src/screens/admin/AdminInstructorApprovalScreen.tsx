@@ -162,7 +162,7 @@ const AdminInstructorApprovalScreen = () => {
             activeOpacity={0.7}
             onPress={() => openDrawer(inst)}>
             <View style={styles.cardHeader}>
-              <Avatar initials={inst.avatar} size={40} theme={theme} />
+              <Avatar initials={inst.avatar} name={inst.name} size={40} theme={theme} />
               <View style={styles.cardInfo}>
                 <Text style={styles.cardName}>{inst.name}</Text>
                 <Text style={styles.cardSub}>{inst.email}</Text>
@@ -178,6 +178,11 @@ const AdminInstructorApprovalScreen = () => {
                 </View>
               </View>
               <StatusBadge status={inst.approvalStatus} />
+            </View>
+
+            <View style={styles.tapHint}>
+              <Ionicons name="eye-outline" size={14} color={theme.colors.textTertiary} />
+              <Text style={styles.tapHintText}>Tap to view details</Text>
             </View>
 
             {/* Documents summary */}
@@ -244,7 +249,7 @@ const AdminInstructorApprovalScreen = () => {
         {selected && (
           <View style={styles.drawerContent}>
             <View style={styles.drawerAvatar}>
-              <Avatar initials={selected.avatar} size={64} theme={theme} />
+              <Avatar initials={selected.avatar} name={selected.name} size={64} theme={theme} />
               <Text style={styles.drawerName}>{selected.name}</Text>
               <StatusBadge status={selected.approvalStatus} />
             </View>
@@ -405,6 +410,18 @@ const createStyles = (theme: AppTheme) =>
       ...theme.typography.caption,
       fontWeight: '600',
       fontSize: 10,
+    },
+    tapHint: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: 4,
+      marginTop: theme.spacing.xs,
+    },
+    tapHintText: {
+      ...theme.typography.caption,
+      color: theme.colors.textTertiary,
+      fontSize: 11,
     },
     cardActions: {
       flexDirection: 'row',

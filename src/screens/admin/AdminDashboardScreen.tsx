@@ -42,8 +42,14 @@ const AdminDashboardScreen = () => {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const task = InteractionManager.runAfterInteractions(() => {
-      dispatch(loadAdminDashboard() as any);
+    const task = InteractionManager.runAfterInteractions(async () => {
+      try {
+        await (dispatch as any)(loadAdminDashboard());
+      } catch (_e) {
+        // thunk handles its own errors
+      }
+      // Only show the UI after data has loaded, so we don't trigger
+      // a heavy re-render mid-animation
       requestAnimationFrame(() => setReady(true));
     });
     return () => task.cancel();
@@ -199,7 +205,7 @@ const AdminDashboardScreen = () => {
           {recentStudents.map(student => (
             <View key={student.id} style={styles.listCard}>
               <View style={styles.listCardRow}>
-                <Avatar initials={student.avatar} size={36} theme={theme} />
+                <Avatar initials={student.avatar} name={student.name} size={36} theme={theme} />
                 <View style={styles.listCardInfo}>
                   <Text style={styles.listCardName} numberOfLines={1}>{student.name}</Text>
                   <Text style={styles.listCardSub} numberOfLines={1}>{student.city}</Text>
@@ -224,7 +230,7 @@ const AdminDashboardScreen = () => {
           {recentInstructors.map(inst => (
             <View key={inst.id} style={styles.listCard}>
               <View style={styles.listCardRow}>
-                <Avatar initials={inst.avatar} size={36} theme={theme} />
+                <Avatar initials={inst.avatar} name={inst.name} size={36} theme={theme} />
                 <View style={styles.listCardInfo}>
                   <Text style={styles.listCardName} numberOfLines={1}>{inst.name}</Text>
                   <Text style={styles.listCardSub} numberOfLines={1}>{inst.city}</Text>

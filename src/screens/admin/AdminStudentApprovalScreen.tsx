@@ -173,7 +173,7 @@ const AdminStudentApprovalScreen = () => {
             activeOpacity={0.7}
             onPress={() => openDrawer(student)}>
             <View style={styles.cardHeader}>
-              <Avatar initials={student.avatar} size={40} theme={theme} />
+              <Avatar initials={student.avatar} name={student.name} size={40} theme={theme} />
               <View style={styles.cardInfo}>
                 <Text style={styles.cardName}>{student.name}</Text>
                 <Text style={styles.cardSub}>{student.email}</Text>
@@ -182,6 +182,11 @@ const AdminStudentApprovalScreen = () => {
                 </Text>
               </View>
               <StatusBadge status={student.approvalStatus} />
+            </View>
+
+            <View style={styles.tapHint}>
+              <Ionicons name="eye-outline" size={14} color={theme.colors.textTertiary} />
+              <Text style={styles.tapHintText}>Tap to view details</Text>
             </View>
 
             {student.approvalStatus === 'pending' && (
@@ -233,6 +238,7 @@ const AdminStudentApprovalScreen = () => {
             <View style={styles.drawerAvatar}>
               <Avatar
                 initials={selectedStudent.avatar}
+                name={selectedStudent.name}
                 size={64}
                 theme={theme}
               />
@@ -357,6 +363,18 @@ const createStyles = (theme: AppTheme) =>
       ...theme.typography.caption,
       color: theme.colors.textTertiary,
       marginTop: 2,
+    },
+    tapHint: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: 4,
+      marginTop: theme.spacing.xs,
+    },
+    tapHintText: {
+      ...theme.typography.caption,
+      color: theme.colors.textTertiary,
+      fontSize: 11,
     },
     cardActions: {
       flexDirection: 'row',

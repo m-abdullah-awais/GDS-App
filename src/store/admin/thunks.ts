@@ -46,6 +46,7 @@ import {
   mapTransactionToAdminTransaction,
   mapMessagesToConversations,
   buildDashboardStats,
+  formatMessageDate,
 } from '../../utils/mappers';
 
 import type { AdminSettings } from './types';
@@ -66,16 +67,16 @@ export const loadAdminDashboard = () => async (dispatch: Dispatch) => {
     // Split into two batches to reduce peak bridge pressure:
     // each batch deserializes ~30 docs instead of ~60 at once.
     const [allUsersStudents, allUsersInstructors] = await Promise.all([
-      userService.getUsersByRole('student', 15),
-      userService.getUsersByRole('instructor', 15),
+      userService.getUsersByRole('student', 8),
+      userService.getUsersByRole('instructor', 8),
     ]);
 
     // Yield so the UI thread stays responsive between fetches
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     const [transactions, pkgs] = await Promise.all([
-      adminService.getAllTransactions(15),
-      adminService.getAllPackagesForAdmin(15),
+      adminService.getAllTransactions(8),
+      adminService.getAllPackagesForAdmin(8),
     ]);
 
     // Yield again before the CPU-bound mapping step
@@ -360,17 +361,23 @@ export const loadConversationMessages = (
 ) => async (dispatch: Dispatch) => {
   try {
     const messages = await messageService.getConversation(userId1, userId2);
-    const mapped = messages.map(m => ({
-      id: m.id,
-      conversationId: `${m.senderId}-${m.recipientId || m.recipient_id || ''}`,
-      senderId: m.senderId || m.sender_id || '',
-      senderType: (m.senderRole === 'admin' ? 'admin' : 'instructor') as 'admin' | 'instructor',
-      text: m.content || m.text || '',
-      timestamp: m.createdAt
-        ? new Date(m.createdAt as any).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        : '',
-      seen: m.read ?? false,
-    }));
+    const mapped = messages.map(m => {
+      const senderId = m.sender_id || (m as any).senderId || '';
+      const senderRole = m.sender_role || (m as any).senderRole || '';
+      // conversationId must match the other user's ID (used as conversation key)
+      const otherUserId = senderId === userId1 ? userId2 : userId1;
+      return {
+        id: m.id,
+        conversationId: otherUserId,
+        senderId,
+        senderType: (senderRole === 'admin' ? 'admin' : 'instructor') as 'admin' | 'instructor',
+        text: m.content || (m as any).text || '',
+        timestamp: m.createdAt
+          ? formatMessageDate(m.createdAt)
+          : '',
+        seen: m.read ?? false,
+      };
+    });
     dispatch(setMessages(mapped));
   } catch (error) {
     if (__DEV__) console.error('Failed to load conversation messages:', error);
@@ -408,9 +415,13 @@ export const sendAdminMessageThunk = (
  */
 export const subscribeToAllUsers = () => (dispatch: Dispatch) => {
   return adminService.onAllUsers((users) => {
-    const students = users.filter(u => u.role === 'student').map(mapUserToAdminStudent);
-    const instructors = users.filter(u => u.role === 'instructor').map(mapUserToAdminInstructor);
-    dispatch(setStudents(students));
-    dispatch(setAdminInstructors(instructors));
+    // Use requestAnimationFrame to batch these two dispatches into
+    // a single React render cycle, preventing cascading re-renders.
+    requestAnimationFrame(() => {
+      const students = users.filter(u => u.role === 'student').map(mapUserToAdminStudent);
+      const instructors = users.filter(u => u.role === 'instructor').map(mapUserToAdminInstructor);
+      dispatch(setStudents(students));
+      dispatch(setAdminInstructors(instructors));
+    });
   });
 };

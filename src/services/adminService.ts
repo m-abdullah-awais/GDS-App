@@ -303,15 +303,29 @@ export const getAllPayouts = async (
  * Subscribe to all users for admin dashboard.
  * Removed orderBy to avoid index issues; sorted in memory in the callback.
  */
+/**
+ * Strip heavy base64 fields to prevent megabytes of image data
+ * from flooding the JS thread and Redux state.
+ */
+const stripHeavyFields = <T extends Record<string, any>>(doc: T): T => {
+  const copy = { ...doc };
+  delete copy.profile_picture_url;
+  delete copy.profileImage;
+  delete copy.badge_url;
+  delete copy.insurance_url;
+  return copy;
+};
+
 export const onAllUsers = (
   callback: (users: UserProfile[]) => void,
 ): (() => void) => {
   return onSnapshot(
     query(
       collection(db, Collections.USERS),
+      limit(50),
     ),
     (snap) => {
-      const users = fromQuerySnapshot<UserProfile>(snap);
+      const users = fromQuerySnapshot<UserProfile>(snap).map(stripHeavyFields);
       // Sort in memory to avoid index requirement
       users.sort((a, b) => {
         const toMillis = (val: any): number => {

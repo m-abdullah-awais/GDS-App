@@ -196,7 +196,7 @@ const AdminStudentManagementScreen = () => {
               setDrawerOpen(true);
             }}>
             <View style={styles.cardTop}>
-              <Avatar initials={student.avatar} size={40} theme={theme} />
+              <Avatar initials={student.avatar} name={student.name} size={40} theme={theme} />
               <View style={styles.cardInfo}>
                 <Text style={styles.cardName}>{student.name}</Text>
                 <Text style={styles.cardSub}>{student.email}</Text>
@@ -221,6 +221,11 @@ const AdminStudentManagementScreen = () => {
                 <Text style={styles.statValue}>{student.rating}</Text>
                 <Text style={styles.statLabel}>Rating</Text>
               </View>
+            </View>
+
+            <View style={styles.tapHint}>
+              <Ionicons name="eye-outline" size={14} color={theme.colors.textTertiary} />
+              <Text style={styles.tapHintText}>Tap to view details</Text>
             </View>
 
             <View style={styles.cardActions}>
@@ -277,7 +282,7 @@ const AdminStudentManagementScreen = () => {
         {selected && (
           <View style={styles.drawerContent}>
             <View style={styles.drawerAvatar}>
-              <Avatar initials={selected.avatar} size={64} theme={theme} />
+              <Avatar initials={selected.avatar} name={selected.name} size={64} theme={theme} />
               <Text style={styles.drawerName}>{selected.name}</Text>
               <StatusBadge status={selected.accountStatus} />
             </View>
@@ -387,6 +392,18 @@ const createStyles = (theme: AppTheme) =>
     statLabel: {
       ...theme.typography.caption,
       color: theme.colors.textTertiary,
+    },
+    tapHint: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: 4,
+      marginTop: theme.spacing.xs,
+    },
+    tapHintText: {
+      ...theme.typography.caption,
+      color: theme.colors.textTertiary,
+      fontSize: 11,
     },
     cardActions: {
       flexDirection: 'row',

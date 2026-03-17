@@ -62,8 +62,6 @@ const AdminTabs = () => {
     }
   }, [confirm, dispatch]);
 
-  // Memoize drawerContent so React Navigation doesn't re-mount it on every
-  // AdminTabs re-render (which happens on every drawer toggle / nav state change).
   const renderDrawerContent = useCallback(
     (props: DrawerContentComponentProps) => (
       <CustomDrawerContent
@@ -77,14 +75,13 @@ const AdminTabs = () => {
     [userName, userEmail, handleLogout],
   );
 
-  // Stable screenOptions object — rebuilt only when theme changes.
   const screenOptions = useMemo(
     () => ({
       header: ({ navigation, route, options }: any) => (
         <AppTopHeader
           title={options.title ?? route.name}
           subtitle="Admin Console"
-          avatarText="Admin"
+          avatarText={userName}
           leftAction="menu"
           onLeftPress={() => navigation.openDrawer()}
         />
@@ -101,7 +98,7 @@ const AdminTabs = () => {
       lazy: true,
       freezeOnBlur: true,
     }),
-    [theme],
+    [theme, userName],
   );
 
   return (
@@ -169,7 +166,6 @@ const AdminTabs = () => {
           drawerIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles-outline" size={size} color={color} style={{ marginRight: 6 }} />
           ),
-        //   headerShown: false,
         }}
       />
       <Drawer.Screen
@@ -203,7 +199,6 @@ const AdminTabs = () => {
         name="Profile"
         component={AdminProfileScreen}
         options={{
-        //   headerShown: false,
           drawerIcon: ({ color, size }) => (
             <Ionicons name="person-circle-outline" size={size} color={color} style={{ marginRight: 6 }} />
           ),

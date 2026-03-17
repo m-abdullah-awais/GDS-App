@@ -70,6 +70,19 @@ export const getActiveInstructors = async (): Promise<UserDoc[]> => {
 };
 
 /**
+ * Strip heavy base64 fields (profile images, badge/insurance scans)
+ * to prevent megabytes of data from flooding the JS thread and Redux state.
+ */
+const stripHeavyFields = <T extends Record<string, any>>(doc: T): T => {
+  const copy = { ...doc };
+  delete copy.profile_picture_url;
+  delete copy.profileImage;
+  delete copy.badge_url;
+  delete copy.insurance_url;
+  return copy;
+};
+
+/**
  * Query users by role.
  */
 export const getUsersByRole = async (role: string, limitCount?: number): Promise<UserDoc[]> => {
@@ -78,7 +91,7 @@ export const getUsersByRole = async (role: string, limitCount?: number): Promise
     : [where('role', '==', role)];
   const q = query(collection(db, Collections.USERS), ...constraints);
   const snapshot = await getDocs(q);
-  return fromQuerySnapshot<UserDoc>(snapshot);
+  return fromQuerySnapshot<UserDoc>(snapshot).map(stripHeavyFields);
 };
 
 /**

@@ -49,6 +49,58 @@ export const toISOString = (
   return d ? d.toISOString() : null;
 };
 
+/**
+ * Format a timestamp into a user-friendly date string for message screens.
+ * - Today: "10:30 AM"
+ * - Yesterday: "Yesterday"
+ * - This week: "Mon", "Tue", etc.
+ * - This year: "12 Mar"
+ * - Older: "12 Mar 2025"
+ */
+export const formatMessageDate = (
+  value: FirebaseFirestoreTypes.Timestamp | Date | string | undefined | null,
+): string => {
+  const d = toDate(value);
+  if (!d) return '';
+
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  // Today: show time
+  if (
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear()
+  ) {
+    return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Yesterday
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (
+    d.getDate() === yesterday.getDate() &&
+    d.getMonth() === yesterday.getMonth() &&
+    d.getFullYear() === yesterday.getFullYear()
+  ) {
+    return 'Yesterday';
+  }
+
+  // Within last 7 days: show day name
+  if (diffDays < 7) {
+    return d.toLocaleDateString('en-GB', { weekday: 'short' });
+  }
+
+  // Same year: "12 Mar"
+  if (d.getFullYear() === now.getFullYear()) {
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  }
+
+  // Older: "12 Mar 2025"
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
 /** Get Firestore server timestamp sentinel. */
 export const serverTimestamp = () => firestoreServerTimestamp();
 
@@ -594,7 +646,7 @@ export const mapMessagesToConversations = (
       instructorName: data.otherUser.name,
       instructorAvatar: data.otherUser.avatar,
       lastMessage: latest?.content || '',
-      timestamp: latest?.createdAt ? toISOString(latest.createdAt) || '' : '',
+      timestamp: latest?.createdAt ? formatMessageDate(latest.createdAt) : '',
       unreadCount,
       status: unreadCount > 0 ? 'unread' as const : 'read' as const,
     };

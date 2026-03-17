@@ -224,7 +224,7 @@ const AdminInstructorManagementScreen = () => {
               setDrawerOpen(true);
             }}>
             <View style={styles.cardTop}>
-              <Avatar initials={inst.avatar} size={40} theme={theme} />
+              <Avatar initials={inst.avatar} name={inst.name} size={40} theme={theme} />
               <View style={styles.cardInfoCol}>
                 <Text style={styles.cardName}>{inst.name}</Text>
                 <Text style={styles.cardSub}>{inst.city} | {inst.experience}</Text>
@@ -251,6 +251,11 @@ const AdminInstructorManagementScreen = () => {
                 </Text>
                 <Text style={styles.metricLabel}>Pending</Text>
               </View>
+            </View>
+
+            <View style={styles.tapHint}>
+              <Ionicons name="eye-outline" size={14} color={theme.colors.textTertiary} />
+              <Text style={styles.tapHintText}>Tap to view details</Text>
             </View>
 
             <View style={styles.cardActions}>
@@ -309,7 +314,7 @@ const AdminInstructorManagementScreen = () => {
         {selected && (
           <View style={styles.drawerBody}>
             <View style={styles.drawerAvatar}>
-              <Avatar initials={selected.avatar} size={64} theme={theme} />
+              <Avatar initials={selected.avatar} name={selected.name} size={64} theme={theme} />
               <Text style={styles.drawerName}>{selected.name}</Text>
               <StatusBadge status={selected.accountStatus} />
             </View>
@@ -404,6 +409,18 @@ const createStyles = (theme: AppTheme) =>
     metric: { alignItems: 'center' },
     metricValue: { ...theme.typography.bodySmall, fontWeight: '700', color: theme.colors.textPrimary },
     metricLabel: { ...theme.typography.caption, color: theme.colors.textTertiary, marginTop: 2 },
+    tapHint: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: 4,
+      marginTop: theme.spacing.xs,
+    },
+    tapHintText: {
+      ...theme.typography.caption,
+      color: theme.colors.textTertiary,
+      fontSize: 11,
+    },
     cardActions: {
       flexDirection: 'row',
       gap: theme.spacing.sm,

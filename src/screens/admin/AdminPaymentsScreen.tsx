@@ -103,7 +103,7 @@ const AdminPaymentsScreen = () => {
   }, [dispatch, showToast]);
 
   const txnListHeader = useMemo(() => (
-    <View style={styles.headerPad}>
+    <View>
       <SectionHeader title="Revenue Summary" />
       <View style={styles.statsRow}>
         <StatsCard title="Monthly Revenue" value={dashboardStats.monthlyRevenue} icon="trending-up-outline" accentColor="#0EA5E9" tintColor="#0EA5E9" prefix={'£'} />
@@ -173,7 +173,7 @@ const AdminPaymentsScreen = () => {
       removeClippedSubviews
       ListHeaderComponent={txnListHeader}
       ListEmptyComponent={
-        <View style={styles.headerPad}>
+        <View>
           <EmptyState icon="receipt-outline" title="No transactions found" subtitle="Try adjusting your search or filter." />
         </View>
       }
@@ -182,7 +182,7 @@ const AdminPaymentsScreen = () => {
         const isPending = txn.status === 'pending';
         const stripeReady = instructor?.stripeConnectionStatus === 'connected';
         return (
-          <View style={[styles.txnCard, styles.headerPad]}>
+          <View style={styles.txnCard}>
             <View style={styles.txnCardTop}>
               <View style={styles.txnIcon}>
                 <Ionicons
@@ -232,8 +232,7 @@ const AdminPaymentsScreen = () => {
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
-    content: { paddingBottom: theme.spacing['4xl'] },
-    headerPad: { paddingHorizontal: theme.spacing.md },
+    content: { paddingHorizontal: theme.spacing.md, paddingBottom: theme.spacing['4xl'] },
     statsRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',

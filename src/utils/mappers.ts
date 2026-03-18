@@ -335,7 +335,7 @@ export const mapUserToStudentInstructor = (
     bio: user.about_me || '',
     passRate: u.pass_rate || u.passRate || 0,
     transmissionType: (user.car_transmission as 'Manual' | 'Automatic' | 'Both') || 'Manual',
-    coveredPostcodes: u.covered_postcodes || u.coveredPostcodes || (user.postcode ? [user.postcode] : []),
+    coveredPostcodes: u.postcodesCovered || u.covered_postcodes || u.coveredPostcodes || (user.postcode ? [user.postcode] : []),
     acceptingStudents: user.status === 'active',
     about: user.about_me || '',
     yearsExperience: u.years_experience || u.yearsExperience || 0,

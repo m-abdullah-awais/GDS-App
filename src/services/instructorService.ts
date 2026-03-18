@@ -18,6 +18,7 @@ import type {
 export interface InstructorFilters {
   query?: string;
   city?: string;
+  postcode?: string;
   minRating?: number;
   transmission?: string;
 }
@@ -34,6 +35,15 @@ export const searchInstructors = (
       i =>
         (i.name || '').toLowerCase().includes(q) ||
         (i.city || '').toLowerCase().includes(q),
+    );
+  }
+
+  if (filters.postcode && filters.postcode.trim().length > 0) {
+    const pc = filters.postcode.toUpperCase().trim();
+    results = results.filter(i =>
+      (i.coveredPostcodes || []).some(
+        covered => covered.toUpperCase().trim() === pc,
+      ),
     );
   }
 

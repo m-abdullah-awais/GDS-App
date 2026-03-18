@@ -160,6 +160,18 @@ const InstructorCard: React.FC<InstructorCardProps> = ({
         {instructor.bio}
       </Text>
 
+      {/* Covered postcodes */}
+      {instructor.coveredPostcodes && instructor.coveredPostcodes.length > 0 && (
+        <View style={styles.postcodeRow}>
+          <Ionicons name="map-outline" size={13} color={theme.colors.primary} />
+          <Text style={styles.postcodeLabel}>Covers:</Text>
+          <Text style={styles.postcodeList} numberOfLines={1}>
+            {instructor.coveredPostcodes.slice(0, 6).join(', ')}
+            {instructor.coveredPostcodes.length > 6 ? ` +${instructor.coveredPostcodes.length - 6} more` : ''}
+          </Text>
+        </View>
+      )}
+
       {requestStatus === 'accepted' && activePackagesCount > 0 && (
         <View style={styles.packagesInfo}>
           <Ionicons name="cube-outline" size={14} color={theme.colors.primary} />
@@ -246,6 +258,26 @@ const createStyles = (theme: AppTheme) =>
       color: theme.colors.textSecondary,
       marginTop: theme.spacing.sm,
       lineHeight: 18,
+    },
+    postcodeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      marginTop: theme.spacing.sm,
+      paddingVertical: theme.spacing.xxs,
+      paddingHorizontal: theme.spacing.xs,
+      backgroundColor: theme.colors.primaryLight,
+      borderRadius: theme.borderRadius.sm,
+    },
+    postcodeLabel: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+      fontWeight: '700',
+    },
+    postcodeList: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+      flex: 1,
     },
     packagesInfo: {
       flexDirection: 'row',

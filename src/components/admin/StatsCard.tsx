@@ -1,7 +1,7 @@
 /**
  * GDS Driving School — StatsCard Component
  * ===========================================
- * Stat card with icon, colored left border, gradient-tinted background.
+ * Clean stat card with icon badge, large value, and subtle accent styling.
  */
 
 import React, { useMemo } from 'react';
@@ -33,37 +33,40 @@ const StatsCard: React.FC<StatsCardProps> = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const formatNumber = (n: number): string => {
-    const s = Math.round(n).toString();
-    return s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    if (n >= 10000) {
+      return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    }
+    return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   };
 
   const display = useMemo(() => formatNumber(value), [value]);
 
-  const isSolidCard = tintColor.toLowerCase() === accentColor.toLowerCase();
-  const valueColor = isSolidCard ? theme.colors.textInverse : theme.colors.textPrimary;
-  const titleColor = isSolidCard ? 'rgba(255,255,255,0.88)' : theme.colors.textSecondary;
-  const iconBg = isSolidCard ? 'rgba(255,255,255,0.2)' : accentColor + '20';
-  const iconColor = isSolidCard ? theme.colors.textInverse : accentColor;
+  const isSolid = tintColor.toLowerCase() === accentColor.toLowerCase();
 
   return (
     <View
       style={[
         styles.card,
-        {
-          borderLeftColor: accentColor,
-          backgroundColor: tintColor,
-          borderLeftWidth: isSolidCard ? 0 : 4,
-        },
+        isSolid
+          ? { backgroundColor: accentColor, borderColor: accentColor }
+          : { backgroundColor: theme.colors.surface, borderLeftColor: accentColor, borderLeftWidth: 3 },
       ]}>
-      <View style={styles.headerRow}>
-        <View style={[styles.iconContainer, { backgroundColor: iconBg }]}>
-          <Ionicons name={icon} size={20} color={iconColor} />
-        </View>
+      <View style={[styles.iconBadge, { backgroundColor: isSolid ? 'rgba(255,255,255,0.2)' : accentColor + '18' }]}>
+        <Ionicons
+          name={icon}
+          size={18}
+          color={isSolid ? '#FFFFFF' : accentColor}
+        />
       </View>
-      <Text style={[styles.value, { color: valueColor }]}>
+      <Text
+        style={[styles.value, { color: isSolid ? '#FFFFFF' : theme.colors.textPrimary }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit>
         {prefix}{display}{suffix}
       </Text>
-      <Text style={[styles.title, { color: titleColor }]}>{title}</Text>
+      <Text style={[styles.title, { color: isSolid ? 'rgba(255,255,255,0.82)' : theme.colors.textTertiary }]}>
+        {title}
+      </Text>
     </View>
   );
 };
@@ -75,32 +78,28 @@ const createStyles = (theme: AppTheme) =>
       flexGrow: 1,
       flexShrink: 0,
       borderRadius: theme.borderRadius.lg,
-      padding: theme.spacing.sm,
-      paddingVertical: theme.spacing.md,
-      borderLeftWidth: 4,
+      padding: theme.spacing.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
       ...theme.shadows.sm,
     },
-    headerRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: theme.spacing.sm,
-    },
-    iconContainer: {
-      width: 36,
-      height: 36,
+    iconBadge: {
+      width: 34,
+      height: 34,
       borderRadius: theme.borderRadius.md,
       alignItems: 'center',
       justifyContent: 'center',
+      marginBottom: theme.spacing.sm,
     },
     value: {
-      ...theme.typography.h3,
-      color: theme.colors.textPrimary,
+      fontSize: 22,
+      fontWeight: '800',
+      letterSpacing: -0.5,
       marginBottom: 2,
     },
     title: {
       ...theme.typography.caption,
-      color: theme.colors.textSecondary,
+      fontWeight: '500',
     },
   });
 

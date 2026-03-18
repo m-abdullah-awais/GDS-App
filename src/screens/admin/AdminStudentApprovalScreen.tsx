@@ -29,7 +29,7 @@ import {
   ConfirmModal,
   DetailDrawer,
   EmptyState,
-  SectionHeader,
+  StudentDetailContent,
   useToast,
 } from '../../components/admin';
 
@@ -233,84 +233,12 @@ const AdminStudentApprovalScreen = () => {
           setSelectedStudent(null);
         }}
         title="Student Details">
-        {selectedStudent && (
-          <View style={styles.drawerContent}>
-            <View style={styles.drawerAvatar}>
-              <Avatar
-                initials={selectedStudent.avatar}
-                name={selectedStudent.name}
-                size={64}
-                theme={theme}
-              />
-              <Text style={styles.drawerName}>{selectedStudent.name}</Text>
-              <StatusBadge status={selectedStudent.approvalStatus} />
-            </View>
-
-            <SectionHeader title="Contact" />
-            <DetailRow label="Email" value={selectedStudent.email} theme={theme} />
-            <DetailRow label="Phone" value={selectedStudent.phone} theme={theme} />
-            <DetailRow label="City" value={selectedStudent.city} theme={theme} />
-
-            <SectionHeader title="Academic" />
-            <DetailRow label="Lessons Completed" value={String(selectedStudent.lessonsCompleted)} theme={theme} />
-            <DetailRow label="Upcoming Lessons" value={String(selectedStudent.upcomingLessons)} theme={theme} />
-            <DetailRow label="Rating" value={`${selectedStudent.rating}/5`} theme={theme} />
-            <DetailRow label="Instructor" value={selectedStudent.instructorAssigned || 'Not assigned'} theme={theme} />
-
-            <SectionHeader title="Registration" />
-            <DetailRow label="Date" value={selectedStudent.registrationDate} theme={theme} />
-            <DetailRow label="Account Status" value={selectedStudent.accountStatus} theme={theme} />
-
-            {selectedStudent.lessons.length > 0 && (
-              <>
-                <SectionHeader title="Recent Lessons" />
-                {selectedStudent.lessons.slice(0, 3).map(lesson => (
-                  <View key={lesson.id} style={styles.lessonRow}>
-                    <Text style={styles.lessonText}>
-                      {lesson.date} - {lesson.type}
-                    </Text>
-                    <StatusBadge status={lesson.status} />
-                  </View>
-                ))}
-              </>
-            )}
-          </View>
-        )}
+        {selectedStudent && <StudentDetailContent student={selectedStudent} />}
       </DetailDrawer>
     </View>
   );
 };
 
-const DetailRow = ({
-  label,
-  value,
-  theme,
-}: {
-  label: string;
-  value: string;
-  theme: AppTheme;
-}) => (
-  <View
-    style={{
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      paddingVertical: theme.spacing.xs,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.divider,
-    }}>
-    <Text style={{ ...theme.typography.bodySmall, color: theme.colors.textSecondary }}>
-      {label}
-    </Text>
-    <Text
-      style={{
-        ...theme.typography.bodySmall,
-        color: theme.colors.textPrimary,
-        fontWeight: '600',
-      }}>
-      {value}
-    </Text>
-  </View>
-);
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
@@ -403,30 +331,6 @@ const createStyles = (theme: AppTheme) =>
       ...theme.typography.buttonSmall,
       color: '#fff',
       fontWeight: '600',
-    },
-    drawerContent: {
-      paddingBottom: theme.spacing['2xl'],
-    },
-    drawerAvatar: {
-      alignItems: 'center',
-      gap: theme.spacing.sm,
-      marginBottom: theme.spacing.lg,
-    },
-    drawerName: {
-      ...theme.typography.h3,
-      color: theme.colors.textPrimary,
-    },
-    lessonRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: theme.spacing.xs,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.divider,
-    },
-    lessonText: {
-      ...theme.typography.bodySmall,
-      color: theme.colors.textPrimary,
     },
   });
 

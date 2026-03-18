@@ -19,3 +19,4 @@ export { default as LoadingSkeleton } from './LoadingSkeleton';
 export { default as ChartPlaceholder } from './ChartPlaceholder';
 export { default as Avatar } from './Avatar';
 export { default as InstructorDetailContent } from './InstructorDetailContent';
+export { default as StudentDetailContent } from './StudentDetailContent';

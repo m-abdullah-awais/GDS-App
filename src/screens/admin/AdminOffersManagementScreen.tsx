@@ -202,16 +202,16 @@ const AdminOffersManagementScreen = () => {
   const getExpiryBadgeStyle = (ad: Ad) => {
     const expiryInfo = getOfferExpiryInfo(ad);
     if (!expiryInfo || !expiryInfo.daysRemaining && expiryInfo.daysRemaining !== 0) {
-      return { backgroundColor: theme.colors.success + '20', textColor: theme.colors.success };
+      return { backgroundColor: theme.colors.successLight, textColor: theme.colors.success };
     }
     const days = expiryInfo.daysRemaining;
     if (days < 7) {
-      return { backgroundColor: theme.colors.error + '20', textColor: theme.colors.error };
+      return { backgroundColor: theme.colors.errorLight, textColor: theme.colors.error };
     }
     if (days < 30) {
-      return { backgroundColor: theme.colors.warning + '20', textColor: theme.colors.warning };
+      return { backgroundColor: theme.colors.warningLight, textColor: theme.colors.warning };
     }
-    return { backgroundColor: theme.colors.success + '20', textColor: theme.colors.success };
+    return { backgroundColor: theme.colors.successLight, textColor: theme.colors.success };
   };
 
   // Picker modal component
@@ -231,9 +231,9 @@ const AdminOffersManagementScreen = () => {
       >
         <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
           <View style={[styles.modalHeader, { borderBottomColor: theme.colors.border }]}>
-            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>{title}</Text>
+            <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]}>{title}</Text>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color={theme.colors.text} />
+              <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalList}>
@@ -243,7 +243,7 @@ const AdminOffersManagementScreen = () => {
                 style={[
                   styles.modalItem,
                   { borderBottomColor: theme.colors.border },
-                  selectedItem === item && { backgroundColor: theme.colors.primaryLight + '20' },
+                  selectedItem === item && { backgroundColor: theme.colors.primaryLight },
                 ]}
                 onPress={() => {
                   onSelect(item);
@@ -253,7 +253,7 @@ const AdminOffersManagementScreen = () => {
                 <Text
                   style={[
                     styles.modalItemText,
-                    { color: theme.colors.text },
+                    { color: theme.colors.textPrimary },
                     selectedItem === item && { color: theme.colors.primary, fontWeight: '700' },
                   ]}
                 >
@@ -280,7 +280,7 @@ const AdminOffersManagementScreen = () => {
       >
         <View style={styles.sectionHeaderLeft}>
           <Ionicons name="eye-outline" size={22} color={theme.colors.primary} />
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
             Visibility Preview
           </Text>
         </View>
@@ -298,7 +298,7 @@ const AdminOffersManagementScreen = () => {
             style={[styles.pickerButton, { borderColor: theme.colors.border, backgroundColor: theme.colors.background }]}
             onPress={() => setCityModalVisible(true)}
           >
-            <Text style={[styles.pickerButtonText, { color: theme.colors.text }]}>
+            <Text style={[styles.pickerButtonText, { color: theme.colors.textPrimary }]}>
               {selectedCity || 'Select a city'}
             </Text>
             <Ionicons name="chevron-down" size={18} color={theme.colors.textSecondary} />
@@ -316,7 +316,7 @@ const AdminOffersManagementScreen = () => {
             <Text
               style={[
                 styles.pickerButtonText,
-                { color: postcodes.length === 0 ? theme.colors.textSecondary : theme.colors.text },
+                { color: postcodes.length === 0 ? theme.colors.textSecondary : theme.colors.textPrimary },
               ]}
             >
               {selectedPostcode || 'Select a postcode'}
@@ -389,11 +389,11 @@ const AdminOffersManagementScreen = () => {
           <View
             style={[
               styles.visibleCountContainer,
-              { backgroundColor: theme.colors.primaryLight + '15' },
+              { backgroundColor: theme.colors.primaryLight },
             ]}
           >
             <Ionicons name="information-circle-outline" size={20} color={theme.colors.primary} />
-            <Text style={[styles.visibleCountText, { color: theme.colors.text }]}>
+            <Text style={[styles.visibleCountText, { color: theme.colors.textPrimary }]}>
               <Text style={{ fontWeight: '700', color: theme.colors.primary }}>
                 {visibleAdsCount}
               </Text>{' '}
@@ -419,7 +419,7 @@ const AdminOffersManagementScreen = () => {
       >
         <View style={styles.sectionHeaderLeft}>
           <Ionicons name="cash-outline" size={22} color={theme.colors.success} />
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Revenue Summary</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Revenue Summary</Text>
         </View>
         <Ionicons
           name={revenueExpanded ? 'chevron-up' : 'chevron-down'}
@@ -440,13 +440,13 @@ const AdminOffersManagementScreen = () => {
                 style={[styles.revenueCard, { borderColor: theme.colors.border }]}
               >
                 <View style={styles.revenueCardHeader}>
-                  <Text style={[styles.revenueClientName, { color: theme.colors.text }]}>
+                  <Text style={[styles.revenueClientName, { color: theme.colors.textPrimary }]}>
                     {summary.clientName}
                   </Text>
                   <View
                     style={[
                       styles.offerCountBadge,
-                      { backgroundColor: theme.colors.primaryLight + '20' },
+                      { backgroundColor: theme.colors.primaryLight },
                     ]}
                   >
                     <Text style={[styles.offerCountBadgeText, { color: theme.colors.primary }]}>
@@ -520,7 +520,7 @@ const AdminOffersManagementScreen = () => {
             <View
               style={[
                 styles.offerThumbnailPlaceholder,
-                { backgroundColor: theme.colors.primaryLight + '20' },
+                { backgroundColor: theme.colors.primaryLight },
               ]}
             >
               <Ionicons name="image-outline" size={28} color={theme.colors.primaryLight} />
@@ -529,7 +529,7 @@ const AdminOffersManagementScreen = () => {
 
           {/* Info */}
           <View style={styles.offerInfo}>
-            <Text style={[styles.offerTitle, { color: theme.colors.text }]} numberOfLines={1}>
+            <Text style={[styles.offerTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
               {ad.title || 'Untitled Offer'}
             </Text>
 
@@ -539,7 +539,7 @@ const AdminOffersManagementScreen = () => {
                 <View
                   style={[
                     styles.categoryBadge,
-                    { backgroundColor: theme.colors.accent + '20' },
+                    { backgroundColor: theme.colors.highlightLight },
                   ]}
                 >
                   <Text style={[styles.categoryBadgeText, { color: theme.colors.accent }]}>
@@ -554,8 +554,8 @@ const AdminOffersManagementScreen = () => {
                   styles.statusBadge,
                   {
                     backgroundColor: ad.isActive
-                      ? theme.colors.success + '20'
-                      : theme.colors.error + '20',
+                      ? theme.colors.successLight
+                      : theme.colors.errorLight,
                   },
                 ]}
               >
@@ -634,8 +634,8 @@ const AdminOffersManagementScreen = () => {
               styles.actionButton,
               {
                 backgroundColor: ad.isActive
-                  ? theme.colors.warning + '15'
-                  : theme.colors.success + '15',
+                  ? theme.colors.warningLight
+                  : theme.colors.successLight,
               },
             ]}
             onPress={() => handleToggleActive(ad)}
@@ -658,7 +658,7 @@ const AdminOffersManagementScreen = () => {
 
           {/* Edit */}
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: theme.colors.primary + '15' }]}
+            style={[styles.actionButton, { backgroundColor: theme.colors.primaryLight }]}
             onPress={() => handleEditOffer(ad)}
             disabled={isLoading}
           >
@@ -668,7 +668,7 @@ const AdminOffersManagementScreen = () => {
 
           {/* Delete */}
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: theme.colors.error + '15' }]}
+            style={[styles.actionButton, { backgroundColor: theme.colors.errorLight }]}
             onPress={() => handleDelete(ad)}
             disabled={isLoading}
           >
@@ -685,7 +685,7 @@ const AdminOffersManagementScreen = () => {
     <View>
       {/* Header */}
       <View style={styles.screenHeader}>
-        <Text style={[styles.screenTitle, { color: theme.colors.text }]}>Offers Management</Text>
+        <Text style={[styles.screenTitle, { color: theme.colors.textPrimary }]}>Offers Management</Text>
         <Text style={[styles.screenSubtitle, { color: theme.colors.textSecondary }]}>
           {ads.length} {ads.length === 1 ? 'offer' : 'offers'} total
         </Text>
@@ -704,7 +704,7 @@ const AdminOffersManagementScreen = () => {
         <TouchableOpacity
           style={[
             styles.secondaryButton,
-            { borderColor: theme.colors.error, backgroundColor: theme.colors.error + '10' },
+            { borderColor: theme.colors.error, backgroundColor: theme.colors.errorLight },
           ]}
           onPress={handleResetToDefaults}
           disabled={resetting}
@@ -737,7 +737,7 @@ const AdminOffersManagementScreen = () => {
       >
         <Ionicons name="search-outline" size={20} color={theme.colors.textSecondary} />
         <TextInput
-          style={[styles.searchInput, { color: theme.colors.text }]}
+          style={[styles.searchInput, { color: theme.colors.textPrimary }]}
           placeholder="Search by title, description, or client..."
           placeholderTextColor={theme.colors.textSecondary}
           value={searchQuery}
@@ -765,7 +765,7 @@ const AdminOffersManagementScreen = () => {
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
       <Ionicons name="megaphone-outline" size={64} color={theme.colors.textSecondary} />
-      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
+      <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary }]}>
         {searchQuery.trim() ? 'No Offers Found' : 'No Offers Yet'}
       </Text>
       <Text style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}>
@@ -1065,7 +1065,7 @@ const createStyles = (theme: any) =>
     },
     cardLoadingOverlay: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(255,255,255,0.6)',
+      backgroundColor: theme.colors.overlay,
       zIndex: 10,
       alignItems: 'center',
       justifyContent: 'center',
@@ -1080,7 +1080,7 @@ const createStyles = (theme: any) =>
       width: 72,
       height: 72,
       borderRadius: 12,
-      backgroundColor: '#f0f0f0',
+      backgroundColor: theme.colors.surfaceSecondary,
     },
     offerThumbnailPlaceholder: {
       width: 72,

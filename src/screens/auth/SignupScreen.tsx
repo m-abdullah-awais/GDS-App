@@ -82,7 +82,7 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
       })
     } catch (error: any) {
       console.log("err", error);
-      
+
       let message = 'An unexpected error occurred. Please try again.'
       const code = error?.code
       if (code === 'auth/email-already-in-use') {

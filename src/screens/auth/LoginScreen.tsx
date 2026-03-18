@@ -39,8 +39,8 @@ const DEV_LOGIN_CREDENTIALS = {
 const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const { theme } = useTheme()
   const { notify } = useConfirmation()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('asd@yopmail.com')
+  const [password, setPassword] = useState('123456')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const styles = useMemo(() => createStyles(theme), [theme])
 

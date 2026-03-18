@@ -308,7 +308,7 @@ const AdminAddOfferScreen = () => {
         sectionTitle: {
           fontSize: 18,
           fontWeight: '600',
-          color: theme.colors.text,
+          color: theme.colors.textPrimary,
         },
         label: {
           fontSize: 14,
@@ -323,7 +323,7 @@ const AdminAddOfferScreen = () => {
           borderRadius: 12,
           padding: 14,
           fontSize: 15,
-          color: theme.colors.text,
+          color: theme.colors.textPrimary,
           backgroundColor: theme.colors.surface,
         },
         inputMultiline: {
@@ -385,7 +385,7 @@ const AdminAddOfferScreen = () => {
         toggleLabel: {
           fontSize: 15,
           fontWeight: '500',
-          color: theme.colors.text,
+          color: theme.colors.textPrimary,
         },
         // Area targeting
         selectButton: {
@@ -401,7 +401,7 @@ const AdminAddOfferScreen = () => {
         },
         selectButtonText: {
           fontSize: 14,
-          color: theme.colors.text,
+          color: theme.colors.textPrimary,
           flex: 1,
         },
         chipWrap: {
@@ -451,7 +451,7 @@ const AdminAddOfferScreen = () => {
         modalTitle: {
           fontSize: 18,
           fontWeight: '600',
-          color: theme.colors.text,
+          color: theme.colors.textPrimary,
         },
         modalDone: {
           fontSize: 16,
@@ -482,7 +482,7 @@ const AdminAddOfferScreen = () => {
         },
         modalItemText: {
           fontSize: 15,
-          color: theme.colors.text,
+          color: theme.colors.textPrimary,
           flex: 1,
         },
         selectAllRow: {
@@ -514,7 +514,7 @@ const AdminAddOfferScreen = () => {
         cityGroupTitle: {
           fontSize: 15,
           fontWeight: '600',
-          color: theme.colors.text,
+          color: theme.colors.textPrimary,
         },
         selectAllCityButton: {
           paddingHorizontal: 10,

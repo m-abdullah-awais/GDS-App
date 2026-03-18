@@ -33,7 +33,7 @@ import {
   ConfirmModal,
   DetailDrawer,
   EmptyState,
-  SectionHeader,
+  StudentDetailContent,
   useToast,
 } from '../../components/admin';
 
@@ -279,68 +279,12 @@ const AdminStudentManagementScreen = () => {
           setSelected(null);
         }}
         title="Student Profile">
-        {selected && (
-          <View style={styles.drawerContent}>
-            <View style={styles.drawerAvatar}>
-              <Avatar initials={selected.avatar} name={selected.name} size={64} theme={theme} />
-              <Text style={styles.drawerName}>{selected.name}</Text>
-              <StatusBadge status={selected.accountStatus} />
-            </View>
-
-            <SectionHeader title="Contact" />
-            <DetailRow label="Email" value={selected.email} theme={theme} />
-            <DetailRow label="Phone" value={selected.phone} theme={theme} />
-            <DetailRow label="City" value={selected.city} theme={theme} />
-
-            <SectionHeader title="Academic" />
-            <DetailRow label="Lessons" value={String(selected.lessonsCompleted)} theme={theme} />
-            <DetailRow label="Upcoming" value={String(selected.upcomingLessons)} theme={theme} />
-            <DetailRow label="Rating" value={`${selected.rating}/5`} theme={theme} />
-            <DetailRow label="Instructor" value={selected.instructorAssigned || 'N/A'} theme={theme} />
-
-            {selected.lessons.length > 0 && (
-              <>
-                <SectionHeader title="Lesson History" />
-                {selected.lessons.map(lesson => (
-                  <View key={lesson.id} style={styles.lessonRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.lessonTitle}>{lesson.type}</Text>
-                      <Text style={styles.lessonSub}>
-                        {lesson.date} at {lesson.time} ({lesson.duration})
-                      </Text>
-                    </View>
-                    <StatusBadge status={lesson.status} />
-                  </View>
-                ))}
-              </>
-            )}
-          </View>
-        )}
+        {selected && <StudentDetailContent student={selected} />}
       </DetailDrawer>
     </View>
   );
 };
 
-const DetailRow = ({
-  label,
-  value,
-  theme,
-}: {
-  label: string;
-  value: string;
-  theme: AppTheme;
-}) => (
-  <View style={{
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: theme.spacing.xs,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.divider,
-  }}>
-    <Text style={{ ...theme.typography.bodySmall, color: theme.colors.textSecondary }}>{label}</Text>
-    <Text style={{ ...theme.typography.bodySmall, color: theme.colors.textPrimary, fontWeight: '600' }}>{value}</Text>
-  </View>
-);
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
@@ -426,18 +370,6 @@ const createStyles = (theme: AppTheme) =>
       ...theme.typography.buttonSmall,
       fontWeight: '600',
     },
-    drawerContent: { paddingBottom: theme.spacing['2xl'] },
-    drawerAvatar: { alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.lg },
-    drawerName: { ...theme.typography.h3, color: theme.colors.textPrimary },
-    lessonRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: theme.spacing.xs,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.divider,
-    },
-    lessonTitle: { ...theme.typography.bodySmall, color: theme.colors.textPrimary, fontWeight: '600' },
-    lessonSub: { ...theme.typography.caption, color: theme.colors.textTertiary },
   });
 
 export default AdminStudentManagementScreen;

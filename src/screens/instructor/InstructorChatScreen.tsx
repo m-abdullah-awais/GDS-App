@@ -17,6 +17,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import type { InstructorStackParamList } from '../../navigation/instructor/InstructorStack';
@@ -32,6 +33,7 @@ interface InstructorChatMessage {
   text: string;
   sender: 'student' | 'instructor';
   timestamp: string;
+  sortKey: number;
 }
 
 type Route = RouteProp<InstructorStackParamList, 'Chat'>;
@@ -133,6 +135,9 @@ const InstructorChatScreen = () => {
   const s = createStyles(theme);
   const flatListRef = useRef<FlatList>(null);
   const authProfile = useSelector((state: any) => state.auth.profile);
+  const insets = useSafeAreaInsets();
+  const keyboardOffset = Platform.OS === 'ios' ? insets.top + 56 : 0;
+  const justSentRef = useRef(false);
 
   const [inputText, setInputText] = useState('');
   const [localMessages, setLocalMessages] = useState<InstructorChatMessage[]>([]);
@@ -142,34 +147,38 @@ const InstructorChatScreen = () => {
     const peerId = route.params.conversationId;
     if (!authProfile?.uid || !peerId) return;
 
-    // Initial load
-    messageService.getConversation(authProfile.uid, peerId)
-      .then((msgs: any[]) => {
-        setLocalMessages(msgs.map((m: any) => ({
+    const mapMessages = (msgs: any[]): InstructorChatMessage[] => {
+      const mapped = msgs.map((m: any) => {
+        const ts = m.createdAt;
+        const date = ts?.toDate ? ts.toDate() : ts?.seconds ? new Date(ts.seconds * 1000) : ts ? new Date(ts) : null;
+        return {
           id: m.id,
           conversationId: peerId,
           text: m.content || '',
-          sender: m.sender_id === authProfile.uid ? 'instructor' : 'student',
-          timestamp: m.createdAt
-            ? new Date(m.createdAt.seconds ? m.createdAt.seconds * 1000 : m.createdAt)
-                .toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-            : '',
-        })));
-      })
+          sender: (m.sender_id === authProfile.uid ? 'instructor' : 'student') as 'instructor' | 'student',
+          timestamp: date ? date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '',
+          sortKey: date ? date.getTime() : 0,
+        };
+      });
+      mapped.sort((a, b) => a.sortKey - b.sortKey);
+      return mapped;
+    };
+
+    // Initial load
+    messageService.getConversation(authProfile.uid, peerId)
+      .then((msgs: any[]) => setLocalMessages(mapMessages(msgs)))
       .catch(() => {});
 
-    // Real-time listener
+    // Real-time listener — merge with pending optimistic messages
     const unsub = messageService.onConversation(authProfile.uid, peerId, (msgs: any[]) => {
-      setLocalMessages(msgs.map((m: any) => ({
-        id: m.id,
-        conversationId: peerId,
-        text: m.content || '',
-        sender: m.sender_id === authProfile.uid ? 'instructor' : 'student',
-        timestamp: m.createdAt
-          ? new Date(m.createdAt.seconds ? m.createdAt.seconds * 1000 : m.createdAt)
-              .toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-          : '',
-      })));
+      const serverMessages = mapMessages(msgs);
+      setLocalMessages(prev => {
+        const serverIds = new Set(serverMessages.map(m => m.id));
+        const pendingLocal = prev.filter(m => m.id.startsWith('MSG-LOCAL-') && !serverIds.has(m.id));
+        const merged = [...serverMessages, ...pendingLocal];
+        merged.sort((a, b) => a.sortKey - b.sortKey);
+        return merged;
+      });
     });
     return unsub;
   }, [authProfile?.uid, route.params.conversationId]);
@@ -177,31 +186,43 @@ const InstructorChatScreen = () => {
   const handleSend = async () => {
     if (!inputText.trim()) return;
 
+    const text = inputText.trim();
+    const now = new Date();
+
+    // Optimistic: show message immediately
+    const optimistic: InstructorChatMessage = {
+      id: `MSG-LOCAL-${Date.now()}`,
+      conversationId: route.params.conversationId,
+      text,
+      sender: 'instructor',
+      timestamp: now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+      sortKey: now.getTime(),
+    };
+    setLocalMessages(prev => [...prev, optimistic]);
+    setInputText('');
+    justSentRef.current = true;
+
     try {
       await messageService.sendMessage({
-        sender_id: authProfile?.uid,
-        receiver_id: route.params.conversationId,
-        sender_name: authProfile?.full_name || 'Instructor',
-        sender_role: 'instructor',
-        content: inputText.trim(),
+        senderId: authProfile?.uid,
+        receiverId: route.params.conversationId,
+        senderName: authProfile?.full_name || 'Instructor',
+        receiverName: route.params.studentName || '',
+        senderRole: 'instructor',
+        receiverRole: 'student',
+        content: text,
       });
     } catch (e) {
       console.warn('Failed to send message', e);
     }
-
-    setInputText('');
-
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
   };
 
   return (
     <ScreenContainer showHeader title={route.params.studentName}>
       <KeyboardAvoidingView
         style={s.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
+        behavior="padding"
+        keyboardVerticalOffset={keyboardOffset}>
         {/* ── Messages ─────────────────────────────────────── */}
         <FlatList
           ref={flatListRef}
@@ -209,9 +230,13 @@ const InstructorChatScreen = () => {
           keyExtractor={item => item.id}
           contentContainerStyle={s.messageList}
           showsVerticalScrollIndicator={false}
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: false })
-          }
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() => {
+            const shouldAnimate = justSentRef.current;
+            justSentRef.current = false;
+            flatListRef.current?.scrollToEnd({ animated: shouldAnimate });
+          }}
           renderItem={({ item }) => (
             <MessageBubble message={item} theme={theme} />
           )}

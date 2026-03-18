@@ -26,6 +26,7 @@ import Avatar from '../../components/Avatar';
 import type { InstructorConversation } from '../../types/instructor-views';
 import { useSelector } from 'react-redux';
 import * as messageService from '../../services/messageService';
+import * as userService from '../../services/userService';
 import { mapMessagesToConversations } from '../../utils/mappers';
 
 type Nav = NativeStackNavigationProp<InstructorStackParamList>;
@@ -165,8 +166,17 @@ const InstructorMessagesScreen = () => {
     if (!authProfile?.uid) return;
     setLoading(true);
     messageService.getMessagesForUser(authProfile.uid)
-      .then((msgs: any[]) => {
+      .then(async (msgs: any[]) => {
         const mapped = mapMessagesToConversations(msgs, authProfile.uid);
+        // Fill in missing names by fetching user profiles
+        for (const convo of mapped) {
+          if (!convo.instructorName && convo.instructorId) {
+            try {
+              const user = await userService.getUserById(convo.instructorId);
+              if (user?.full_name) convo.instructorName = user.full_name;
+            } catch { /* non-critical */ }
+          }
+        }
         setConversations(mapped as any);
       })
       .catch(() => {})

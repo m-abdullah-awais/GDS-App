@@ -671,13 +671,25 @@ export const mapMessagesToConversations = (
   for (const msg of messages) {
     const isIncoming = msg.receiver_id === currentUserId;
     const otherUserId = isIncoming ? msg.sender_id : msg.receiver_id;
-    const otherUserName = isIncoming ? msg.sender_name || '' : msg.receiver_name || '';
+    // Try to get the other user's name from either direction
+    const otherUserName = isIncoming
+      ? msg.sender_name || ''
+      : msg.receiver_name || '';
 
     if (!convMap[otherUserId]) {
       convMap[otherUserId] = {
         messages: [],
         otherUser: { id: otherUserId, name: otherUserName, avatar: '' },
       };
+    }
+    // Update name if we found a non-empty one (messages sent by the other
+    // user carry their name in sender_name — more reliable than receiver_name)
+    if (!convMap[otherUserId].otherUser.name && otherUserName) {
+      convMap[otherUserId].otherUser.name = otherUserName;
+    }
+    // Also check the reverse: if the other user sent a message, their sender_name is authoritative
+    if (isIncoming && msg.sender_name && !convMap[otherUserId].otherUser.name) {
+      convMap[otherUserId].otherUser.name = msg.sender_name;
     }
     convMap[otherUserId].messages.push(msg);
   }

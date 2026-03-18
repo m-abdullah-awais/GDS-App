@@ -15,6 +15,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
@@ -121,6 +122,9 @@ const AdminInstructorChatScreen = () => {
   const dispatch = useDispatch();
   const { showToast } = useToast();
   const listRef = useRef<FlatList>(null);
+  const insets = useSafeAreaInsets();
+  const keyboardOffset = Platform.OS === 'ios' ? insets.top + 56 : 0;
+  const justSentRef = useRef(false);
 
   const [replyText, setReplyText] = useState('');
   const [resolveModal, setResolveModal] = useState(false);
@@ -134,7 +138,7 @@ const AdminInstructorChatScreen = () => {
   const messages = useSelector((state: RootState) =>
     (state.admin.messages || [])
       .filter(m => m.conversationId === route.params.conversationId)
-      .sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || '')),
+      .sort((a, b) => (a.sortKey || 0) - (b.sortKey || 0)),
   );
 
   // Load messages from Firebase on mount
@@ -159,7 +163,7 @@ const AdminInstructorChatScreen = () => {
     const instructorId = conversation.instructorId ?? '';
     dispatch(sendAdminMessageThunk(route.params.conversationId, instructorId, replyText.trim()) as any);
     setReplyText('');
-    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+    justSentRef.current = true;
   }, [dispatch, route.params.conversationId, conversation, replyText]);
 
   const handleResolve = useCallback(() => {
@@ -176,8 +180,8 @@ const AdminInstructorChatScreen = () => {
       onBackPress={() => navigation.goBack()}>
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
+        behavior="padding"
+        keyboardVerticalOffset={keyboardOffset}>
         <View style={styles.metaRow}>
           {conversation ? <StatusBadge status={conversation.status} /> : null}
           {conversation?.status !== 'resolved' && (
@@ -194,7 +198,13 @@ const AdminInstructorChatScreen = () => {
           keyExtractor={item => item.id}
           contentContainerStyle={styles.messageList}
           showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() => {
+            const shouldAnimate = justSentRef.current;
+            justSentRef.current = false;
+            listRef.current?.scrollToEnd({ animated: shouldAnimate });
+          }}
           renderItem={({ item }) => <MessageBubble message={item} theme={theme} />}
         />
 

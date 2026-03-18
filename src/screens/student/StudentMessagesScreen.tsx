@@ -25,6 +25,7 @@ import Avatar from '../../components/Avatar';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import * as messageService from '../../services/messageService';
+import * as userService from '../../services/userService';
 import { mapMessagesToConversations } from '../../utils/mappers';
 import type { Conversation } from '../../store/admin/types';
 
@@ -165,8 +166,17 @@ const StudentMessagesScreen = () => {
     if (!profile?.uid) return;
     setLoading(true);
     messageService.getMessagesForUser(profile.uid)
-      .then(msgs => {
+      .then(async msgs => {
         const convos = mapMessagesToConversations(msgs, profile.uid);
+        // Fill in missing names by fetching user profiles
+        for (const convo of convos) {
+          if (!convo.instructorName && convo.instructorId) {
+            try {
+              const user = await userService.getUserById(convo.instructorId);
+              if (user?.full_name) convo.instructorName = user.full_name;
+            } catch { /* non-critical */ }
+          }
+        }
         setConversations(convos);
       })
       .catch(err => console.error('Failed to load messages:', err))

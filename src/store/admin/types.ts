@@ -95,6 +95,8 @@ export interface ChatMessage {
   senderType: 'admin' | 'instructor';
   text: string;
   timestamp: string;
+  /** Epoch millis for reliable chronological sorting */
+  sortKey?: number;
   seen: boolean;
 }
 

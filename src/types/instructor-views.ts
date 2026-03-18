@@ -67,7 +67,7 @@ export interface InstructorPackageView {
   description: string;
   lessonCount: number;
   price: number;
-  commissionPercentage: number;
+  commissionPercentage?: number;
   status: ApprovalStatus;
   createdAt: string;
 }

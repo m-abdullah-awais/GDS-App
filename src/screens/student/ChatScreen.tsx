@@ -6,10 +6,11 @@
  * and input bar. Professional and clean layout.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,6 +19,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import type { StudentStackParamList } from '../../navigation/student/types';
 import { useTheme } from '../../theme';
@@ -126,6 +128,7 @@ interface ChatMessage {
   text: string;
   sender: string;
   timestamp: string;
+  sortKey: number;
 }
 
 const ChatScreen = () => {
@@ -134,6 +137,15 @@ const ChatScreen = () => {
   const s = createStyles(theme);
   const flatListRef = useRef<FlatList>(null);
   const profile = useSelector((state: RootState) => state.auth.profile);
+  const insets = useSafeAreaInsets();
+  const justSentRef = useRef(false);
+
+  // Header height (~56) + safe area top = total offset for KeyboardAvoidingView
+  const keyboardOffset = Platform.OS === 'ios' ? insets.top + 56 : 0;
+
+  const scrollToBottom = useCallback((animated = true) => {
+    setTimeout(() => flatListRef.current?.scrollToEnd({ animated }), 50);
+  }, []);
 
   const [inputText, setInputText] = useState('');
   const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
@@ -147,15 +159,19 @@ const ChatScreen = () => {
     const otherUserId = route.params.conversationId;
     messageService.getConversation(profile.uid, otherUserId)
       .then(msgs => {
-        const mapped: ChatMessage[] = msgs.map(m => ({
-          id: m.id,
-          conversationId: otherUserId,
-          text: m.content || m.text || '',
-          sender: m.senderId === profile.uid ? 'student' : 'instructor',
-          timestamp: m.createdAt
-            ? new Date(m.createdAt as any).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-            : '',
-        }));
+        const mapped: ChatMessage[] = msgs.map(m => {
+          const ts = m.createdAt as any;
+          const date = ts?.toDate ? ts.toDate() : ts?.seconds ? new Date(ts.seconds * 1000) : ts ? new Date(ts) : null;
+          return {
+            id: m.id,
+            conversationId: otherUserId,
+            text: m.content || (m as any).text || '',
+            sender: m.sender_id === profile.uid ? 'student' : 'instructor',
+            timestamp: date ? date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '',
+            sortKey: date ? date.getTime() : 0,
+          };
+        });
+        mapped.sort((a, b) => a.sortKey - b.sortKey);
         setLocalMessages(mapped);
       })
       .catch(err => console.error('Failed to load conversation:', err))
@@ -170,16 +186,26 @@ const ChatScreen = () => {
       profile.uid,
       otherUserId,
       (msgs) => {
-        const mapped: ChatMessage[] = msgs.map(m => ({
-          id: m.id,
-          conversationId: otherUserId,
-          text: m.content || m.text || '',
-          sender: m.senderId === profile.uid ? 'student' : 'instructor',
-          timestamp: m.createdAt
-            ? new Date(m.createdAt as any).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-            : '',
-        }));
-        setLocalMessages(mapped);
+        const serverMessages: ChatMessage[] = msgs.map(m => {
+          const ts = m.createdAt as any;
+          const date = ts?.toDate ? ts.toDate() : ts?.seconds ? new Date(ts.seconds * 1000) : ts ? new Date(ts) : null;
+          return {
+            id: m.id,
+            conversationId: otherUserId,
+            text: m.content || (m as any).text || '',
+            sender: m.sender_id === profile.uid ? 'student' : 'instructor',
+            timestamp: date ? date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '',
+            sortKey: date ? date.getTime() : 0,
+          };
+        });
+        // Merge: keep optimistic local messages that aren't yet in server data
+        setLocalMessages(prev => {
+          const serverIds = new Set(serverMessages.map(m => m.id));
+          const pendingLocal = prev.filter(m => m.id.startsWith('MSG-LOCAL-') && !serverIds.has(m.id));
+          const merged = [...serverMessages, ...pendingLocal];
+          merged.sort((a, b) => a.sortKey - b.sortKey);
+          return merged;
+        });
       },
     );
     return () => unsubscribe();
@@ -189,41 +215,44 @@ const ChatScreen = () => {
     if (!inputText.trim() || !profile?.uid) return;
 
     const text = inputText.trim();
+    const now = new Date();
     const newMessage: ChatMessage = {
       id: `MSG-LOCAL-${Date.now()}`,
       conversationId: route.params?.conversationId ?? '',
       text,
       sender: 'student',
-      timestamp: new Date().toLocaleTimeString('en-GB', {
+      timestamp: now.toLocaleTimeString('en-GB', {
         hour: '2-digit',
         minute: '2-digit',
       }),
+      sortKey: now.getTime(),
     };
 
     setLocalMessages(prev => [...prev, newMessage]);
     setInputText('');
+    justSentRef.current = true;
 
     try {
       await messageService.sendMessage({
-        recipientId: route.params?.conversationId ?? '',
-        content: text,
+        senderId: profile.uid,
+        receiverId: route.params?.conversationId ?? '',
+        senderName: profile.full_name || '',
+        receiverName: route.params?.instructorName || '',
         senderRole: 'student',
+        receiverRole: 'instructor',
+        content: text,
       });
     } catch (err) {
       console.error('Failed to send message:', err);
     }
-
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
   };
 
   return (
     <ScreenContainer showHeader title={route.params?.instructorName ?? ''}>
       <KeyboardAvoidingView
         style={s.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
+        behavior="padding"
+        keyboardVerticalOffset={keyboardOffset}>
         {/* ── Messages ─────────────────────────────────────── */}
         {loading ? (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -236,9 +265,13 @@ const ChatScreen = () => {
           keyExtractor={item => item.id}
           contentContainerStyle={s.messageList}
           showsVerticalScrollIndicator={false}
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: false })
-          }
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() => {
+            const shouldAnimate = justSentRef.current;
+            justSentRef.current = false;
+            flatListRef.current?.scrollToEnd({ animated: shouldAnimate });
+          }}
           renderItem={({ item }) => (
             <MessageBubble message={item} theme={theme} />
           )}

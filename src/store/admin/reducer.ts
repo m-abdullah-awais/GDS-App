@@ -208,12 +208,13 @@ const adminReducer = (state = initialState, action: AdminAction): AdminState => 
     case SEND_MESSAGE: {
       const { conversationId, text } = action.payload;
       const newMessage = {
-        id: `MSG${String(state.messages.length + 1).padStart(3, '0')}`,
+        id: `MSG-LOCAL-${Date.now()}`,
         conversationId,
         senderId: 'ADMIN',
         senderType: 'admin' as const,
         text,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        sortKey: Date.now(),
         seen: false,
       };
 

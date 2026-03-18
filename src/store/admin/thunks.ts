@@ -47,6 +47,7 @@ import {
   mapMessagesToConversations,
   buildDashboardStats,
   formatMessageDate,
+  toDate,
 } from '../../utils/mappers';
 
 import type { AdminSettings } from './types';
@@ -350,6 +351,21 @@ export const loadAdminConversations = (adminId: string) => async (dispatch: Disp
   try {
     const messages = await messageService.getMessagesForUser(adminId);
     const convos = mapMessagesToConversations(messages, adminId);
+
+    // Fill in missing names by fetching user profiles
+    for (const convo of convos) {
+      if (!convo.instructorName && convo.instructorId) {
+        try {
+          const user = await userService.getUserById(convo.instructorId);
+          if (user?.full_name) {
+            convo.instructorName = user.full_name;
+          }
+        } catch {
+          // Non-critical — name stays empty
+        }
+      }
+    }
+
     dispatch(setConversations(convos));
   } catch (error) {
     if (__DEV__) console.error('Failed to load admin conversations:', error);
@@ -379,6 +395,7 @@ export const loadConversationMessages = (
         timestamp: m.createdAt
           ? formatMessageDate(m.createdAt)
           : '',
+        sortKey: toDate(m.createdAt)?.getTime() || 0,
         seen: m.read ?? false,
       };
     });
@@ -397,12 +414,23 @@ export const sendAdminMessageThunk = (
   text: string,
 ) => async (dispatch: Dispatch, getState: () => any) => {
   try {
-    const adminId = getState().auth?.profile?.uid ?? '';
+    const state = getState();
+    const adminId = state.auth?.profile?.uid ?? '';
+    const adminName = state.auth?.profile?.full_name || 'Admin';
+    // Find the recipient name from the conversations list
+    const conversation = (state.admin?.conversations || []).find(
+      (c: any) => c.id === conversationId,
+    );
+    const recipientName = conversation?.instructorName || '';
+
     await messageService.sendMessage({
       senderId: adminId,
       receiverId: recipientId,
-      content: text,
+      senderName: adminName,
+      receiverName: recipientName,
       senderRole: 'admin',
+      receiverRole: 'instructor',
+      content: text,
     });
     dispatch(sendMessageAction(conversationId, text));
   } catch (error) {

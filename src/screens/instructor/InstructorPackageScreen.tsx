@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -33,8 +32,6 @@ import {
 import { useToast } from '../../components/admin';
 import { useConfirmation } from '../../components/common';
 import { toISOString } from '../../utils/mappers';
-
-const COMMISSION_PERCENTAGE = 15;
 
 const formatCreatedDate = (value: unknown): string => {
   if (!value) {
@@ -69,7 +66,7 @@ const InstructorPackageScreen = () => {
         description: p.description || '',
         lessonCount: p.number_of_lessons || 0,
         price: p.price || 0,
-        commissionPercentage: p.commission_percent || 15,
+        commissionPercentage: p.commission_percent,
         status: (p.status || 'pending') as ApprovalStatus,
         createdAt: p.approvedAt || p.updatedAt || '',
       })),
@@ -79,7 +76,6 @@ const InstructorPackageScreen = () => {
         description: p.description || '',
         lessonCount: p.number_of_lessons || 0,
         price: p.price || 0,
-        commissionPercentage: 15,
         status: 'pending' as ApprovalStatus,
         createdAt: p.created_at || '',
       })),
@@ -273,7 +269,9 @@ const InstructorPackageScreen = () => {
                   <View style={styles.packageMetaRow}>
                     <Text style={styles.metaText}>{pkg.lessonCount} lessons</Text>
                     <Text style={styles.metaText}>£{pkg.price}</Text>
-                    <Text style={styles.metaText}>{pkg.commissionPercentage}% commission</Text>
+                    {pkg.commissionPercentage != null && (
+                      <Text style={styles.metaText}>{pkg.commissionPercentage}% commission</Text>
+                    )}
                   </View>
 
                   <View style={styles.actionsRow}>
@@ -365,10 +363,6 @@ const InstructorPackageScreen = () => {
                 />
               </View>
 
-              <View style={styles.commissionCard}>
-                <Text style={styles.commissionLabel}>Platform Commission</Text>
-                <Text style={styles.commissionValue}>{COMMISSION_PERCENTAGE}%</Text>
-              </View>
             </ScrollView>
 
             <View style={styles.modalActionsRow}>
@@ -532,28 +526,6 @@ const createStyles = (theme: AppTheme) =>
     textArea: {
       minHeight: 100,
       paddingTop: theme.spacing.sm,
-    },
-    commissionCard: {
-      backgroundColor: theme.colors.surfaceSecondary,
-      borderRadius: theme.borderRadius.md,
-      padding: theme.spacing.md,
-      marginBottom: theme.spacing.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-    },
-    commissionLabel: {
-      ...theme.typography.label,
-      color: theme.colors.textSecondary,
-    },
-    commissionValue: {
-      ...theme.typography.h2,
-      color: theme.colors.primary,
-      marginTop: theme.spacing.xxs,
-    },
-    commissionNote: {
-      ...theme.typography.bodySmall,
-      color: theme.colors.textTertiary,
-      marginTop: theme.spacing.xxs,
     },
     // Modal
     modalOverlay: {

@@ -65,9 +65,10 @@ export const createCheckoutSession = async (data: {
 
 /**
  * Verify checkout session status and trigger fallback fulfillment.
+ * Uses a longer timeout since the backend may need to fulfill the order.
  */
 export const getCheckoutSession = async (sessionId: string): Promise<CheckoutStatusResponse> => {
-  const fn = callable('getCheckoutSession');
+  const fn = callable('getCheckoutSession', { timeout: 180000 }); // 3 min for fulfillment
   const result = await fn({ sessionId });
   return result.data as CheckoutStatusResponse;
 };

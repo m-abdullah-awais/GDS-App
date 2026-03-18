@@ -44,7 +44,7 @@ const MyInstructorsScreen = () => {
         <Pressable
           style={styles.cardHeader}
           onPress={() => navigation.navigate('InstructorProfile', { instructorId: item.id })}>
-          <Avatar initials={item.avatar || ''} name={item.name} size={48} />
+          <Avatar initials={item.name} imageUrl={item.avatar} size={48} />
           <View style={styles.info}>
             <Text style={styles.name}>{item.name || ''}</Text>
             <Text style={styles.meta}>

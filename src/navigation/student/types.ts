@@ -11,7 +11,7 @@ export type StudentStackParamList = {
   InstructorProfile: { instructorId: string };
   PackageListing: { instructorId: string };
   MyInstructors: undefined;
-  BookLesson: { instructorId: string; packageId?: string };
+  BookLesson: { instructorId?: string; packageId?: string } | undefined;
   MyLessons: undefined;
   StudentMessages: undefined;
   Chat: { conversationId: string; instructorName: string };

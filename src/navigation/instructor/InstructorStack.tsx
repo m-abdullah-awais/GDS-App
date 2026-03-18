@@ -1,5 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../store';
 import InstructorTabs from './InstructorTabs';
 import InstructorCompleteProfileScreen from '../../screens/instructor/InstructorCompleteProfileScreen';
 import InstructorPendingApprovalScreen from '../../screens/instructor/InstructorPendingApprovalScreen';
@@ -33,17 +35,34 @@ const Stack = createNativeStackNavigator<InstructorStackParamList>();
 
 const InstructorStack = () => {
   const { theme } = useTheme();
+  const profile = useSelector((state: RootState) => state.auth.profile);
+
+  // Determine initial route based on instructor onboarding status.
+  // Matches web AuthContext sign-in routing logic:
+  // - Profile incomplete → CompleteProfile
+  // - Profile complete but not approved → PendingApproval (handles Stripe + admin)
+  // - Fully approved → InstructorTabs (dashboard)
+  let initialRoute: keyof InstructorStackParamList = 'CompleteProfile';
+
+  if (profile?.profileComplete || profile?.profile_completed) {
+    if (profile?.approved && profile?.status === 'active') {
+      initialRoute = 'InstructorTabs';
+    } else {
+      initialRoute = 'PendingApproval';
+    }
+  }
 
   return (
     <Stack.Navigator
+      initialRouteName={initialRoute}
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
         contentStyle: { backgroundColor: theme.colors.background },
       }}>
-      <Stack.Screen name="InstructorTabs" component={InstructorTabs} />
       <Stack.Screen name="CompleteProfile" component={InstructorCompleteProfileScreen} />
       <Stack.Screen name="PendingApproval" component={InstructorPendingApprovalScreen} />
+      <Stack.Screen name="InstructorTabs" component={InstructorTabs} />
       <Stack.Screen name="Areas" component={InstructorAreasScreen} />
       <Stack.Screen name="CreatePackage" component={InstructorPackageScreen} />
       <Stack.Screen name="Availability" component={InstructorAvailabilityScreen} />

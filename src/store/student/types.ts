@@ -9,7 +9,7 @@
 
 export type InstructorRequestStatus = 'pending' | 'accepted' | 'rejected';
 export type PackagePurchaseStatus = 'active' | 'expired' | 'exhausted';
-export type BookingLessonStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+export type BookingLessonStatus = 'pending' | 'accepted' | 'confirmed' | 'amendment_pending' | 'completed' | 'cancelled';
 
 // ─── Entity Types ─────────────────────────────────────────────────────────────
 

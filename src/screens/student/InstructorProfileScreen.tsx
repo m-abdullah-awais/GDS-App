@@ -153,13 +153,32 @@ const InstructorProfileScreen = () => {
         const [user, fbReviews] = await Promise.all([userPromise, reviewsPromise]);
         if (cancelled) return;
         setInstructorDetail(user);
-        setReviews((fbReviews || []).map((r: any) => ({
-          id: r.id,
-          studentName: r.studentName || r.student_name || 'Student',
-          date: r.createdAt ? new Date(r.createdAt as any).toLocaleDateString() : '',
-          rating: r.rating || 0,
-          comment: r.comment || r.feedback || '',
-        })));
+        setReviews((fbReviews || []).map((r: any) => {
+          // Handle Firestore Timestamp, Date, string, or number
+          let dateStr = '';
+          const ts = r.createdAt || r.submittedAt;
+          if (ts) {
+            const d = typeof ts.toDate === 'function'
+              ? ts.toDate()
+              : ts instanceof Date
+                ? ts
+                : new Date(ts);
+            if (!isNaN(d.getTime())) {
+              dateStr = d.toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              });
+            }
+          }
+          return {
+            id: r.id,
+            studentName: r.studentName || r.student_name || 'Student',
+            date: dateStr,
+            rating: r.rating || 0,
+            comment: r.comment || r.feedback || r.notes || '',
+          };
+        }));
       } catch (err) {
         if (!cancelled) setLoadError(true);
         console.error('Failed to load instructor details:', err);
@@ -172,7 +191,27 @@ const InstructorProfileScreen = () => {
   }, [route.params.instructorId]);
 
   // Merge data: prefer Firestore detail, fallback to Redux VM
-  const instructor = instructorDetail || instructorVM;
+  // Normalize field names between raw Firestore (snake_case) and Redux VM (camelCase)
+  const raw = instructorDetail;
+  const instructor = raw
+    ? {
+        ...raw,
+        // Ensure VM-style fields are available from raw Firestore fields
+        name: raw.name || raw.full_name || instructorVM?.name || '',
+        about: raw.about || raw.about_me || raw.bio || '',
+        bio: raw.bio || raw.about_me || raw.about || '',
+        transmissionType: raw.transmissionType || raw.car_transmission || instructorVM?.transmissionType || 'Manual',
+        coveredPostcodes: raw.coveredPostcodes || raw.covered_postcodes || raw.postcodes
+          || (raw.postcode ? [raw.postcode] : [])
+          || instructorVM?.coveredPostcodes || [],
+        passRate: raw.passRate || raw.pass_rate || instructorVM?.passRate || 0,
+        yearsExperience: raw.yearsExperience || raw.years_experience || instructorVM?.yearsExperience || 0,
+        acceptingStudents: raw.acceptingStudents ?? (raw.status === 'active') ?? instructorVM?.acceptingStudents ?? true,
+        rating: raw.rating || instructorVM?.rating || 0,
+        avatar: raw.avatar || raw.profile_picture_url || raw.profileImage || instructorVM?.avatar || '',
+        id: raw.id || raw.uid || instructorVM?.id || '',
+      }
+    : instructorVM;
 
   if (!ready || (loading && !instructor)) {
     return (
@@ -201,7 +240,7 @@ const InstructorProfileScreen = () => {
         showsVerticalScrollIndicator={false}>
         {/* ── Header Card ──────────────────────────────────── */}
         <View style={s.headerCard}>
-          <Avatar initials={instructor.avatar || (instructor.name || 'I').charAt(0)} size={80} />
+          <Avatar initials={instructor.name || 'I'} imageUrl={instructor.avatar} size={80} />
           <Text style={s.name}>{instructor.name || ''}</Text>
           <View style={s.ratingRow}>
             <StarRating rating={Math.round(instructor.rating || 0)} theme={theme} />

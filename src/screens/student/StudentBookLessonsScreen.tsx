@@ -2,17 +2,15 @@
  * GDS Driving School — StudentBookLessonsScreen
  * ================================================
  *
- * Progressive lesson-booking flow:
- *   1. Select purchased package (pre-selected if navigated with packageId)
- *   2. Pick date on 14-day calendar strip
- *   3. Choose available time slot
- *   4. Confirm booking via modal
- *
- * Redux-connected. Uses shared BookingCalendar, SlotSelector,
- * and BookingConfirmModal components.
+ * Progressive lesson-booking flow with clear step indicators:
+ *   Step 1: Select instructor (if not pre-selected)
+ *   Step 2: Select package
+ *   Step 3: Pick date
+ *   Step 4: Choose time slot
+ *   → Confirm booking
  *
  * Navigation params:
- *   - instructorId  (required)
+ *   - instructorId  (optional — if omitted, shows instructor picker)
  *   - packageId     (optional — pre-selects a package)
  */
 
@@ -25,7 +23,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { StudentStackParamList } from '../../navigation/student/types';
 import { useSelector, useDispatch } from 'react-redux';
@@ -40,6 +38,7 @@ import {
   generateCalendarDays,
   SlotSelector,
   BookingConfirmModal,
+  PendingBookingBanner,
 } from '../../components/student';
 import {
   fetchAvailableSlots,
@@ -47,10 +46,120 @@ import {
   validateBooking,
   createBooking,
 } from '../../services/bookingService';
-import type { AvailableSlot, PurchasedPackage } from '../../store/student/types';
+import * as userService from '../../services/userService';
+import * as assignmentService from '../../services/assignmentService';
+import { mapUserToStudentInstructor, mapAssignmentToPurchasedPackage } from '../../utils/mappers';
+import { setPurchasedPackages } from '../../store/student/actions';
+import { firebaseAuth } from '../../config/firebase';
+import type { AvailableSlot, PurchasedPackage, StudentInstructor } from '../../store/student/types';
 
 type Nav = NativeStackNavigationProp<StudentStackParamList>;
 type Route = RouteProp<StudentStackParamList, 'BookLesson'>;
+
+// ─── Step Indicator ──────────────────────────────────────────────────────────
+
+const StepIndicator = ({
+  currentStep,
+  totalSteps,
+  theme,
+}: {
+  currentStep: number;
+  totalSteps: number;
+  theme: AppTheme;
+}) => (
+  <View style={{
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    gap: theme.spacing.xs,
+  }}>
+    {Array.from({ length: totalSteps }, (_, i) => {
+      const step = i + 1;
+      const isActive = step === currentStep;
+      const isCompleted = step < currentStep;
+      return (
+        <React.Fragment key={step}>
+          {i > 0 && (
+            <View style={{
+              flex: 1,
+              height: 2,
+              backgroundColor: isCompleted ? theme.colors.primary : theme.colors.border,
+              borderRadius: 1,
+            }} />
+          )}
+          <View style={{
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            backgroundColor: isCompleted
+              ? theme.colors.primary
+              : isActive
+              ? theme.colors.primary
+              : theme.colors.surface,
+            borderWidth: isActive ? 0 : 1.5,
+            borderColor: isCompleted ? theme.colors.primary : theme.colors.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            {isCompleted ? (
+              <Ionicons name="checkmark" size={16} color={theme.colors.textInverse} />
+            ) : (
+              <Text style={{
+                fontSize: 12,
+                fontWeight: '700',
+                color: isActive ? theme.colors.textInverse : theme.colors.textTertiary,
+              }}>
+                {step}
+              </Text>
+            )}
+          </View>
+        </React.Fragment>
+      );
+    })}
+  </View>
+);
+
+// ─── Section Header ──────────────────────────────────────────────────────────
+
+const SectionHeader = ({
+  icon,
+  title,
+  subtitle,
+  theme,
+}: {
+  icon: string;
+  title: string;
+  subtitle?: string;
+  theme: AppTheme;
+}) => (
+  <View style={{ marginBottom: theme.spacing.sm }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View style={{
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        backgroundColor: theme.colors.primaryLight ?? theme.colors.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <Ionicons name={icon as any} size={18} color={theme.colors.primary} />
+      </View>
+      <Text style={{ ...theme.typography.h4, color: theme.colors.textPrimary }}>{title}</Text>
+    </View>
+    {subtitle && (
+      <Text style={{
+        ...theme.typography.bodySmall,
+        color: theme.colors.textTertiary,
+        marginTop: 4,
+        marginLeft: 40,
+      }}>
+        {subtitle}
+      </Text>
+    )}
+  </View>
+);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -61,7 +170,7 @@ const StudentBookLessonsScreen = () => {
   const { theme } = useTheme();
   const s = useMemo(() => createStyles(theme), [theme]);
 
-  const instructorId = route.params?.instructorId ?? '';
+  const paramInstructorId = route.params?.instructorId ?? '';
   const preselectedPackageId = route.params?.packageId;
 
   // Defer heavy render until navigation animation completes
@@ -81,9 +190,62 @@ const StudentBookLessonsScreen = () => {
   const lessons = useSelector((st: RootState) => st.student.lessons || []);
   const slotsLoading = useSelector((st: RootState) => st.student.slotsLoading);
   const bookingLoading = useSelector((st: RootState) => st.student.bookingLoading);
+  const requests = useSelector((st: RootState) => st.student.requests || []);
 
-  const instructor = instructors.find(i => i.id === instructorId);
-  const isAccepted = myInstructors.some(i => i.id === instructorId);
+  // ── Refresh purchased packages when screen gains focus ──
+  // This ensures that after buying a package on PackageListingScreen,
+  // the data is fresh when navigating back here.
+  useFocusEffect(
+    useCallback(() => {
+      const studentId = firebaseAuth.currentUser?.uid;
+      if (!studentId) return;
+      let cancelled = false;
+      (async () => {
+        try {
+          const assignments = await assignmentService.getStudentAssignments(studentId);
+          if (!cancelled && assignments.length > 0) {
+            const purchasedVMs = assignments.map(a => mapAssignmentToPurchasedPackage(a));
+            dispatch(setPurchasedPackages(purchasedVMs));
+          }
+        } catch (err) {
+          if (__DEV__) console.warn('[BookLesson] Failed to refresh packages on focus:', err);
+        }
+      })();
+      return () => { cancelled = true; };
+    }, [dispatch]),
+  );
+
+  // ── Instructor selection ──
+  const [selectedInstructorId, setSelectedInstructorId] = useState(paramInstructorId);
+
+  const connectedInstructors = useMemo(() => {
+    const connected = new Map<string, StudentInstructor>();
+    for (const inst of myInstructors) connected.set(inst.id, inst);
+    for (const pkg of purchasedPackages) {
+      if (pkg.instructorId && !connected.has(pkg.instructorId)) {
+        const inst = instructors.find(i => i.id === pkg.instructorId);
+        if (inst) connected.set(inst.id, inst);
+      }
+    }
+    for (const req of requests) {
+      if (req.status === 'accepted' && req.instructorId && !connected.has(req.instructorId)) {
+        const inst = instructors.find(i => i.id === req.instructorId);
+        if (inst) connected.set(inst.id, inst);
+      }
+    }
+    return Array.from(connected.values());
+  }, [myInstructors, purchasedPackages, requests, instructors]);
+
+  useEffect(() => {
+    if (paramInstructorId) {
+      setSelectedInstructorId(paramInstructorId);
+    } else if (connectedInstructors.length === 1 && !selectedInstructorId) {
+      setSelectedInstructorId(connectedInstructors[0].id);
+    }
+  }, [paramInstructorId, connectedInstructors]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const instructorId = selectedInstructorId;
+  const instructorFromRedux = instructors.find(i => i.id === instructorId);
 
   // Active packages for this instructor
   const activePackages = useMemo(
@@ -97,6 +259,31 @@ const StudentBookLessonsScreen = () => {
     [purchasedPackages, instructorId],
   );
 
+  // Connection check
+  const isAccepted = myInstructors.some(i => i.id === instructorId);
+  const hasAcceptedRequest = requests.some(
+    r => r.instructorId === instructorId && r.status === 'accepted',
+  );
+  const hasPackages = purchasedPackages.some(p => p.instructorId === instructorId);
+  const isConnected = isAccepted || hasAcceptedRequest || hasPackages;
+
+  // Fetch instructor from Firestore if not in Redux store
+  const [fetchedInstructor, setFetchedInstructor] = useState<StudentInstructor | null>(null);
+  const [instructorLoading, setInstructorLoading] = useState(false);
+  useEffect(() => {
+    if (!instructorFromRedux && instructorId) {
+      setInstructorLoading(true);
+      userService.getUserById(instructorId).then(user => {
+        if (user) setFetchedInstructor(mapUserToStudentInstructor(user));
+      }).catch(() => {}).finally(() => setInstructorLoading(false));
+    } else {
+      setInstructorLoading(false);
+      setFetchedInstructor(null);
+    }
+  }, [instructorFromRedux, instructorId]);
+
+  const instructor = instructorFromRedux || fetchedInstructor;
+
   // ── Local state ────────────────────────────────────────
   const [selectedPkg, setSelectedPkg] = useState<PurchasedPackage | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -105,7 +292,7 @@ const StudentBookLessonsScreen = () => {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // ── Initialize ─────────────────────────────────────────
+  // ── Fetch slots when instructor is selected ──
   useEffect(() => {
     let cancelled = false;
     if (instructorId) {
@@ -116,17 +303,26 @@ const StudentBookLessonsScreen = () => {
     return () => { cancelled = true; };
   }, [instructorId, dispatch]);
 
-  // Pre-select package if navigated with packageId
+  // Reset booking state when instructor changes
+  useEffect(() => {
+    setSelectedPkg(null);
+    setSelectedDate(null);
+    setSelectedSlot(null);
+    setValidationError(null);
+    setShowSuccess(false);
+  }, [instructorId]);
+
+  // Pre-select package
   useEffect(() => {
     if (preselectedPackageId && activePackages.length > 0) {
       const match = activePackages.find(p => p.packageId === preselectedPackageId);
-      if (match) { setSelectedPkg(match); }
+      if (match) setSelectedPkg(match);
     } else if (activePackages.length === 1 && !selectedPkg) {
       setSelectedPkg(activePackages[0]);
     }
   }, [preselectedPackageId, activePackages]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Build calendar from available slots
+  // Build calendar
   const slotsMap = useMemo(() => {
     const map: Record<string, boolean> = {};
     availableSlots
@@ -137,16 +333,24 @@ const StudentBookLessonsScreen = () => {
 
   const calendarDays = useMemo(() => generateCalendarDays(slotsMap), [slotsMap]);
 
-  // Slots for selected date
   const dateSlots = useMemo(
-    () =>
-      selectedDate
-        ? getSlotsForDate(availableSlots, instructorId, selectedDate)
-        : [],
+    () => selectedDate ? getSlotsForDate(availableSlots, instructorId, selectedDate) : [],
     [availableSlots, instructorId, selectedDate],
   );
 
+  // Compute current step for progress indicator
+  const currentStep = useMemo(() => {
+    if (!instructorId) return 1;
+    if (!selectedPkg) return 2;
+    if (!selectedDate) return 3;
+    return 4;
+  }, [instructorId, selectedPkg, selectedDate]);
+
   // ── Handlers ───────────────────────────────────────────
+  const handleSelectInstructor = useCallback((id: string) => {
+    setSelectedInstructorId(id);
+  }, []);
+
   const handleSelectDate = useCallback((date: string) => {
     setSelectedDate(date);
     setSelectedSlot(null);
@@ -157,20 +361,16 @@ const StudentBookLessonsScreen = () => {
     (slot: AvailableSlot) => {
       setSelectedSlot(slot);
       setValidationError(null);
-
       if (selectedPkg) {
         const result = validateBooking(slot, lessons, selectedPkg);
-        if (!result.valid) {
-          setValidationError(result.error ?? 'Cannot book this slot.');
-        }
+        if (!result.valid) setValidationError(result.error ?? 'Cannot book this slot.');
       }
     },
     [selectedPkg, lessons],
   );
 
   const handleOpenConfirm = useCallback(() => {
-    if (!selectedSlot || !selectedPkg) { return; }
-
+    if (!selectedSlot || !selectedPkg) return;
     const result = validateBooking(selectedSlot, lessons, selectedPkg);
     if (!result.valid) {
       setValidationError(result.error ?? 'Cannot book this slot.');
@@ -180,8 +380,7 @@ const StudentBookLessonsScreen = () => {
   }, [selectedSlot, selectedPkg, lessons]);
 
   const handleConfirmBooking = useCallback(async () => {
-    if (!selectedSlot || !selectedPkg || !instructor || !instructorId) { return; }
-
+    if (!selectedSlot || !selectedPkg || !instructor || !instructorId) return;
     try {
       await createBooking(
         instructorId,
@@ -206,12 +405,9 @@ const StudentBookLessonsScreen = () => {
     navigation.navigate('My Lessons' as any);
   }, [navigation]);
 
-  const remaining = selectedPkg
-    ? selectedPkg.totalLessons - selectedPkg.lessonsUsed
-    : 0;
+  const remaining = selectedPkg ? selectedPkg.totalLessons - selectedPkg.lessonsUsed : 0;
 
-  // Loading state during navigation animation — use plain View to avoid
-  // ScreenContainer overhead during transition
+  // ── Loading ──
   if (!screenReady) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
@@ -220,12 +416,124 @@ const StudentBookLessonsScreen = () => {
     );
   }
 
-  // ── Guard: not accepted ────────────────────────────────
-  if (!isAccepted || !instructor) {
+  // ── Guard: no connected instructors ──
+  if (!paramInstructorId && connectedInstructors.length === 0) {
     return (
       <ScreenContainer showHeader title="Book Lesson">
         <View style={s.guardContainer}>
-          <Ionicons name="lock-closed-outline" size={52} color={theme.colors.textTertiary} />
+          <View style={s.guardIconCircle}>
+            <Ionicons name="people-outline" size={40} color={theme.colors.primary} />
+          </View>
+          <Text style={s.guardTitle}>No Instructors Yet</Text>
+          <Text style={s.guardSubtitle}>
+            Connect with an instructor and purchase a package to start booking lessons.
+          </Text>
+          <Pressable
+            style={s.guardAction}
+            onPress={() => navigation.navigate('InstructorDiscovery' as any)}>
+            <Ionicons name="search-outline" size={18} color={theme.colors.textInverse} />
+            <Text style={s.guardActionText}>Find Instructors</Text>
+          </Pressable>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  // ── Instructor selector screen ──
+  if (!paramInstructorId && !selectedInstructorId) {
+    return (
+      <ScreenContainer showHeader title="Book Lesson">
+        <StepIndicator currentStep={1} totalSteps={4} theme={theme} />
+        <ScrollView
+          contentContainerStyle={{ padding: theme.spacing.md, paddingBottom: theme.spacing['3xl'] }}
+          showsVerticalScrollIndicator={false}>
+
+          <PendingBookingBanner />
+
+          <SectionHeader
+            icon="person-outline"
+            title="Choose Your Instructor"
+            subtitle="Select who you'd like to book a lesson with"
+            theme={theme}
+          />
+
+          {connectedInstructors.map(item => {
+            const totalRemaining = purchasedPackages
+              .filter(p => p.instructorId === item.id && p.status === 'active' && p.lessonsUsed < p.totalLessons)
+              .reduce((sum, p) => sum + (p.totalLessons - p.lessonsUsed), 0);
+            const hasActivePkgs = totalRemaining > 0;
+
+            return (
+              <Pressable
+                key={item.id}
+                style={s.instructorCard}
+                onPress={() => handleSelectInstructor(item.id)}>
+                <Avatar initials={item.name} imageUrl={item.avatar} size={50} />
+                <View style={s.instructorCardInfo}>
+                  <Text style={s.instructorCardName}>{item.name}</Text>
+                  <View style={s.instructorMeta}>
+                    {item.rating > 0 && (
+                      <>
+                        <Ionicons name="star" size={13} color={theme.colors.warning} />
+                        <Text style={s.instructorRating}>{item.rating}</Text>
+                        <View style={s.dot} />
+                      </>
+                    )}
+                    <Text style={s.instructorCity}>{item.city || 'Instructor'}</Text>
+                  </View>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginTop: 4,
+                    gap: 4,
+                  }}>
+                    <View style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: hasActivePkgs ? theme.colors.success : theme.colors.textTertiary,
+                    }} />
+                    <Text style={{
+                      ...theme.typography.caption,
+                      color: hasActivePkgs ? theme.colors.success : theme.colors.textTertiary,
+                      fontWeight: '600',
+                    }}>
+                      {hasActivePkgs ? `${totalRemaining}h remaining` : 'No active hours'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={{
+                  backgroundColor: theme.colors.primaryLight ?? theme.colors.surface,
+                  borderRadius: theme.borderRadius.md,
+                  padding: 8,
+                }}>
+                  <Ionicons name="arrow-forward" size={18} color={theme.colors.primary} />
+                </View>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </ScreenContainer>
+    );
+  }
+
+  // Loading instructor data
+  if (instructorLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  // ── Guard: not connected (only for direct navigation) ──
+  if (paramInstructorId && (!isConnected || !instructor)) {
+    return (
+      <ScreenContainer showHeader title="Book Lesson">
+        <View style={s.guardContainer}>
+          <View style={s.guardIconCircle}>
+            <Ionicons name="lock-closed-outline" size={40} color={theme.colors.primary} />
+          </View>
           <Text style={s.guardTitle}>Not Connected</Text>
           <Text style={s.guardSubtitle}>
             You need an accepted connection with this instructor to book lessons.
@@ -235,78 +543,119 @@ const StudentBookLessonsScreen = () => {
     );
   }
 
-  // ── Guard: no active packages ──────────────────────────
+  if (!instructor) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={{ ...theme.typography.bodySmall, color: theme.colors.textTertiary, marginTop: theme.spacing.md }}>
+          Loading instructor...
+        </Text>
+      </View>
+    );
+  }
+
+  // ── Guard: no active packages ──
   if (activePackages.length === 0) {
     return (
       <ScreenContainer showHeader title="Book Lesson">
         <View style={s.guardContainer}>
-          <Ionicons name="cube-outline" size={52} color={theme.colors.textTertiary} />
-          <Text style={s.guardTitle}>No Active Packages</Text>
+          <View style={s.guardIconCircle}>
+            <Ionicons name="cube-outline" size={40} color={theme.colors.primary} />
+          </View>
+          <Text style={s.guardTitle}>No Active Hours</Text>
           <Text style={s.guardSubtitle}>
             Purchase a package from {instructor.name} to start booking lessons.
           </Text>
           <Pressable
             style={s.guardAction}
-            onPress={() =>
-              navigation.navigate('PackageListing', { instructorId })
-            }>
+            onPress={() => navigation.navigate('PackageListing', { instructorId })}>
+            <Ionicons name="cart-outline" size={18} color={theme.colors.textInverse} />
             <Text style={s.guardActionText}>View Packages</Text>
-            <Ionicons name="arrow-forward" size={18} color={theme.colors.textInverse} />
           </Pressable>
+          {!paramInstructorId && connectedInstructors.length > 1 && (
+            <Pressable
+              style={s.guardSecondaryAction}
+              onPress={() => setSelectedInstructorId('')}>
+              <Ionicons name="arrow-back" size={16} color={theme.colors.textSecondary} />
+              <Text style={s.guardSecondaryText}>Choose Different Instructor</Text>
+            </Pressable>
+          )}
         </View>
       </ScreenContainer>
     );
   }
 
-  // ── Success overlay ────────────────────────────────────
+  // ── Success overlay ──
   if (showSuccess) {
     return (
       <ScreenContainer showHeader title="Book Lesson">
         <View style={s.successContainer}>
-          <View style={s.successIcon}>
-            <Ionicons name="checkmark-circle" size={64} color={theme.colors.success} />
+          <View style={s.successIconCircle}>
+            <Ionicons name="checkmark" size={48} color={theme.colors.textInverse} />
           </View>
-          <Text style={s.successTitle}>Lesson Booked!</Text>
+          <Text style={s.successTitle}>Lesson Requested!</Text>
           <Text style={s.successSubtitle}>
-            Your lesson with {instructor.name} has been requested.
+            Your lesson with {instructor.name} has been submitted.{'\n'}
             You'll receive confirmation shortly.
           </Text>
-          <Pressable style={s.successBtn} onPress={handleSuccessDismiss}>
-            <Text style={s.successBtnText}>View My Lessons</Text>
+          <Pressable style={s.guardAction} onPress={handleSuccessDismiss}>
+            <Ionicons name="calendar-outline" size={18} color={theme.colors.textInverse} />
+            <Text style={s.guardActionText}>View My Lessons</Text>
           </Pressable>
         </View>
       </ScreenContainer>
     );
   }
 
-  // ── Main render ────────────────────────────────────────
+  // ── Main booking flow ──
   return (
     <ScreenContainer showHeader title="Book Lesson">
+      <StepIndicator currentStep={currentStep} totalSteps={4} theme={theme} />
+
       <ScrollView
         style={s.scroll}
         contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}>
 
+        {/* Pending requests banner */}
+        <PendingBookingBanner />
+
         {/* Instructor Header */}
         <View style={s.instructorHeader}>
-          <Avatar initials={instructor.avatar} size={48} />
+          <Avatar initials={instructor.name} imageUrl={instructor.avatar} size={44} />
           <View style={s.instructorInfo}>
             <Text style={s.instructorName}>{instructor.name}</Text>
             <View style={s.instructorMeta}>
-              <Ionicons name="star" size={14} color={theme.colors.warning} />
-              <Text style={s.instructorRating}>{instructor.rating}</Text>
-              <View style={s.dot} />
+              {instructor.rating > 0 && (
+                <>
+                  <Ionicons name="star" size={13} color={theme.colors.warning} />
+                  <Text style={s.instructorRating}>{instructor.rating}</Text>
+                  <View style={s.dot} />
+                </>
+              )}
               <Text style={s.instructorCity}>{instructor.city}</Text>
             </View>
           </View>
+          {!paramInstructorId && connectedInstructors.length > 1 && (
+            <Pressable
+              style={s.changeBtn}
+              onPress={() => setSelectedInstructorId('')}>
+              <Ionicons name="swap-horizontal" size={18} color={theme.colors.primary} />
+              <Text style={{ ...theme.typography.caption, color: theme.colors.primary, fontWeight: '600' }}>
+                Change
+              </Text>
+            </Pressable>
+          )}
         </View>
 
-        {/* Step 1: Package Selection */}
+        {/* Step 2: Package Selection */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>
-            <Ionicons name="cube-outline" size={16} color={theme.colors.primary} />
-            {'  '}Select Package
-          </Text>
+          <SectionHeader
+            icon="cube-outline"
+            title="Select Package"
+            subtitle={activePackages.length > 1 ? 'Choose which package to use for this lesson' : undefined}
+            theme={theme}
+          />
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -323,36 +672,41 @@ const StudentBookLessonsScreen = () => {
                     setSelectedSlot(null);
                     setValidationError(null);
                   }}>
+                  {isSelected && (
+                    <View style={s.packageChipCheck}>
+                      <Ionicons name="checkmark-circle" size={18} color={theme.colors.primary} />
+                    </View>
+                  )}
                   <Text
                     style={[s.packageChipTitle, isSelected && s.packageChipTitleActive]}
                     numberOfLines={1}>
                     {pkg.packageName}
                   </Text>
-                  <Text
-                    style={[
-                      s.packageChipRemaining,
-                      isSelected && s.packageChipRemainingActive,
-                    ]}>
-                    {pkgRemaining} lesson{pkgRemaining !== 1 ? 's' : ''} left
-                  </Text>
-                  {isSelected && (
-                    <View style={s.packageChipCheck}>
-                      <Ionicons name="checkmark-circle" size={16} color={theme.colors.primary} />
-                    </View>
-                  )}
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginTop: 6,
+                    gap: 4,
+                  }}>
+                    <Ionicons
+                      name="time-outline"
+                      size={13}
+                      color={isSelected ? theme.colors.primary : theme.colors.textTertiary}
+                    />
+                    <Text style={[s.packageChipRemaining, isSelected && s.packageChipRemainingActive]}>
+                      {pkgRemaining}h remaining
+                    </Text>
+                  </View>
                 </Pressable>
               );
             })}
           </ScrollView>
         </View>
 
-        {/* Step 2: Date Selection */}
+        {/* Step 3: Date Selection */}
         {selectedPkg && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>
-              <Ionicons name="calendar-outline" size={16} color={theme.colors.primary} />
-              {'  '}Pick a Date
-            </Text>
+            <SectionHeader icon="calendar-outline" title="Pick a Date" theme={theme} />
             <BookingCalendar
               dates={calendarDays}
               selectedDate={selectedDate}
@@ -361,13 +715,15 @@ const StudentBookLessonsScreen = () => {
           </View>
         )}
 
-        {/* Step 3: Time Slot Selection */}
+        {/* Step 4: Time Slot Selection */}
         {selectedPkg && selectedDate && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>
-              <Ionicons name="time-outline" size={16} color={theme.colors.primary} />
-              {'  '}Choose a Time
-            </Text>
+            <SectionHeader
+              icon="time-outline"
+              title="Choose a Time"
+              subtitle={dateSlots.length > 0 ? `${dateSlots.length} slot${dateSlots.length !== 1 ? 's' : ''} available` : undefined}
+              theme={theme}
+            />
             <SlotSelector
               slots={dateSlots}
               selectedSlot={selectedSlot}
@@ -385,45 +741,38 @@ const StudentBookLessonsScreen = () => {
           </View>
         )}
 
-        {/* Confirm button */}
-        {selectedPkg && selectedDate && selectedSlot && !validationError && (
-          <Pressable style={s.confirmBtn} onPress={handleOpenConfirm}>
-            <Ionicons name="checkmark-circle-outline" size={20} color={theme.colors.textInverse} />
-            <Text style={s.confirmBtnText}>Confirm Booking</Text>
-          </Pressable>
-        )}
-
-        {/* Booking summary */}
-        {selectedPkg && (
+        {/* Booking summary + confirm */}
+        {selectedPkg && selectedDate && selectedSlot && (
           <View style={s.summaryCard}>
             <Text style={s.summaryTitle}>Booking Summary</Text>
+            <View style={s.summaryRow}>
+              <Text style={s.summaryLabel}>Instructor</Text>
+              <Text style={s.summaryValue}>{instructor.name}</Text>
+            </View>
             <View style={s.summaryRow}>
               <Text style={s.summaryLabel}>Package</Text>
               <Text style={s.summaryValue}>{selectedPkg.packageName}</Text>
             </View>
             <View style={s.summaryRow}>
-              <Text style={s.summaryLabel}>Remaining</Text>
-              <Text style={s.summaryValue}>
-                {remaining} of {selectedPkg.totalLessons} lessons
-              </Text>
+              <Text style={s.summaryLabel}>Hours Left</Text>
+              <Text style={s.summaryValue}>{remaining}h</Text>
             </View>
             <View style={s.summaryRow}>
-              <Text style={s.summaryLabel}>Duration</Text>
-              <Text style={s.summaryValue}>{selectedPkg.duration}</Text>
+              <Text style={s.summaryLabel}>Date</Text>
+              <Text style={s.summaryValue}>{selectedDate}</Text>
             </View>
-            {selectedDate && (
-              <View style={s.summaryRow}>
-                <Text style={s.summaryLabel}>Date</Text>
-                <Text style={s.summaryValue}>{selectedDate}</Text>
-              </View>
-            )}
-            {selectedSlot && (
-              <View style={s.summaryRow}>
-                <Text style={s.summaryLabel}>Time</Text>
-                <Text style={s.summaryValue}>
-                  {selectedSlot.startTime} – {selectedSlot.endTime}
-                </Text>
-              </View>
+            <View style={[s.summaryRow, { borderBottomWidth: 0 }]}>
+              <Text style={s.summaryLabel}>Time</Text>
+              <Text style={s.summaryValue}>
+                {selectedSlot.startTime} – {selectedSlot.endTime}
+              </Text>
+            </View>
+
+            {!validationError && (
+              <Pressable style={s.confirmBtn} onPress={handleOpenConfirm}>
+                <Ionicons name="checkmark-circle-outline" size={20} color={theme.colors.textInverse} />
+                <Text style={s.confirmBtnText}>Confirm Booking</Text>
+              </Pressable>
             )}
           </View>
         )}
@@ -451,7 +800,7 @@ const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
     scroll: { flex: 1 },
     scrollContent: {
-      paddingTop: theme.spacing.md,
+      paddingTop: theme.spacing.xs,
       paddingBottom: theme.spacing['3xl'],
     },
 
@@ -467,21 +816,21 @@ const createStyles = (theme: AppTheme) =>
     },
     instructorInfo: {
       flex: 1,
-      marginLeft: theme.spacing.md,
+      marginLeft: theme.spacing.sm,
     },
     instructorName: {
-      ...theme.typography.h3,
+      ...theme.typography.h4,
       color: theme.colors.textPrimary,
     },
     instructorMeta: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: theme.spacing.xxs,
+      marginTop: 2,
     },
     instructorRating: {
-      ...theme.typography.bodySmall,
+      ...theme.typography.caption,
       color: theme.colors.textSecondary,
-      marginLeft: 4,
+      marginLeft: 3,
       fontWeight: '600',
     },
     dot: {
@@ -492,19 +841,42 @@ const createStyles = (theme: AppTheme) =>
       marginHorizontal: theme.spacing.xs,
     },
     instructorCity: {
-      ...theme.typography.bodySmall,
+      ...theme.typography.caption,
       color: theme.colors.textTertiary,
+    },
+    changeBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.sm,
+      borderRadius: theme.borderRadius.md,
+      backgroundColor: theme.colors.primaryLight ?? theme.colors.surface,
+    },
+
+    // Instructor selector card
+    instructorCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
+      ...theme.shadows.sm,
+    },
+    instructorCardInfo: {
+      flex: 1,
+      marginLeft: theme.spacing.md,
+    },
+    instructorCardName: {
+      ...theme.typography.h4,
+      color: theme.colors.textPrimary,
     },
 
     // Sections
     section: {
       marginTop: theme.spacing.lg,
       marginHorizontal: theme.spacing.md,
-    },
-    sectionTitle: {
-      ...theme.typography.h4,
-      color: theme.colors.textPrimary,
-      marginBottom: theme.spacing.sm,
     },
 
     // Package strip
@@ -516,7 +888,8 @@ const createStyles = (theme: AppTheme) =>
       backgroundColor: theme.colors.surface,
       borderRadius: theme.borderRadius.lg,
       padding: theme.spacing.md,
-      minWidth: 160,
+      paddingTop: theme.spacing.lg,
+      minWidth: 170,
       borderWidth: 2,
       borderColor: theme.colors.border,
       ...theme.shadows.sm,
@@ -536,7 +909,6 @@ const createStyles = (theme: AppTheme) =>
     packageChipRemaining: {
       ...theme.typography.caption,
       color: theme.colors.textTertiary,
-      marginTop: theme.spacing.xxs,
     },
     packageChipRemainingActive: {
       color: theme.colors.primary,
@@ -564,25 +936,7 @@ const createStyles = (theme: AppTheme) =>
       flex: 1,
     },
 
-    // Confirm button
-    confirmBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginHorizontal: theme.spacing.md,
-      marginTop: theme.spacing.lg,
-      backgroundColor: theme.colors.success,
-      borderRadius: theme.borderRadius.lg,
-      paddingVertical: theme.spacing.md,
-      gap: theme.spacing.xs,
-      ...theme.shadows.md,
-    },
-    confirmBtnText: {
-      ...theme.typography.buttonMedium,
-      color: theme.colors.textInverse,
-    },
-
-    // Summary card
+    // Summary + confirm
     summaryCard: {
       marginHorizontal: theme.spacing.md,
       marginTop: theme.spacing.lg,
@@ -612,6 +966,21 @@ const createStyles = (theme: AppTheme) =>
       color: theme.colors.textPrimary,
       fontWeight: '600',
     },
+    confirmBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: theme.spacing.md,
+      backgroundColor: theme.colors.success,
+      borderRadius: theme.borderRadius.lg,
+      paddingVertical: theme.spacing.md,
+      gap: theme.spacing.xs,
+      ...theme.shadows.md,
+    },
+    confirmBtnText: {
+      ...theme.typography.buttonMedium,
+      color: theme.colors.textInverse,
+    },
 
     // Guard / empty states
     guardContainer: {
@@ -620,15 +989,24 @@ const createStyles = (theme: AppTheme) =>
       flex: 1,
       padding: theme.spacing['3xl'],
     },
+    guardIconCircle: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: theme.colors.primaryLight ?? theme.colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: theme.spacing.md,
+    },
     guardTitle: {
       ...theme.typography.h3,
       color: theme.colors.textPrimary,
-      marginTop: theme.spacing.md,
+      marginTop: theme.spacing.xs,
     },
     guardSubtitle: {
       ...theme.typography.bodyMedium,
       color: theme.colors.textTertiary,
-      marginTop: theme.spacing.xxs,
+      marginTop: theme.spacing.sm,
       textAlign: 'center',
       lineHeight: 22,
     },
@@ -638,13 +1016,24 @@ const createStyles = (theme: AppTheme) =>
       backgroundColor: theme.colors.primary,
       borderRadius: theme.borderRadius.lg,
       paddingVertical: theme.spacing.sm,
-      paddingHorizontal: theme.spacing.lg,
+      paddingHorizontal: theme.spacing.xl,
       gap: theme.spacing.xs,
       marginTop: theme.spacing.lg,
     },
     guardActionText: {
       ...theme.typography.buttonMedium,
       color: theme.colors.textInverse,
+    },
+    guardSecondaryAction: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xs,
+      marginTop: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
+    },
+    guardSecondaryText: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textSecondary,
     },
 
     // Success
@@ -654,7 +1043,13 @@ const createStyles = (theme: AppTheme) =>
       flex: 1,
       padding: theme.spacing['3xl'],
     },
-    successIcon: {
+    successIconCircle: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: theme.colors.success,
+      alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: theme.spacing.md,
     },
     successTitle: {
@@ -667,17 +1062,6 @@ const createStyles = (theme: AppTheme) =>
       marginTop: theme.spacing.sm,
       textAlign: 'center',
       lineHeight: 22,
-    },
-    successBtn: {
-      backgroundColor: theme.colors.primary,
-      borderRadius: theme.borderRadius.lg,
-      paddingVertical: theme.spacing.sm,
-      paddingHorizontal: theme.spacing['3xl'],
-      marginTop: theme.spacing.xl,
-    },
-    successBtnText: {
-      ...theme.typography.buttonMedium,
-      color: theme.colors.textInverse,
     },
   });
 

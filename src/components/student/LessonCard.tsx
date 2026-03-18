@@ -22,8 +22,10 @@ const STATUS_CONFIG: Record<
   BookingLessonStatus,
   { icon: string; label: string; colorKey: 'warning' | 'success' | 'primary' | 'error' }
 > = {
-  pending: { icon: 'time-outline', label: 'Pending', colorKey: 'warning' },
+  pending: { icon: 'time-outline', label: 'Pending Approval', colorKey: 'warning' },
+  accepted: { icon: 'checkmark-circle-outline', label: 'Accepted', colorKey: 'success' },
   confirmed: { icon: 'checkmark-circle-outline', label: 'Confirmed', colorKey: 'success' },
+  amendment_pending: { icon: 'swap-horizontal-outline', label: 'Amendment Pending', colorKey: 'warning' },
   completed: { icon: 'checkmark-done-outline', label: 'Completed', colorKey: 'primary' },
   cancelled: { icon: 'close-circle-outline', label: 'Cancelled', colorKey: 'error' },
 };
@@ -39,7 +41,7 @@ const LessonCard: React.FC<LessonCardProps> = ({
 
   const config = STATUS_CONFIG[lesson.status];
   const statusColor = theme.colors[config.colorKey];
-  const isUpcoming = lesson.status === 'pending' || lesson.status === 'confirmed';
+  const isUpcoming = lesson.status === 'pending' || lesson.status === 'accepted' || lesson.status === 'confirmed' || lesson.status === 'amendment_pending';
 
   const formattedDate = useMemo(() => {
     const date = new Date(lesson.date);

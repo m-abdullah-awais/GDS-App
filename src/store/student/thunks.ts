@@ -71,11 +71,12 @@ export const loadStudentData = (studentId: string) => async (dispatch: Dispatch)
     };
 
     // Fetch in parallel with per-query fallback so one denied collection doesn't block the dashboard
-    const [activeInstructors, studentRequests, studentAssignments, studentBookings] = await Promise.all([
+    const [activeInstructors, studentRequests, studentAssignments, studentBookings, studentBookingRequests] = await Promise.all([
       readOrFallback(() => userService.getActiveInstructors(), []),
       readOrFallback(() => requestService.getStudentRequests(studentId), []),
       readOrFallback(() => assignmentService.getStudentAssignments(studentId), []),
       readOrFallback(() => bookingService.getStudentBookings(studentId), []),
+      readOrFallback(() => bookingService.getStudentBookingRequests(studentId), []),
     ]);
 
     if (__DEV__) console.log('[Firebase][StudentThunk] Data received: loadStudentData', {
@@ -88,41 +89,120 @@ export const loadStudentData = (studentId: string) => async (dispatch: Dispatch)
 
     // Map instructors to view model
     const instructorVMs = activeInstructors.map(u => mapUserToStudentInstructor(u));
-    dispatch(setInstructors(instructorVMs));
 
     // Map requests to view model
     const requestVMs = studentRequests.map(mapRequestToInstructorRequest);
 
-    // Derive my instructors from accepted requests
+    // Derive connected instructor IDs from accepted requests AND assignments
     const acceptedInstructorIds = studentRequests
       .filter(r => r.status === 'accepted' || r.status === 'confirmed')
       .map(r => r.instructorId || r.instructor_id || '');
-    const myInstructorVMs = instructorVMs.filter(i => acceptedInstructorIds.includes(i.id));
+    const assignmentInstructorIds = studentAssignments
+      .map(a => a.instructorId || a.instructor_id || '')
+      .filter(Boolean);
+    const connectedIds = [...new Set([...acceptedInstructorIds, ...assignmentInstructorIds])];
+
+    // Fetch any connected instructors not in active instructors list
+    const knownIds = new Set(instructorVMs.map(i => i.id));
+    const missingIds = connectedIds.filter(id => id && !knownIds.has(id));
+    if (missingIds.length > 0) {
+      const fetched = await Promise.all(
+        missingIds.map(id =>
+          readOrFallback(() => userService.getUserById(id), null),
+        ),
+      );
+      for (const user of fetched) {
+        if (user) {
+          instructorVMs.push(mapUserToStudentInstructor(user));
+        }
+      }
+    }
+
+    dispatch(setInstructors(instructorVMs));
+
+    const myInstructorVMs = instructorVMs.filter(i => connectedIds.includes(i.id));
     dispatch(setMyInstructors(myInstructorVMs));
 
     // Bulk set requests (replaces, not appends — safe on re-load)
     dispatch(setRequests(requestVMs));
 
-    // Map assignments to purchased packages (bulk replace)
-    const purchasedVMs = studentAssignments.map(a => mapAssignmentToPurchasedPackage(a));
-    dispatch(setPurchasedPackages(purchasedVMs));
-
-    // Map bookings to lessons (bulk replace)
-    const lessonVMs = studentBookings.map(b => mapBookingToBookedLesson(b));
-    dispatch(setLessons(lessonVMs));
-
-    // Fetch packages for each connected instructor
-    for (const instructorId of acceptedInstructorIds) {
-      if (instructorId) {
+    // Fetch packages for each connected instructor (needed for package name enrichment)
+    // Map keyed by package ID for accurate matching
+    const packageInfoById: Record<string, { name: string; price: number; totalLessons: number }> = {};
+    for (const instId of connectedIds) {
+      if (instId) {
         try {
-          const avPkgs = await packageService.getInstructorAvailablePackages(instructorId);
+          const avPkgs = await packageService.getInstructorAvailablePackages(instId);
           const pkgVMs = avPkgs.map(mapAvailablePackageToInstructorPackage);
-          dispatch(setPackages(instructorId, pkgVMs));
+          dispatch(setPackages(instId, pkgVMs));
+          // Index by package ID for assignment enrichment
+          for (const p of avPkgs) {
+            packageInfoById[p.id] = {
+              name: p.title || '',
+              price: p.price || 0,
+              totalLessons: p.number_of_lessons || 0,
+            };
+          }
         } catch (_e) {
           // Non-critical: continue if packages fail for one instructor
         }
       }
     }
+
+    // Map assignments to purchased packages, enriched with actual package names
+    const purchasedVMs = studentAssignments.map(a => {
+      const pkgId = a.package_id || '';
+      // Match by the assignment's package_id for accurate name/price
+      const pkgInfo = pkgId ? packageInfoById[pkgId] : undefined;
+      return mapAssignmentToPurchasedPackage(a, pkgInfo || undefined);
+    });
+    dispatch(setPurchasedPackages(purchasedVMs));
+
+    // Map bookings to lessons, merging bookingRequests for pending/accepted lessons
+    const confirmedLessons = studentBookings.map(b => mapBookingToBookedLesson(b));
+    const confirmedRequestIds = new Set(
+      studentBookings.map((b: any) => b.bookingRequestId || '').filter(Boolean),
+    );
+
+    // Include booking requests that aren't yet confirmed bookings
+    const requestLessons = studentBookingRequests
+      .filter((r: any) => {
+        if (confirmedRequestIds.has(r.id)) return false;
+        return ['pending', 'accepted', 'amendment_pending'].includes(r.status);
+      })
+      .map((r: any) => {
+        const dateVal = r.date;
+        let dateStr = '';
+        if (typeof dateVal === 'string') {
+          dateStr = dateVal.split('T')[0];
+        } else if (dateVal && typeof dateVal.toDate === 'function') {
+          dateStr = dateVal.toDate().toISOString().split('T')[0];
+        } else if (dateVal instanceof Date) {
+          dateStr = dateVal.toISOString().split('T')[0];
+        }
+        return {
+          id: r.id,
+          instructorId: r.instructorId || r.instructor_id || '',
+          instructorName: r.instructorName || '',
+          instructorAvatar: '',
+          packageId: r.packageId || r.package_id || '',
+          packageName: '',
+          date: dateStr,
+          time: r.startTime || '',
+          duration: r.duration ? `${r.duration}` : '1h',
+          status: r.status as 'pending' | 'confirmed' | 'completed' | 'cancelled',
+        };
+      });
+
+    // Merge and deduplicate
+    const allLessons = [...requestLessons, ...confirmedLessons];
+    const seenIds = new Set<string>();
+    const uniqueLessons = allLessons.filter(l => {
+      if (seenIds.has(l.id)) return false;
+      seenIds.add(l.id);
+      return true;
+    });
+    dispatch(setLessons(uniqueLessons));
   } catch (error) {
     if (__DEV__) console.error('[Firebase][StudentThunk] Error output: loadStudentData', { studentId, error });
   } finally {
@@ -278,7 +358,11 @@ export const createBookingThunk = (data: {
 }) => async (dispatch: Dispatch, getState: () => RootState) => {
   try {
     dispatch(setLoading('bookingLoading', true));
-    const bookingId = await bookingService.createBookingRequest(data);
+    const bookingId = await bookingService.createBookingRequest({
+      ...data,
+      duration: `${data.duration}h`,
+      requestedBy: 'student',
+    });
 
     const state = getState();
     const instructor = state.student.instructors.find(i => i.id === data.instructorId);
@@ -329,23 +413,89 @@ export const cancelLessonThunk = (
  * Subscribe to real-time booking updates.
  * Returns unsubscribe function.
  *
- * NOTE: The listener keeps the Firestore subscription alive so the
- * unsubscribe handle can be used for cleanup, but it does NOT
- * dispatch updates to the store because there is no bulk
- * SET_LESSONS / setLessons action available in the student slice.
- * The initial data is already loaded by `loadStudentData`.
+ * Listens to BOTH `bookings` AND `bookingRequests` collections:
+ * - `bookings`: Confirmed/completed lessons (created when instructor confirms)
+ * - `bookingRequests`: Pending/accepted requests (where lessons start their lifecycle)
  *
- * TODO: Add a `setLessons` (bulk replace) action to the student
- * slice, then use it here to dispatch `mapped` on every snapshot
- * so the UI reflects real-time booking changes.
+ * This matches the web where bookingRequests are the primary source of truth,
+ * and bookings are only created on instructor confirmation.
  */
 export const subscribeToStudentBookings = (
   studentId: string,
 ) => (dispatch: Dispatch) => {
-  return bookingService.onStudentBookings(studentId, (bookings) => {
-    const mapped = bookings.map(b => mapBookingToBookedLesson(b));
-    dispatch(setLessons(mapped));
+  // Track data from both sources and merge on each update
+  let confirmedBookings: import('../../types').Booking[] = [];
+  let bookingRequests: import('../../types').BookingRequest[] = [];
+
+  const mergeAndDispatch = () => {
+    // Map confirmed bookings
+    const confirmedLessons = confirmedBookings.map(b => mapBookingToBookedLesson(b));
+
+    // Map booking requests to lessons (pending/accepted that aren't yet in bookings)
+    const confirmedIds = new Set(confirmedBookings.map(b =>
+      b.bookingRequestId || ''
+    ).filter(Boolean));
+
+    const requestLessons = bookingRequests
+      .filter((r: any) => {
+        if (confirmedIds.has(r.id)) return false;
+        return ['pending', 'accepted', 'amendment_pending'].includes(r.status);
+      })
+      .map((r: any) => {
+        const dateVal = r.date;
+        let dateStr = '';
+        if (typeof dateVal === 'string') {
+          dateStr = dateVal.split('T')[0];
+        } else if (dateVal && typeof dateVal.toDate === 'function') {
+          dateStr = dateVal.toDate().toISOString().split('T')[0];
+        } else if (dateVal instanceof Date) {
+          dateStr = dateVal.toISOString().split('T')[0];
+        }
+
+        return {
+          id: r.id,
+          instructorId: r.instructorId || r.instructor_id || '',
+          instructorName: r.instructorName || '',
+          instructorAvatar: '',
+          packageId: r.packageId || r.package_id || '',
+          packageName: '',
+          date: dateStr,
+          time: r.startTime || '',
+          duration: r.duration ? `${r.duration}` : '1h',
+          status: r.status as 'pending' | 'confirmed' | 'completed' | 'cancelled',
+        };
+      });
+
+    // Merge: booking requests first (most recent state), then confirmed
+    const allLessons = [...requestLessons, ...confirmedLessons];
+
+    // Deduplicate by ID
+    const seen = new Set<string>();
+    const unique = allLessons.filter(l => {
+      if (seen.has(l.id)) return false;
+      seen.add(l.id);
+      return true;
+    });
+
+    dispatch(setLessons(unique));
+  };
+
+  // Listener 1: Confirmed bookings
+  const unsubBookings = bookingService.onStudentBookings(studentId, (bookings) => {
+    confirmedBookings = bookings;
+    mergeAndDispatch();
   });
+
+  // Listener 2: Booking requests (pending/accepted)
+  const unsubRequests = bookingService.onStudentBookingRequests(studentId, (requests) => {
+    bookingRequests = requests;
+    mergeAndDispatch();
+  });
+
+  return () => {
+    if (typeof unsubBookings === 'function') unsubBookings();
+    if (typeof unsubRequests === 'function') unsubRequests();
+  };
 };
 
 /**

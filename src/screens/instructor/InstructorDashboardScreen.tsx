@@ -4,7 +4,7 @@
  * Main instructor dashboard — matches StudentDashboardScreen layout and design.
  */
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   FlatList,
   Pressable,
@@ -22,9 +22,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { InstructorStackParamList } from '../../navigation/instructor/InstructorStack';
 import ScreenContainer from '../../components/ScreenContainer';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { mapBookingToInstructorLesson } from '../../utils/mappers';
 import type { InstructorLesson } from '../../types/instructor-views';
+import { loadInstructorData, subscribeToInstructorData } from '../../store/instructor/thunks';
 
 type Props = CompositeScreenProps<
   DrawerScreenProps<InstructorTabsParamList, 'Dashboard'>,
@@ -44,11 +45,20 @@ interface QuickAction {
 const InstructorDashboardScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
   const s = useMemo(() => createStyles(theme), [theme]);
+  const dispatch = useDispatch<any>();
 
   const authProfile = useSelector((state: any) => state.auth.profile);
   const bookings = useSelector((state: any) => state.instructor.bookings) || [];
   const packages = useSelector((state: any) => state.instructor.packages) || [];
   const studentRequests = useSelector((state: any) => state.instructor.studentRequests) || [];
+
+  // Load instructor data on mount & subscribe for real-time updates
+  useEffect(() => {
+    if (!authProfile?.uid) return;
+    dispatch(loadInstructorData(authProfile.uid));
+    const unsubs = dispatch(subscribeToInstructorData(authProfile.uid)) as unknown as (() => void)[];
+    return () => { unsubs?.forEach(fn => typeof fn === 'function' && fn()); };
+  }, [authProfile?.uid, dispatch]);
 
   const lessons: InstructorLesson[] = bookings.map((b: any) => mapBookingToInstructorLesson(b));
   const upcomingLessons = lessons.filter(l => l.status === 'confirmed' || l.status === 'pending');

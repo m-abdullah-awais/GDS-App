@@ -46,8 +46,10 @@ if (
  * Get a callable Cloud Function reference bound to europe-west2.
  * Usage: const result = await callable('createCheckoutSession')({ packageId, instructorId });
  */
-export const callable = (functionName: string) => {
-  return getFunctions(getApp(), FUNCTIONS_REGION).httpsCallable(functionName);
+export const callable = (functionName: string, options?: { timeout?: number }) => {
+  return getFunctions(getApp(), FUNCTIONS_REGION).httpsCallable(functionName, {
+    timeout: options?.timeout ?? 120000, // 2 minutes default (increased from 70s)
+  });
 };
 
 // ─── Emulator Wiring (dev only) ──────────────────────────────────────────────

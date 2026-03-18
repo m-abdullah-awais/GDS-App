@@ -5,9 +5,8 @@
  */
 
 import { db, firebaseAuth } from '../config/firebase';
-import { firebaseStorage } from '../config/firebase';
 import { Collections, fromSnapshot, fromQuerySnapshot, serverTimestamp } from '../utils/mappers';
-import { collection, doc, getDoc, query, where, getDocs, limit, updateDoc, onSnapshot } from '@react-native-firebase/firestore';
+import { collection, doc, getDoc, query, where, getDocs, limit, updateDoc, onSnapshot, addDoc } from '@react-native-firebase/firestore';
 import type { UserProfile, UserDoc } from '../types';
 
 /**
@@ -119,19 +118,27 @@ export const onUserProfile = (
 export const completeInstructorProfile = async (
   uid: string,
   data: {
+    full_name?: string;
+    email?: string;
     phone?: string;
     experience?: string;
     car_transmission?: string;
     about_me?: string;
     address?: string;
     postcode?: string;
+    badge_number?: string;
     badge_url?: string;
     insurance_url?: string;
     profile_picture_url?: string;
+    profileImage?: string;
+    application_submitted?: boolean;
+    application_id?: string;
   },
 ): Promise<void> => {
   await updateDoc(doc(collection(db, Collections.USERS), uid), {
     ...data,
+    // Web also stores aboutMe (camelCase) alongside about_me
+    aboutMe: data.about_me || '',
     profileComplete: true,
     profile_completed: true,
     status: 'pending',
@@ -139,61 +146,6 @@ export const completeInstructorProfile = async (
   });
 };
 
-/**
- * Upload a profile image to Firebase Storage and update user doc.
- * Returns the download URL.
- */
-export const uploadProfileImage = async (
-  uid: string,
-  base64Data: string,
-): Promise<string> => {
-  const storageRef = firebaseStorage.ref(`profileImages/${uid}`);
-  const task = storageRef.putString(base64Data, 'base64', { contentType: 'image/jpeg' });
-  await new Promise<void>((resolve, reject) => {
-    task.on(
-      'state_changed',
-      null,
-      (error: Error) => reject(error),
-      () => resolve(),
-    );
-  });
-  const downloadUrl = await storageRef.getDownloadURL();
-  await updateDoc(doc(collection(db, Collections.USERS), uid), {
-    profileImage: downloadUrl,
-    profile_picture_url: downloadUrl,
-    updated_at: serverTimestamp(),
-  });
-  return downloadUrl;
-};
-
-/**
- * Upload instructor documents (badge, insurance) to Firebase Storage.
- * Returns an object of download URLs.
- */
-export const uploadInstructorDocuments = async (
-  uid: string,
-  documents: { badge?: string; insurance?: string },
-): Promise<{ badgeUrl?: string; insuranceUrl?: string }> => {
-  const results: { badgeUrl?: string; insuranceUrl?: string } = {};
-  const updates: Record<string, unknown> = { updated_at: serverTimestamp() };
-
-  if (documents.badge) {
-    const badgeRef = firebaseStorage.ref(`instructorDocuments/${uid}/badge`);
-    await badgeRef.putFile(documents.badge);
-    results.badgeUrl = await badgeRef.getDownloadURL();
-    updates.badge_url = results.badgeUrl;
-  }
-
-  if (documents.insurance) {
-    const insRef = firebaseStorage.ref(`instructorDocuments/${uid}/insurance`);
-    await insRef.putFile(documents.insurance);
-    results.insuranceUrl = await insRef.getDownloadURL();
-    updates.insurance_url = results.insuranceUrl;
-  }
-
-  await updateDoc(doc(collection(db, Collections.USERS), uid), updates);
-  return results;
-};
 
 /**
  * Search students by name (client-side filter after role query).
@@ -208,3 +160,38 @@ export const searchStudentsByQuery = async (query: string): Promise<UserDoc[]> =
     (s.postcode || '').toLowerCase().includes(lowerQuery),
   );
 };
+
+// ─── Instructor Application Functions ────────────────────────────────────────
+
+/**
+ * Create an instructor application document in Firestore.
+ * Matches web InstructorSignupForm submission flow.
+ * Returns the application document ID.
+ */
+export const createInstructorApplication = async (
+  data: {
+    instructor_id: string;
+    instructor_name: string;
+    instructor_email: string;
+    phone: string;
+    address: string;
+    postcode: string;
+    car_transmission: string;
+    badge_number: string;
+    about_me: string;
+    badge_url: string;
+    insurance_url: string;
+    profile_picture_url: string;
+  },
+): Promise<string> => {
+  const ref = await addDoc(collection(db, Collections.INSTRUCTOR_APPLICATIONS), {
+    ...data,
+    status: 'pending',
+    submitted_at: serverTimestamp(),
+    reviewed_by: null,
+    reviewed_at: null,
+    admin_notes: '',
+  });
+  return ref.id;
+};
+

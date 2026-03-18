@@ -76,7 +76,7 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
       void notify({
         title: 'Account created',
         message: role === 'instructor'
-          ? 'Your instructor application is pending admin approval.'
+          ? 'Your account has been created successfully. Please complete your profile to submit your instructor application.'
           : 'Welcome to GDS! You can now browse instructors.',
         variant: 'success',
       })

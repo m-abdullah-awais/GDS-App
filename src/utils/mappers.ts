@@ -320,23 +320,28 @@ export const mapUserToStudentInstructor = (
   user: UserProfile,
   reviewCount?: number,
   avgRating?: number,
-): StudentInstructor => ({
-  id: user.id || user.uid,
-  name: user.full_name || '',
-  avatar: user.profile_picture_url || user.profileImage || '',
-  rating: avgRating || 0,
-  reviewCount: reviewCount || 0,
-  experience: user.about_me ? '5+ years' : 'New',
-  city: user.address || '',
-  bio: user.about_me || '',
-  passRate: 0,
-  transmissionType: (user.car_transmission as 'Manual' | 'Automatic' | 'Both') || 'Manual',
-  coveredPostcodes: [],
-  acceptingStudents: user.status === 'active',
-  about: user.about_me || '',
-  yearsExperience: 0,
-  reviews: [],
-});
+): StudentInstructor => {
+  const u = user as any; // Allow access to optional Firestore fields not in strict type
+  return {
+    id: user.id || user.uid,
+    name: user.full_name || '',
+    avatar: user.profile_picture_url || user.profileImage || '',
+    rating: avgRating || u.rating || 0,
+    reviewCount: reviewCount || u.reviewCount || 0,
+    experience: u.years_experience
+      ? `${u.years_experience}+ years`
+      : user.about_me ? '5+ years' : 'New',
+    city: user.address || '',
+    bio: user.about_me || '',
+    passRate: u.pass_rate || u.passRate || 0,
+    transmissionType: (user.car_transmission as 'Manual' | 'Automatic' | 'Both') || 'Manual',
+    coveredPostcodes: u.covered_postcodes || u.coveredPostcodes || (user.postcode ? [user.postcode] : []),
+    acceptingStudents: user.status === 'active',
+    about: user.about_me || '',
+    yearsExperience: u.years_experience || u.yearsExperience || 0,
+    reviews: [],
+  };
+};
 
 /**
  * Map a StudentInstructorRequest (Firestore) to InstructorRequest (student store).
@@ -380,20 +385,34 @@ export const mapAvailablePackageToInstructorPackage = (
 export const mapAssignmentToPurchasedPackage = (
   assignment: Assignment,
   packageInfo?: { name?: string; price?: number; totalLessons?: number },
-): PurchasedPackage => ({
-  id: assignment.id,
-  packageId: assignment.package_id || '',
-  instructorId: assignment.instructorId || assignment.instructor_id || '',
-  packageName: packageInfo?.name || 'Driving Package',
-  purchaseDate: assignment.assigned_at
-    ? toISOString(assignment.assigned_at) || new Date().toISOString()
-    : new Date().toISOString(),
-  status: (assignment.remaining_hours || 0) > 0 ? 'active' : 'exhausted',
-  lessonsUsed: (assignment.total_hours || 0) - (assignment.remaining_hours || 0),
-  totalLessons: packageInfo?.totalLessons || assignment.total_hours || 0,
-  price: packageInfo?.price || 0,
-  duration: `${packageInfo?.totalLessons || assignment.total_hours || 0} lessons`,
-});
+): PurchasedPackage => {
+  // Defensive: treat null/undefined remaining_hours as having hours available
+  // (assignment exists = student purchased something, so treat as active unless
+  // we explicitly know hours are depleted)
+  const remainingHours = assignment.remaining_hours ?? assignment.total_hours ?? 0;
+  const totalHours = packageInfo?.totalLessons || assignment.total_hours || remainingHours || 1;
+  const usedHours = Math.max(0, totalHours - remainingHours);
+
+  // Status: consider active if remaining_hours > 0 OR if data is missing
+  // (only mark exhausted when we're certain hours are zero)
+  const hasHoursRemaining = remainingHours > 0;
+  const status: 'active' | 'exhausted' = hasHoursRemaining ? 'active' : 'exhausted';
+
+  return {
+    id: assignment.id,
+    packageId: assignment.package_id || '',
+    instructorId: assignment.instructorId || assignment.instructor_id || '',
+    packageName: packageInfo?.name || 'Driving Package',
+    purchaseDate: assignment.assigned_at
+      ? toISOString(assignment.assigned_at) || new Date().toISOString()
+      : new Date().toISOString(),
+    status,
+    lessonsUsed: usedHours,
+    totalLessons: totalHours,
+    price: packageInfo?.price || 0,
+    duration: `${totalHours}h`,
+  };
+};
 
 /**
  * Map a Booking (Firestore) to BookedLesson (student store).
@@ -435,22 +454,47 @@ export const mapTimetableToAvailableSlots = (
   const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
   // Web format: timeBlocks array
+  // The web filters timeBlocks by `week` (week offset from current week).
+  // Each date maps to a specific week offset: days 0-6 = week 0, days 7-13 = week 1.
   if (timetable.timeBlocks && Array.isArray(timetable.timeBlocks) && timetable.timeBlocks.length > 0) {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Calculate the Monday of the current week
+    const currentDay = today.getDay();
+    const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay;
+    const currentMonday = new Date(today);
+    currentMonday.setDate(today.getDate() + mondayOffset);
+
+    // Deduplicate: track which date+startTime combos we've already added
+    const seen = new Set<string>();
+
     for (let i = 0; i < 14; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       const dayOfWeek = date.getDay(); // 0=Sun, 1=Mon, ...
-      // Convert to DAYS index: 0=Mon, 1=Tue, ..., 6=Sun
-      const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Mon=0, Sun=6
       const dateStr = date.toISOString().split('T')[0];
 
-      // Find timeBlocks for this day
+      // Calculate which week offset this date falls in (like web's currentWeek)
+      const dateMonday = new Date(date);
+      const dateDayOfWeek = dateMonday.getDay();
+      const dateMondayOffset = dateDayOfWeek === 0 ? -6 : 1 - dateDayOfWeek;
+      dateMonday.setDate(dateMonday.getDate() + dateMondayOffset);
+      const weekOffset = Math.round((dateMonday.getTime() - currentMonday.getTime()) / (7 * 24 * 60 * 60 * 1000));
+
+      // Find timeBlocks for this day AND this week (matching web's filter logic)
       const dayBlocks = timetable.timeBlocks.filter(
-        b => b.day === dayIndex && (!b.status || b.status === 'available'),
+        b => b.day === dayIndex &&
+          (b.week === undefined || b.week === weekOffset) &&
+          (!b.status || b.status === 'available'),
       );
 
       for (const block of dayBlocks) {
+        const slotKey = `${dateStr}_${block.startTime}`;
+        if (seen.has(slotKey)) continue; // Skip duplicates
+        seen.add(slotKey);
+
         // Calculate endTime from startTime + duration
         const [sh, sm] = block.startTime.split(':').map(Number);
         const totalMinutes = sh * 60 + sm + (block.duration * 60);
@@ -463,7 +507,7 @@ export const mapTimetableToAvailableSlots = (
         ) || false;
 
         slots.push({
-          id: `${instructorId}_${dateStr}_${block.startTime}`,
+          id: `${instructorId}_${slotKey}`,
           instructorId,
           date: dateStr,
           startTime: block.startTime,

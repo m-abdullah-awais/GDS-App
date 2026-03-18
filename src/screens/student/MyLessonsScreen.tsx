@@ -21,7 +21,7 @@ import { subscribeToStudentBookings } from '../../store/student/thunks';
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import ScreenContainer from '../../components/ScreenContainer';
-import { LessonCard } from '../../components/student';
+import { LessonCard, PendingBookingBanner } from '../../components/student';
 import { filterLessons, cancelLessonBooking } from '../../services/bookingService';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { BookedLesson } from '../../store/student/types';
@@ -111,6 +111,9 @@ const MyLessonsScreen = () => {
         />
       </View>
 
+      {/* ── Instructor Booking Requests (separate section) ── */}
+      {activeTab === 'upcoming' && <PendingBookingBanner />}
+
       {/* ── Lesson List ────────────────────────────────────── */}
       <FlatList
         data={filteredLessons}
@@ -123,7 +126,7 @@ const MyLessonsScreen = () => {
               lesson={item}
               instructorName={item.instructorName}
               onCancel={
-                (item.status === 'pending' || item.status === 'confirmed')
+                (item.status === 'pending' || item.status === 'accepted' || item.status === 'confirmed')
                   ? () => handleCancel(item)
                   : undefined
               }

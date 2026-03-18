@@ -122,7 +122,7 @@ const InstructorCard: React.FC<InstructorCardProps> = ({
       onPress={onViewProfile}
       android_ripple={{ color: theme.colors.ripple }}>
       <View style={styles.header}>
-        <Avatar initials={instructor.avatar} name={instructor.name} size={52} />
+        <Avatar initials={instructor.name} imageUrl={instructor.avatar} size={52} />
         <View style={styles.headerInfo}>
           <View style={styles.nameRow}>
             <Text style={styles.name} numberOfLines={1}>

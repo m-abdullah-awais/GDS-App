@@ -304,34 +304,49 @@ export const getPendingPackages = async (): Promise<PendingPackage[]> => {
 /**
  * Get pending packages for a specific instructor.
  */
+/**
+ * Get pending packages for an instructor.
+ *
+ * Firestore rule for pendingPackages checks `resource.data.instructorId` (camelCase only).
+ * Query camelCase first (matches rule), snake_case as graceful fallback.
+ */
 export const getInstructorPendingPackages = async (
   instructorId: string,
 ): Promise<PendingPackage[]> => {
-  const [camelSnap, snakeSnap] = await Promise.all([
-    getDocs(
-      query(
-        collection(db, Collections.PENDING_PACKAGES),
-        where('instructorId', '==', instructorId),
-      ),
+  const results: PendingPackage[] = [];
+
+  // Primary: camelCase (matches Firestore security rule)
+  const camelSnap = await getDocs(
+    query(
+      collection(db, Collections.PENDING_PACKAGES),
+      where('instructorId', '==', instructorId),
     ),
-    getDocs(
+  );
+  results.push(...fromQuerySnapshot<PendingPackage>(camelSnap));
+
+  // Fallback: snake_case (graceful — permission-denied is expected)
+  try {
+    const snakeSnap = await getDocs(
       query(
         collection(db, Collections.PENDING_PACKAGES),
         where('instructor_id', '==', instructorId),
       ),
-    ),
-  ]);
+    );
+    results.push(...fromQuerySnapshot<PendingPackage>(snakeSnap));
+  } catch (err: any) {
+    if (err?.code !== 'firestore/permission-denied') {
+      if (__DEV__) console.warn('[PackageService] pendingPackages snake_case query error:', err);
+    }
+  }
 
-  return dedupeById<PendingPackage>([
-    ...fromQuerySnapshot<PendingPackage>(camelSnap),
-    ...fromQuerySnapshot<PendingPackage>(snakeSnap),
-  ])
+  return dedupeById<PendingPackage>(results)
     .map(normalizePendingPackage)
     .sort((a, b) => toMillis((b as any).createdAt) - toMillis((a as any).createdAt));
 };
 
 /**
  * Subscribe to pending packages for an instructor.
+ * Only listens on camelCase `instructorId` (matches Firestore security rule).
  */
 export const onInstructorPendingPackages = (
   instructorId: string,
@@ -346,48 +361,28 @@ export const onInstructorPendingPackages = (
         const packages = await getInstructorPendingPackages(instructorId);
         callback(packages);
       } catch (error) {
-        if (__DEV__) console.error('[Firebase][PackageService] Error output: onInstructorPendingPackages', {
-          instructorId,
-          error,
-        });
+        if (__DEV__) console.error('[PackageService] onInstructorPendingPackages error:', error);
       }
     }, 300);
   };
 
-  const unsubscribers = [
-    onSnapshot(
-      query(
-        collection(db, Collections.PENDING_PACKAGES),
-        where('instructorId', '==', instructorId),
-      ),
-      () => emitMerged(),
-      (error) => {
-        if (__DEV__) console.error('[Firebase][PackageService] Error output: onInstructorPendingPackages(camel snapshot)', {
-          instructorId,
-          error,
-        });
-      },
+  // Only listen on camelCase (matches Firestore rule: resource.data.instructorId)
+  const unsubscribe = onSnapshot(
+    query(
+      collection(db, Collections.PENDING_PACKAGES),
+      where('instructorId', '==', instructorId),
     ),
-    onSnapshot(
-      query(
-        collection(db, Collections.PENDING_PACKAGES),
-        where('instructor_id', '==', instructorId),
-      ),
-      () => emitMerged(),
-      (error) => {
-        if (__DEV__) console.error('[Firebase][PackageService] Error output: onInstructorPendingPackages(snake snapshot)', {
-          instructorId,
-          error,
-        });
-      },
-    ),
-  ];
+    () => emitMerged(),
+    (error) => {
+      if (__DEV__) console.error('[PackageService] onInstructorPendingPackages listener error:', error);
+    },
+  );
 
   emitMerged();
 
   return () => {
     if (debounceTimer) clearTimeout(debounceTimer);
-    unsubscribers.forEach(unsub => unsub());
+    unsubscribe();
   };
 };
 
@@ -588,12 +583,13 @@ export const fetchInstructorPackages = async (
 
 /**
  * Buy a package via Stripe checkout.
+ * Returns the checkout sessionId so the caller can verify payment later.
  * Used by PackageListingScreen.
  */
 export const buyPackage = async (
   pkg: InstructorPackage,
   _dispatch: (action: any) => void,
-): Promise<void> => {
+): Promise<string> => {
   const paymentService = require('./paymentService');
 
   try {
@@ -602,8 +598,9 @@ export const buyPackage = async (
       instructorId: pkg.instructorId,
     });
     if (result.url) {
-      paymentService.openCheckoutInBrowser(result.url);
+      await paymentService.openCheckoutInBrowser(result.url);
     }
+    return result.sessionId;
   } catch (error) {
     if (__DEV__) console.error('[PackageService] buyPackage error:', error);
     throw error;

@@ -416,7 +416,7 @@ export const filterBookings = <T extends { status: string; date?: any }>(
   switch (filter) {
     case 'upcoming':
       return bookings
-        .filter(b => b.status === 'pending' || b.status === 'confirmed')
+        .filter(b => b.status === 'pending' || b.status === 'confirmed' || b.status === 'accepted' || b.status === 'amendment_pending')
         .sort((a, b) => new Date(a.date as any).getTime() - new Date(b.date as any).getTime());
     case 'completed':
       return bookings
@@ -450,6 +450,9 @@ import type { AvailableSlot, PurchasedPackage, BookedLesson } from '../store/stu
 
 /**
  * Fetch available slots for an instructor and dispatch to Redux.
+ * Uses bookingRequests (filtered by studentId) instead of bookings
+ * (filtered by instructorId) to respect Firestore security rules.
+ * This matches the web's StudentLiveTimetable approach.
  * Used by StudentBookLessonsScreen.
  */
 export const fetchAvailableSlots = async (
@@ -465,13 +468,45 @@ export const fetchAvailableSlots = async (
     dispatch(actions.setLoading('slotsLoading', true));
     const timetable = await timetableService.getInstructorTimetable(instructorId);
     if (timetable) {
-      const existingBookings = await getInstructorBookings(instructorId);
-      const bookedSlots = existingBookings
-        .filter((b: Booking) => b.status !== 'cancelled')
-        .map((b: Booking) => ({
-          date: b.date ? new Date(b.date as any).toISOString().split('T')[0] : '',
-          startTime: b.startTime || '',
-        }));
+      // Use bookingRequests filtered by studentId (like web) instead of
+      // bookings by instructorId which causes permission-denied errors.
+      const { firebaseAuth } = require('../config/firebase');
+      const currentUserId = firebaseAuth.currentUser?.uid;
+      let bookedSlots: Array<{ date: string; startTime: string }> = [];
+
+      if (currentUserId) {
+        try {
+          // Query bookingRequests for this student + instructor (active statuses only)
+          const bookingRequestsSnap = await getDocs(
+            query(
+              collection(db, Collections.BOOKING_REQUESTS),
+              where('studentId', '==', currentUserId),
+              where('instructorId', '==', instructorId),
+              where('status', 'in', ['pending', 'accepted', 'amendment_pending']),
+            ),
+          );
+
+          bookedSlots = bookingRequestsSnap.docs.map((doc: any) => {
+            const data = doc.data();
+            const dateVal = data.date;
+            let dateStr = '';
+            if (typeof dateVal === 'string') {
+              dateStr = dateVal.split('T')[0];
+            } else if (dateVal?.toDate) {
+              dateStr = dateVal.toDate().toISOString().split('T')[0];
+            } else if (dateVal instanceof Date) {
+              dateStr = dateVal.toISOString().split('T')[0];
+            }
+            return {
+              date: dateStr,
+              startTime: data.startTime || '',
+            };
+          });
+        } catch (err) {
+          if (__DEV__) console.warn('[BookingService] Could not fetch booking requests for slot check:', err);
+        }
+      }
+
       const slots = mapTimetableToAvailableSlots(timetable, instructorId, bookedSlots);
       dispatch(actions.setAvailableSlots(slots));
     } else {
@@ -535,6 +570,10 @@ export const validateBooking = (
 
 /**
  * Create a booking and dispatch to Redux.
+ * Aligned with web's StudentLiveTimetable confirmBooking:
+ *   - Includes `requestedBy`, `week`, `day` fields
+ *   - Deducts hours from assignment immediately (refunded if declined)
+ *   - Sends notification message to instructor
  * Used by StudentBookLessonsScreen.
  */
 export const createBooking = async (
@@ -556,6 +595,27 @@ export const createBooking = async (
     if (!currentUserId) {
       throw new Error('User not authenticated. Please sign in and try again.');
     }
+
+    // Calculate week offset and day index from slot date (like web)
+    const slotDate = new Date(slot.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - ((today.getDay() + 6) % 7)); // Monday
+    const weekOffset = Math.floor((slotDate.getTime() - startOfWeek.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    const dayOfWeek = slotDate.getDay();
+    const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Mon=0, Sun=6
+
+    // Get student name for the booking request
+    let studentName = '';
+    try {
+      const authStore = require('../store');
+      const state = authStore.default?.getState?.();
+      studentName = state?.auth?.profile?.full_name || '';
+    } catch (_e) {
+      // Safe fallback if store not accessible
+    }
+
     const bookingId = await createBookingRequest({
       studentId: currentUserId,
       instructorId,
@@ -565,7 +625,43 @@ export const createBooking = async (
       endTime: slot.endTime,
       duration: slot.duration,
       instructorName,
+      studentName,
+      requestedBy: 'student',
+      week: weekOffset,
+      day: dayIndex,
     });
+
+    // Deduct hours from assignment immediately (like web — refunded if declined)
+    try {
+      const assignmentService = require('./assignmentService');
+      const assignment = await assignmentService.getAssignment(currentUserId, instructorId);
+      if (assignment && assignment.id) {
+        const { updateDoc: mapperUpdateDoc } = require('../utils/mappers');
+        const slotDuration = parseFloat(slot.duration) || 1;
+        const newHours = Math.max(0, (assignment.remaining_hours || 0) - slotDuration);
+        await mapperUpdateDoc('assignments', assignment.id, { remaining_hours: newHours });
+      }
+    } catch (err) {
+      if (__DEV__) console.warn('[BookingService] Could not deduct hours from assignment:', err);
+    }
+
+    // Send notification message to instructor (like web)
+    try {
+      const { createDoc: mapperCreateDoc } = require('../utils/mappers');
+      const { serverTimestamp: getServerTimestamp } = require('../utils/mappers');
+      await mapperCreateDoc('messages', {
+        sender_id: currentUserId,
+        sender_name: studentName,
+        sender_role: 'student',
+        receiver_id: instructorId,
+        receiver_name: instructorName,
+        receiver_role: 'instructor',
+        content: `New booking request: ${slot.date} at ${slot.startTime} (${slot.duration}). Credits have been reserved.`,
+        read: false,
+      });
+    } catch (err) {
+      if (__DEV__) console.warn('[BookingService] Could not send booking notification:', err);
+    }
 
     dispatch(actions.bookLesson({
       id: bookingId,

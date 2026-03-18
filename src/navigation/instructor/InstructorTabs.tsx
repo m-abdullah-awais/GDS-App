@@ -12,6 +12,7 @@ import InstructorProfileScreen from "../../screens/instructor/InstructorProfileS
 import InstructorPackageScreen from "../../screens/instructor/InstructorPackageScreen";
 import InstructorAreasScreen from "../../screens/instructor/InstructorAreasScreen";
 import InstructorOffersScreen from "../../screens/instructor/InstructorOffersScreen";
+import InstructorBookingRequestsScreen from "../../screens/instructor/InstructorBookingRequestsScreen";
 import { useTheme } from "../../theme";
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AppTopHeader from '../../components/AppTopHeader';
@@ -30,6 +31,7 @@ export type InstructorTabsParamList = {
     Packages: undefined;
     'Exclusive Offers': undefined;
     Earnings: undefined;
+    'Booking Requests': undefined;
     Requests: undefined;
     'Pending Reviews': undefined;
     'Find Students': undefined;
@@ -113,6 +115,16 @@ const InstructorTabs = () => {
                     headerShown: false,
                     drawerIcon: ({ color, size }) => (
                         <Ionicons name="calendar-outline" size={size} color={color} style={{ marginRight: 6 }} />
+                    ),
+                }}
+            />
+            <Drawer.Screen
+                name="Booking Requests"
+                component={InstructorBookingRequestsScreen}
+                options={{
+                    headerShown: false,
+                    drawerIcon: ({ color, size }) => (
+                        <Ionicons name="book-outline" size={size} color={color} style={{ marginRight: 6 }} />
                     ),
                 }}
             />

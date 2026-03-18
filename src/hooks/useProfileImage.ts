@@ -22,17 +22,22 @@ export const useProfileImage = (uid: string | undefined, initialUri: string | nu
     const asset = response.assets?.[0];
     if (!asset?.uri || !asset?.base64) { return; }
 
-    setProfileImage(asset.uri);
+    // Build data URL (matching web approach — store base64 directly in Firestore)
+    const mime = asset.type || 'image/jpeg';
+    const dataUrl = `data:${mime};base64,${asset.base64}`;
+    setProfileImage(dataUrl);
 
     if (!uid) { return; }
 
     try {
       setUploading(true);
-      const downloadUrl = await userService.uploadProfileImage(uid, asset.base64);
-      setProfileImage(downloadUrl);
+      await userService.updateUserProfile(uid, {
+        profileImage: dataUrl,
+        profile_picture_url: dataUrl,
+      } as any);
     } catch (error) {
-      console.error('Failed to upload profile image:', error);
-      Alert.alert('Upload Failed', 'Could not upload profile image. Please try again.');
+      console.error('Failed to update profile image:', error);
+      Alert.alert('Upload Failed', 'Could not save profile image. Please try again.');
     } finally {
       setUploading(false);
     }

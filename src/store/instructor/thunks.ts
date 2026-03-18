@@ -203,13 +203,18 @@ export const createPackageThunk = (data: {
   try {
     dispatch(setInstructorLoading(true));
     await packageService.createAvailablePackage(data);
-    // Re-fetch packages
-    const [available, pending] = await Promise.all([
-      packageService.getInstructorAvailablePackages(data.instructorId),
-      packageService.getInstructorPendingPackages(data.instructorId),
-    ]);
-    dispatch(setPackages(available));
-    dispatch(setPendingPackages(pending));
+
+    // Re-fetch packages (non-critical — don't fail the whole operation if this errors)
+    try {
+      const [available, pending] = await Promise.all([
+        packageService.getInstructorAvailablePackages(data.instructorId),
+        packageService.getInstructorPendingPackages(data.instructorId),
+      ]);
+      dispatch(setPackages(available));
+      dispatch(setPendingPackages(pending));
+    } catch (fetchErr) {
+      if (__DEV__) console.warn('Package created but re-fetch failed:', fetchErr);
+    }
   } catch (error: any) {
     if (__DEV__) console.error('Failed to create package:', error);
     dispatch(setInstructorError(error.message || 'Failed to create package'));

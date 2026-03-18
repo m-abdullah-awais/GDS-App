@@ -9,3 +9,4 @@ export { default as BookingCalendar, generateCalendarDays } from './BookingCalen
 export { default as SlotSelector } from './SlotSelector';
 export { default as PaymentModal } from './PaymentModal';
 export { default as BookingConfirmModal } from './BookingConfirmModal';
+export { default as PendingBookingBanner } from './PendingBookingBanner';

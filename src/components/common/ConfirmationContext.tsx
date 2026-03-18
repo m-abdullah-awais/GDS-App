@@ -37,7 +37,7 @@ interface ConfirmationContextType {
 
 const ConfirmationContext = createContext<ConfirmationContextType>({
   confirm: async () => false,
-  notify: async () => {},
+  notify: async () => { },
 });
 
 export const useConfirmation = () => useContext(ConfirmationContext);

@@ -31,6 +31,10 @@ import {
 } from '../../services/packageService';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { InstructorPackage, PurchasedPackage } from '../../store/student/types';
+import * as assignmentService from '../../services/assignmentService';
+import { mapAssignmentToPurchasedPackage } from '../../utils/mappers';
+import { setPurchasedPackages } from '../../store/student/actions';
+import { firebaseAuth } from '../../config/firebase';
 
 type Nav = NativeStackNavigationProp<StudentStackParamList>;
 type Route = RouteProp<StudentStackParamList, 'PackageListing'>;
@@ -96,17 +100,32 @@ const PackageListingScreen = () => {
   );
 
   // Handlers ───────────────────────────────────────────
-  const handleBuy = useCallback(async () => {
-    if (!paymentPkg) { return; }
+  const handleBuy = useCallback(async (): Promise<string> => {
+    if (!paymentPkg) { throw new Error('No package selected'); }
     setBuyingLoading(true);
     try {
-      await buyPackage(paymentPkg, dispatch);
+      const sessionId = await buyPackage(paymentPkg, dispatch);
+      return sessionId;
     } catch (error) {
       if (__DEV__) console.error('[PackageListing] Buy failed:', error);
+      throw error;
     } finally {
       setBuyingLoading(false);
     }
   }, [paymentPkg, dispatch]);
+
+  // Refresh purchased packages after successful payment verification
+  const handlePaymentVerified = useCallback(async () => {
+    try {
+      const studentId = firebaseAuth.currentUser?.uid;
+      if (!studentId) return;
+      const assignments = await assignmentService.getStudentAssignments(studentId);
+      const purchasedVMs = assignments.map(a => mapAssignmentToPurchasedPackage(a));
+      dispatch(setPurchasedPackages(purchasedVMs));
+    } catch (error) {
+      if (__DEV__) console.error('[PackageListing] Failed to refresh packages:', error);
+    }
+  }, [dispatch]);
 
   const handleBookLesson = useCallback(
     (pkgId: string) => {
@@ -200,6 +219,7 @@ const PackageListingScreen = () => {
         instructorName={instructor?.name ?? ''}
         onConfirm={handleBuy}
         onClose={() => setPaymentPkg(null)}
+        onPaymentVerified={handlePaymentVerified}
         loading={buyingLoading}
       />
     </ScreenContainer>

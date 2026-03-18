@@ -112,9 +112,9 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
               onPress={onConfirm}
               disabled={loading}>
               {loading ? (
-                <ActivityIndicator size="small" color={theme.colors.textInverse} />
+                <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={[styles.confirmText, { color: theme.colors.textInverse }]}>
+                <Text style={[styles.confirmText, { color: '#FFFFFF' }]}>
                   {confirmLabel}
                 </Text>
               )}

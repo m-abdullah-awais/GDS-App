@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme';
@@ -11,6 +11,7 @@ interface AppTopHeaderProps {
     title: string;
     subtitle?: string;
     avatarText?: string;
+    avatarImageUrl?: string;
     leftAction?: LeftAction;
     onLeftPress?: () => void;
     onAvatarPress?: () => void;
@@ -29,6 +30,7 @@ const AppTopHeader: React.FC<AppTopHeaderProps> = ({
     title,
     subtitle,
     avatarText,
+    avatarImageUrl,
     leftAction = 'menu',
     onLeftPress,
     onAvatarPress,
@@ -37,6 +39,8 @@ const AppTopHeader: React.FC<AppTopHeaderProps> = ({
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
     const insets = useSafeAreaInsets();
+    const [imgError, setImgError] = useState(false);
+    const hasImage = avatarImageUrl && avatarImageUrl.length > 0 && !imgError;
 
     const resolvedSubtitle = subtitle ?? new Date().toLocaleDateString('en-GB', {
         weekday: 'short',
@@ -69,7 +73,15 @@ const AppTopHeader: React.FC<AppTopHeaderProps> = ({
                         style={({ pressed }) => [styles.avatar, pressed && styles.avatarPressed]}
                         onPress={onAvatarPress}
                         disabled={!onAvatarPress}>
-                        <Text style={styles.avatarText}>{getInitials(avatarText || title)}</Text>
+                        {hasImage ? (
+                            <Image
+                                source={{ uri: avatarImageUrl }}
+                                style={styles.avatarImage}
+                                onError={() => setImgError(true)}
+                            />
+                        ) : (
+                            <Text style={styles.avatarText}>{getInitials(avatarText || title)}</Text>
+                        )}
                     </Pressable>
 
                     {onLogoutPress ? (
@@ -151,6 +163,11 @@ const createStyles = (theme: AppTheme) =>
         },
         avatarPressed: {
             opacity: 0.85,
+        },
+        avatarImage: {
+            width: 38,
+            height: 38,
+            borderRadius: 19,
         },
         avatarText: {
             ...theme.typography.caption,

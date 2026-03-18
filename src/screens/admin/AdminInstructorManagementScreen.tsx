@@ -30,7 +30,7 @@ import {
   FilterChips,
   StatsCard,
   StatusBadge,
-  Avatar,
+  UserAvatar,
   ConfirmModal,
   DetailDrawer,
   EmptyState,
@@ -224,7 +224,7 @@ const AdminInstructorManagementScreen = () => {
               setDrawerOpen(true);
             }}>
             <View style={styles.cardTop}>
-              <Avatar initials={inst.avatar} name={inst.name} size={40} theme={theme} />
+              <UserAvatar userId={inst.id} name={inst.name} size={40} theme={theme} />
               <View style={styles.cardInfoCol}>
                 <Text style={styles.cardName}>{inst.name}</Text>
                 <Text style={styles.cardSub}>{inst.city} | {inst.experience}</Text>

@@ -49,8 +49,9 @@ const ConversationRow = ({
       style={({ pressed }) => [s.row, pressed && s.rowPressed]}
       onPress={onPress}>
       <Avatar
-        initials={(conversation as any).instructorAvatar || conversation.studentAvatar}
+        initials={(conversation as any).instructorName || conversation.studentName}
         name={(conversation as any).instructorName || conversation.studentName}
+        imageUrl={(conversation as any).instructorAvatar || conversation.studentAvatar}
         size={48}
       />
       <View style={s.content}>

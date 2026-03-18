@@ -139,7 +139,7 @@ const AdminDashboardScreen = () => {
             <Text style={styles.userName} numberOfLines={1}>{userName}</Text>
             <Text style={styles.dateText}>{todayStr}</Text>
           </View>
-          <Avatar initials={initials} size={52} theme={theme} />
+          <Avatar initials={initials} name={userName} imageUrl={(profile as any)?.profile_picture_url || (profile as any)?.profileImage || ''} size={52} theme={theme} />
         </View>
       </View>
 

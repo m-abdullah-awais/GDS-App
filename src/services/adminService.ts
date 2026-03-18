@@ -307,10 +307,15 @@ export const getAllPayouts = async (
  * Strip heavy base64 fields to prevent megabytes of image data
  * from flooding the JS thread and Redux state.
  */
+const isHeavyBase64 = (value: unknown): boolean =>
+  typeof value === 'string' && value.startsWith('data:') && value.length > 1024;
+
 const stripHeavyFields = <T extends Record<string, any>>(doc: T): T => {
   const copy = { ...doc };
-  delete copy.profile_picture_url;
-  delete copy.profileImage;
+  // Keep profile image URLs (short strings) but strip large base64 data
+  if (isHeavyBase64(copy.profile_picture_url)) { delete copy.profile_picture_url; }
+  if (isHeavyBase64(copy.profileImage)) { delete copy.profileImage; }
+  // Always strip badge/insurance (not needed for list views)
   delete copy.badge_url;
   delete copy.insurance_url;
   return copy;

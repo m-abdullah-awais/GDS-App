@@ -72,13 +72,17 @@ export const getActiveInstructors = async (): Promise<UserDoc[]> => {
  * Strip heavy base64 fields (profile images, badge/insurance scans)
  * to prevent megabytes of data from flooding the JS thread and Redux state.
  */
+const isHeavyBase64 = (value: unknown): boolean =>
+  typeof value === 'string' && value.startsWith('data:') && value.length > 1024;
+
 const stripHeavyFields = <T extends Record<string, any>>(doc: T): T => {
   const copy: Record<string, any> = { ...doc };
   // Preserve existence flags for document URLs before stripping heavy data
   if (copy.badge_url) { copy.badge_url = 'exists'; }
   if (copy.insurance_url) { copy.insurance_url = 'exists'; }
-  delete copy.profile_picture_url;
-  delete copy.profileImage;
+  // Keep profile image URLs (short strings) but strip large base64 data
+  if (isHeavyBase64(copy.profile_picture_url)) { delete copy.profile_picture_url; }
+  if (isHeavyBase64(copy.profileImage)) { delete copy.profileImage; }
   return copy as T;
 };
 

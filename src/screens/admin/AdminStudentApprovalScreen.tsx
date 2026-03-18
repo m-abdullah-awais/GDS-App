@@ -25,7 +25,7 @@ import {
   SearchBar,
   FilterChips,
   StatusBadge,
-  Avatar,
+  UserAvatar,
   ConfirmModal,
   DetailDrawer,
   EmptyState,
@@ -173,7 +173,7 @@ const AdminStudentApprovalScreen = () => {
             activeOpacity={0.7}
             onPress={() => openDrawer(student)}>
             <View style={styles.cardHeader}>
-              <Avatar initials={student.avatar} name={student.name} size={40} theme={theme} />
+              <UserAvatar userId={student.id} name={student.name} size={40} theme={theme} />
               <View style={styles.cardInfo}>
                 <Text style={styles.cardName}>{student.name}</Text>
                 <Text style={styles.cardSub}>{student.email}</Text>

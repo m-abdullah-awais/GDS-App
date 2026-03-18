@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import ScreenContainer from '../../components/ScreenContainer';
+import Avatar from '../../components/Avatar';
 import { useTheme } from '../../theme';
 import Button from '../../components/Button';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -144,9 +145,7 @@ const InstructorPendingReviewsScreen = ({ navigation }: Props) => {
   const renderLesson = ({ item }: { item: InstructorLesson }) => (
     <View style={styles.reviewCard}>
       <View style={styles.cardHeader}>
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{item.studentAvatar}</Text>
-        </View>
+        <Avatar initials={item.studentName} name={item.studentName} imageUrl={item.studentAvatar} size={48} />
         <View style={styles.cardInfo}>
           <Text style={styles.studentName}>{item.studentName}</Text>
           <Text style={styles.lessonMeta}>

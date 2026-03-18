@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import ScreenContainer from '../../components/ScreenContainer';
+import SharedAvatar from '../../components/Avatar';
 import { useTheme } from '../../theme';
 import type { AppTheme } from '../../constants/theme';
 import type { DrawerScreenProps } from '@react-navigation/drawer';
@@ -44,36 +45,6 @@ type LessonLikeSource = {
   status?: string;
   bookingRequestId?: string;
 };
-
-// ─── Avatar ───────────────────────────────────────────────────────────────────
-
-const Avatar = ({
-  initials,
-  size = 52,
-  theme,
-}: {
-  initials: string;
-  size?: number;
-  theme: AppTheme;
-}) => (
-  <View
-    style={{
-      width: size,
-      height: size,
-      borderRadius: size / 2,
-      backgroundColor: theme.colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-    <Text
-      style={[
-        theme.typography.buttonSmall,
-        { color: theme.colors.textInverse, fontSize: size * 0.36 },
-      ]}>
-      {initials}
-    </Text>
-  </View>
-);
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
@@ -394,7 +365,7 @@ const InstructorScheduleScreen = ({ navigation }: Props) => {
       >
         {/* Header row */}
         <View style={styles.headerRow}>
-          <Avatar initials={item.studentAvatar} size={52} theme={theme} />
+          <SharedAvatar initials={item.studentName} name={item.studentName} imageUrl={item.studentAvatar} size={52} />
           <View style={styles.headerInfo}>
             <Text style={styles.studentName}>{item.studentName}</Text>
             <Text style={styles.lessonDate}>{item.date} at {item.time}</Text>

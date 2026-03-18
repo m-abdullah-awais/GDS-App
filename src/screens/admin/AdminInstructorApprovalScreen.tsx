@@ -25,7 +25,7 @@ import {
   SearchBar,
   FilterChips,
   StatusBadge,
-  Avatar,
+  UserAvatar,
   ConfirmModal,
   DetailDrawer,
   EmptyState,
@@ -162,7 +162,7 @@ const AdminInstructorApprovalScreen = () => {
             activeOpacity={0.7}
             onPress={() => openDrawer(inst)}>
             <View style={styles.cardHeader}>
-              <Avatar initials={inst.avatar} name={inst.name} size={40} theme={theme} />
+              <UserAvatar userId={inst.id} name={inst.name} size={40} theme={theme} />
               <View style={styles.cardInfo}>
                 <Text style={styles.cardName}>{inst.name}</Text>
                 <Text style={styles.cardSub}>{inst.email}</Text>

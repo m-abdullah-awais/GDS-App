@@ -46,7 +46,7 @@ const ConversationRow = ({
 
   return (
     <Pressable style={({ pressed }) => [s.row, pressed && s.rowPressed]} onPress={onPress}>
-      <Avatar initials={item.instructorAvatar} name={item.instructorName} size={48} theme={theme} />
+      <Avatar initials={item.instructorName} name={item.instructorName} imageUrl={item.instructorAvatar} size={48} theme={theme} />
       <View style={s.content}>
         <View style={s.topRow}>
           <Text style={[s.name, hasUnread && s.nameBold]} numberOfLines={1}>

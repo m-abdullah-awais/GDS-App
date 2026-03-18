@@ -25,6 +25,7 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../theme';
+import Avatar from '../Avatar';
 import type { AppTheme } from '../../constants/theme';
 import { useConfirmation } from '../common';
 import {
@@ -179,9 +180,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
           >
             {/* ── Student Card ──────────────────── */}
             <View style={styles.studentCard}>
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarText}>{lesson.studentAvatar}</Text>
-              </View>
+              <Avatar initials={lesson.studentName} name={lesson.studentName} imageUrl={lesson.studentAvatar} size={48} />
               <View style={styles.studentInfo}>
                 <Text style={styles.studentName}>{lesson.studentName}</Text>
                 <View style={styles.metaRow}>

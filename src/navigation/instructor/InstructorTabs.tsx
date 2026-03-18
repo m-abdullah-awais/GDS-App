@@ -52,6 +52,7 @@ const InstructorTabs = () => {
     const profile = useSelector((state: RootState) => state.auth.profile);
     const userName = profile?.full_name || 'Instructor';
     const userEmail = profile?.email || '';
+    const userAvatar = (profile as any)?.profile_picture_url || (profile as any)?.profileImage || '';
 
     const handleLogout = async () => {
         const shouldLogout = await confirm({
@@ -77,6 +78,7 @@ const InstructorTabs = () => {
                     userName={userName}
                     userEmail={userEmail}
                     roleLabel="Instructor"
+                    avatarImageUrl={userAvatar}
                     onLogout={handleLogout}
                 />
             )}
@@ -85,7 +87,8 @@ const InstructorTabs = () => {
                     <AppTopHeader
                         title={options.title ?? route.name}
                         subtitle="Instructor Workspace"
-                        avatarText="Instructor"
+                        avatarText={userName}
+                        avatarImageUrl={userAvatar}
                         leftAction="menu"
                         onLeftPress={() => navigation.openDrawer()}
                     />

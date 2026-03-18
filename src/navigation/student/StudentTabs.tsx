@@ -28,6 +28,7 @@ const StudentTabs = () => {
     const profile = useSelector((state: RootState) => state.auth.profile);
     const userName = profile?.full_name || 'Student';
     const userEmail = profile?.email || '';
+    const userAvatar = (profile as any)?.profile_picture_url || (profile as any)?.profileImage || '';
 
     const handleLogout = async () => {
         const shouldLogout = await confirm({
@@ -53,6 +54,7 @@ const StudentTabs = () => {
                     userName={userName}
                     userEmail={userEmail}
                     roleLabel="Student"
+                    avatarImageUrl={userAvatar}
                     onLogout={handleLogout}
                 />
             )}
@@ -61,7 +63,8 @@ const StudentTabs = () => {
                     <AppTopHeader
                         title={options.title ?? route.name}
                         subtitle="Student Journey"
-                        avatarText="Student"
+                        avatarText={userName}
+                        avatarImageUrl={userAvatar}
                         leftAction="menu"
                         onLeftPress={() => navigation.openDrawer()}
                     />

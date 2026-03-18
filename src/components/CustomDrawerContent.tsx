@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
     DrawerContentScrollView,
     DrawerItemList,
@@ -17,6 +17,8 @@ interface CustomDrawerContentProps extends DrawerContentComponentProps {
     userEmail: string;
     /** Role label shown as a badge (e.g. "Student", "Instructor", "Admin") */
     roleLabel: string;
+    /** Profile image URL — shown instead of initials when available */
+    avatarImageUrl?: string;
     /** Called when the user taps the Logout button */
     onLogout?: () => void;
 }
@@ -33,20 +35,31 @@ const CustomDrawerContent: React.FC<CustomDrawerContentProps> = ({
     userName,
     userEmail,
     roleLabel,
+    avatarImageUrl,
     onLogout,
     ...drawerProps
 }) => {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
     const insets = useSafeAreaInsets();
+    const [imgError, setImgError] = useState(false);
+    const hasImage = avatarImageUrl && avatarImageUrl.length > 0 && !imgError;
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
             {/* ── Fixed profile header ───────────────────── */}
             <View style={styles.profileSection}>
-                <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{getInitials(userName)}</Text>
-                </View>
+                {hasImage ? (
+                    <Image
+                        source={{ uri: avatarImageUrl }}
+                        style={styles.avatarImage}
+                        onError={() => setImgError(true)}
+                    />
+                ) : (
+                    <View style={styles.avatar}>
+                        <Text style={styles.avatarText}>{getInitials(userName)}</Text>
+                    </View>
+                )}
 
                 <Text style={styles.userName} numberOfLines={1}>
                     {userName}
@@ -117,6 +130,13 @@ const createStyles = (theme: AppTheme) =>
             backgroundColor: theme.colors.primary,
             alignItems: 'center',
             justifyContent: 'center',
+            marginBottom: theme.spacing.sm,
+            ...theme.shadows.md,
+        },
+        avatarImage: {
+            width: 72,
+            height: 72,
+            borderRadius: 36,
             marginBottom: theme.spacing.sm,
             ...theme.shadows.md,
         },

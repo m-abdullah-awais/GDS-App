@@ -45,6 +45,7 @@ const AdminTabs = () => {
   const profile = useSelector((state: RootState) => state.auth.profile);
   const userName = profile?.full_name || 'Admin';
   const userEmail = profile?.email || '';
+  const userAvatar = (profile as any)?.profile_picture_url || (profile as any)?.profileImage || '';
 
   const handleLogout = useCallback(async () => {
     const shouldLogout = await confirm({
@@ -69,6 +70,7 @@ const AdminTabs = () => {
         userName={userName}
         userEmail={userEmail}
         roleLabel="Admin"
+        avatarImageUrl={userAvatar}
         onLogout={handleLogout}
       />
     ),
@@ -82,6 +84,7 @@ const AdminTabs = () => {
           title={options.title ?? route.name}
           subtitle="Admin Console"
           avatarText={userName}
+          avatarImageUrl={userAvatar}
           leftAction="menu"
           onLeftPress={() => navigation.openDrawer()}
         />

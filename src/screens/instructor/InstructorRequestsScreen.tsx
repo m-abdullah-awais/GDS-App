@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import ScreenContainer from '../../components/ScreenContainer';
+import Avatar from '../../components/Avatar';
 import { useTheme } from '../../theme';
 import Button from '../../components/Button';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -27,36 +28,6 @@ import { acceptStudentRequestThunk, rejectStudentRequestThunk } from '../../stor
 type Props = DrawerScreenProps<InstructorTabsParamList, 'Requests'>;
 
 type TabKey = 'incoming' | 'outgoing';
-
-// ─── Avatar ───────────────────────────────────────────────────────────────────
-
-const Avatar = ({
-  initials,
-  size = 52,
-  theme,
-}: {
-  initials: string;
-  size?: number;
-  theme: AppTheme;
-}) => (
-  <View
-    style={{
-      width: size,
-      height: size,
-      borderRadius: size / 2,
-      backgroundColor: theme.colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-    <Text
-      style={[
-        theme.typography.buttonSmall,
-        { color: theme.colors.textInverse, fontSize: size * 0.36 },
-      ]}>
-      {initials}
-    </Text>
-  </View>
-);
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
@@ -94,7 +65,7 @@ const InstructorRequestsScreen = ({ navigation }: Props) => {
     id: r.id,
     studentId: r.studentId || r.student_id || '',
     studentName: r.studentName || '',
-    studentAvatar: (r.studentName || '').split(' ').filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'ST',
+    studentAvatar: r.studentProfileImage || r.student_profile_picture_url || '',
     postcode: r.studentPostcode || '',
     status: r.status === 'confirmed' ? 'accepted' : r.status,
     direction: r.initiatedBy === 'student' ? 'incoming' : 'outgoing',
@@ -132,7 +103,7 @@ const InstructorRequestsScreen = ({ navigation }: Props) => {
       <View style={styles.card}>
         {/* Header row */}
         <View style={styles.headerRow}>
-          <Avatar initials={item.studentAvatar} size={52} theme={theme} />
+          <Avatar initials={item.studentName} name={item.studentName} imageUrl={item.studentAvatar} size={52} />
           <View style={styles.headerInfo}>
             <Text style={styles.studentName}>{item.studentName}</Text>
             <Text style={styles.sentDate}>Postcode: {item.postcode}</Text>

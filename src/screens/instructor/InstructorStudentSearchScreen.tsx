@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import ScreenContainer from '../../components/ScreenContainer';
+import Avatar from '../../components/Avatar';
 import { useTheme } from '../../theme';
 import Button from '../../components/Button';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -48,7 +49,7 @@ const InstructorStudentSearchScreen = ({ navigation }: Props) => {
       setResults(users.map((u: any) => ({
         id: u.id || u.uid,
         name: u.full_name || '',
-        avatar: (u.full_name || '').split(' ').filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'ST',
+        avatar: u.profile_picture_url || u.profileImage || '',
         postcode: u.postcode || '',
         email: u.email || '',
         phone: u.phone || '',
@@ -83,9 +84,7 @@ const InstructorStudentSearchScreen = ({ navigation }: Props) => {
     return (
       <View style={styles.studentCard}>
         <View style={styles.studentHeader}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{item.avatar}</Text>
-          </View>
+          <Avatar initials={item.name} name={item.name} imageUrl={item.avatar} size={52} />
           <View style={styles.studentInfo}>
             <Text style={styles.studentName}>{item.name}</Text>
             <Text style={styles.studentPostcode}>Postcode: {item.postcode}</Text>

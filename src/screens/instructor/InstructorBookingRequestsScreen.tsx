@@ -490,7 +490,7 @@ const InstructorBookingRequestsScreen = () => {
             renderItem={({ item }) => (
               <View style={s.card}>
                 <View style={s.cardHeader}>
-                  <Avatar initials={item.studentName} size={44} />
+                  <Avatar initials={item.studentName} name={item.studentName} size={44} />
                   <View style={s.cardInfo}>
                     <Text style={s.cardName}>{item.studentName}</Text>
                     <Text style={s.cardMeta}>{item.date} at {item.startTime} – {item.endTime}</Text>

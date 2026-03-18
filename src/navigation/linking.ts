@@ -23,11 +23,10 @@ import type { LinkingOptions } from '@react-navigation/native';
 export const linkingConfig: LinkingOptions<ReactNavigation.RootParamList> = {
   prefixes: ['gds://'],
   config: {
-    screens: {
-      // These are placeholder mappings; deep links are intercepted at the
-      // NavigationContainer level via onStateChange / Linking.addEventListener.
-      // Specific payment handling is done via paymentService.ts
-    },
+    // Deep links are primarily intercepted by the useStripeDeepLinks hook
+    // and paymentService.ts via Linking.addEventListener.
+    // The screen mappings below serve as fallback route targets.
+    screens: {},
   },
 };
 

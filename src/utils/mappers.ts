@@ -597,8 +597,8 @@ export const mapUserToAdminInstructor = (user: UserProfile): AdminInstructor => 
   experience: user.about_me ? 'Experienced' : 'New',
   licenseNumber: user.badge_number || '',
   documentsUploaded: [
-    ...(user.badge_url ? [{ id: 'badge', name: 'Driving Badge', type: 'badge', uploadedDate: '', status: 'verified' as const }] : []),
-    ...(user.insurance_url ? [{ id: 'insurance', name: 'Insurance', type: 'insurance', uploadedDate: '', status: 'verified' as const }] : []),
+    ...(user.badge_url ? [{ id: 'badge', name: 'Driving Badge', type: 'badge', uploadedDate: '', status: 'verified' as const, url: user.badge_url }] : []),
+    ...(user.insurance_url ? [{ id: 'insurance', name: 'Insurance', type: 'insurance', uploadedDate: '', status: 'verified' as const, url: user.insurance_url }] : []),
   ],
   stripeAccountId: user.stripeAccountId || '',
   stripeConnectionStatus: user.stripeAccountStatus === 'verified'

@@ -13,9 +13,10 @@
  * Uses a real-time Firestore listener to detect status changes.
  */
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   Linking,
   ScrollView,
   StyleSheet,
@@ -97,9 +98,44 @@ const InstructorPendingApprovalScreen = ({ navigation }: Props) => {
   const isStripeVerified =
     instructorData?.stripeAccountStatus === 'verified' &&
     !!instructorData?.stripeAccountId;
+  const isStripePending =
+    !!instructorData?.stripeAccountId &&
+    instructorData?.stripeAccountStatus !== 'verified';
   const isAdminApproved =
     instructorData?.approved === true && instructorData?.status === 'active';
   const isRejected = instructorData?.status === 'rejected';
+
+  // Refresh Stripe status manually
+  const [refreshingStatus, setRefreshingStatus] = useState(false);
+  const handleRefreshStripeStatus = useCallback(async () => {
+    try {
+      setRefreshingStatus(true);
+      await getAccountStatus();
+    } catch {
+      // Non-critical — listener will catch up
+    } finally {
+      setRefreshingStatus(false);
+    }
+  }, []);
+
+  // Track whether the browser is open so we can check status on app resume
+  const browserOpenRef = useRef(false);
+
+  // When user returns to the app from Stripe (via back button / app switch),
+  // automatically check their account status
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextState) => {
+      if (nextState === 'active' && browserOpenRef.current) {
+        browserOpenRef.current = false;
+        try {
+          await getAccountStatus();
+        } catch {
+          // Non-critical — the real-time listener will catch up
+        }
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   const handleStripeSetup = useCallback(async () => {
     try {
@@ -109,7 +145,12 @@ const InstructorPendingApprovalScreen = ({ navigation }: Props) => {
       const result = await createConnectedAccount();
 
       if (result.success && result.onboardingUrl) {
-        // Try InAppBrowser first, fall back to Linking
+        // Mark browser as open so AppState listener can detect return
+        browserOpenRef.current = true;
+
+        // Open Stripe onboarding. The user completes KYC/verification
+        // on stripe.com. After Stripe finishes, it redirects to a return
+        // page — the user then taps the X / back button to return here.
         const isAvailable = await InAppBrowser.isAvailable();
         if (isAvailable) {
           await InAppBrowser.open(result.onboardingUrl, {
@@ -128,11 +169,16 @@ const InstructorPendingApprovalScreen = ({ navigation }: Props) => {
           await Linking.openURL(result.onboardingUrl);
         }
 
-        // After browser closes, check account status
+        browserOpenRef.current = false;
+
+        // After browser closes, wait briefly for Stripe webhook to process,
+        // then check account status. The real-time Firestore listener
+        // will also pick up changes automatically.
+        await new Promise<void>(resolve => setTimeout(resolve, 3000));
         try {
           await getAccountStatus();
         } catch {
-          // Non-critical — the real-time listener will pick up changes
+          // Non-critical — the real-time listener will catch up
         }
       } else {
         throw new Error('Failed to create Stripe onboarding link');
@@ -240,7 +286,139 @@ const InstructorPendingApprovalScreen = ({ navigation }: Props) => {
     );
   }
 
-  // ─── Case 3: Stripe Setup Required ────────────────────────────────────────
+  // ─── Case 3a: Stripe Verification In Progress ─────────────────────────────
+  // The instructor has completed Stripe onboarding but Stripe hasn't
+  // finished verifying their account yet. Show a waiting state.
+  if (isStripePending) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.content}>
+            <View style={[styles.iconContainer, { backgroundColor: theme.colors.warningLight }]}>
+              <Ionicons name="hourglass-outline" size={44} color={theme.colors.warning} />
+            </View>
+            <Text style={styles.title}>Stripe Verification In Progress</Text>
+            <Text style={styles.subtitle}>
+              Your Stripe account has been created and your details have been submitted.
+              Stripe is currently verifying your information — this usually takes a few minutes.
+            </Text>
+          </View>
+
+          {/* Status Card */}
+          <View style={styles.statusCard}>
+            <View style={styles.statusCardHeader}>
+              <View style={[styles.statusBadgeIcon, { backgroundColor: theme.colors.warningLight }]}>
+                <Ionicons name="card-outline" size={20} color={theme.colors.warning} />
+              </View>
+              <View style={styles.statusCardHeaderText}>
+                <Text style={styles.statusCardTitle}>Stripe Account</Text>
+                <Text style={styles.statusCardSubtitle}>
+                  Status: {instructorData?.stripeAccountStatus === 'pending_verification'
+                    ? 'Pending Verification'
+                    : instructorData?.stripeAccountStatus === 'restricted'
+                    ? 'Restricted'
+                    : 'Processing'}
+                </Text>
+              </View>
+              <View style={[styles.statusBadge, { backgroundColor: theme.colors.warningLight }]}>
+                <Text style={[styles.statusBadgeText, { color: theme.colors.warning }]}>
+                  Processing
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.timelineContainer}>
+              <View style={styles.timelineItem}>
+                <Ionicons name="checkmark-circle" size={20} color={theme.colors.success} />
+                <Text style={[styles.timelineText, { color: theme.colors.success }]}>
+                  Profile submitted
+                </Text>
+              </View>
+              <View style={styles.timelineItem}>
+                <Ionicons name="checkmark-circle" size={20} color={theme.colors.success} />
+                <Text style={[styles.timelineText, { color: theme.colors.success }]}>
+                  Stripe onboarding completed
+                </Text>
+              </View>
+              <View style={styles.timelineItem}>
+                <ActivityIndicator size={16} color={theme.colors.warning} />
+                <Text style={[styles.timelineText, { color: theme.colors.warning }]}>
+                  Stripe verifying your account
+                </Text>
+              </View>
+              <View style={[styles.timelineItem, { opacity: 0.4 }]}>
+                <Ionicons name="ellipse-outline" size={20} color={theme.colors.textTertiary} />
+                <Text style={styles.timelineText}>Admin review</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Refresh Status Button */}
+          <Button
+            title={refreshingStatus ? 'Checking...' : 'Refresh Status'}
+            onPress={handleRefreshStripeStatus}
+            loading={refreshingStatus}
+            disabled={refreshingStatus}
+            variant="secondary"
+            size="lg"
+            fullWidth
+            leftIcon={
+              !refreshingStatus ? (
+                <Ionicons name="refresh-outline" size={20} color={theme.colors.primary} />
+              ) : undefined
+            }
+          />
+
+          {/* If restricted, show option to redo onboarding */}
+          {instructorData?.stripeAccountStatus === 'restricted' && (
+            <View style={[styles.infoBox, { backgroundColor: theme.colors.errorLight }]}>
+              <Ionicons name="alert-circle" size={18} color={theme.colors.error} />
+              <Text style={[styles.infoBoxText, { color: theme.colors.error }]}>
+                Your Stripe account has restrictions. You may need to provide additional
+                information. Tap "Redo Stripe Setup" below.
+              </Text>
+            </View>
+          )}
+
+          {instructorData?.stripeAccountStatus === 'restricted' && (
+            <Button
+              title={stripeLoading ? 'Connecting...' : 'Redo Stripe Setup'}
+              onPress={handleStripeSetup}
+              loading={stripeLoading}
+              disabled={stripeLoading}
+              variant="primary"
+              size="lg"
+              fullWidth
+            />
+          )}
+
+          <View style={[styles.infoBox, { backgroundColor: theme.colors.primaryLight }]}>
+            <Ionicons name="information-circle-outline" size={18} color={theme.colors.primary} />
+            <Text style={[styles.infoBoxText, { color: theme.colors.primary }]}>
+              Once Stripe verification is complete, your application will be submitted
+              for admin review automatically.
+            </Text>
+          </View>
+
+          <View style={styles.signOutCenter}>
+            <Button
+              title="Sign Out"
+              onPress={handleSignOut}
+              variant="ghost"
+              size="md"
+              leftIcon={<Ionicons name="log-out-outline" size={18} color={theme.colors.primary} />}
+            />
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // ─── Case 3b: Stripe Setup Required (no account created yet) ─────────────
   if (!isStripeVerified) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
@@ -288,6 +466,15 @@ const InstructorPendingApprovalScreen = ({ navigation }: Props) => {
                 <Ionicons name="checkmark-circle" size={18} color={theme.colors.success} />
                 <Text style={styles.stripeFeatureText}>Takes only 5-10 minutes</Text>
               </View>
+            </View>
+
+            <View style={[styles.infoBox, { backgroundColor: theme.colors.primaryLight }]}>
+              <Ionicons name="information-circle-outline" size={18} color={theme.colors.primary} />
+              <Text style={[styles.infoBoxText, { color: theme.colors.primary }]}>
+                You will be redirected to Stripe to complete verification. After finishing,
+                tap the <Text style={{ fontWeight: '700' }}>X button</Text> or{' '}
+                <Text style={{ fontWeight: '700' }}>back arrow</Text> to return to the app.
+              </Text>
             </View>
 
             {stripeError ? (

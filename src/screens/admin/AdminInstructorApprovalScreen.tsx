@@ -29,7 +29,7 @@ import {
   ConfirmModal,
   DetailDrawer,
   EmptyState,
-  SectionHeader,
+  InstructorDetailContent,
   useToast,
 } from '../../components/admin';
 
@@ -246,85 +246,12 @@ const AdminInstructorApprovalScreen = () => {
           setSelected(null);
         }}
         title="Instructor Details">
-        {selected && (
-          <View style={styles.drawerContent}>
-            <View style={styles.drawerAvatar}>
-              <Avatar initials={selected.avatar} name={selected.name} size={64} theme={theme} />
-              <Text style={styles.drawerName}>{selected.name}</Text>
-              <StatusBadge status={selected.approvalStatus} />
-            </View>
-
-            <SectionHeader title="Contact" />
-            <DetailRow label="Email" value={selected.email} theme={theme} />
-            <DetailRow label="Phone" value={selected.phone} theme={theme} />
-            <DetailRow label="City" value={selected.city} theme={theme} />
-
-            <SectionHeader title="Professional" />
-            <DetailRow label="Experience" value={selected.experience} theme={theme} />
-            <DetailRow label="License" value={selected.licenseNumber} theme={theme} />
-            <DetailRow label="Completed Lessons" value={String(selected.completedLessons)} theme={theme} />
-            <DetailRow label="Rating" value={`${selected.rating}/5`} theme={theme} />
-
-            <SectionHeader title="Financial" />
-            <DetailRow label="Total Earnings" value={`\u00A3${selected.earningsTotal}`} theme={theme} />
-            <DetailRow label="Pending Payment" value={`\u00A3${selected.pendingPayment}`} theme={theme} />
-            <DetailRow label="Stripe Account" value={selected.stripeAccountId || 'Not connected'} theme={theme} />
-            <DetailRow
-              label="Stripe Status"
-              value={selected.stripeConnectionStatus.replace('_', ' ')}
-              theme={theme}
-            />
-
-            <SectionHeader title="Documents" />
-            {selected.documentsUploaded.map(doc => (
-              <View key={doc.id} style={styles.docItem}>
-                <Ionicons name="document-outline" size={16} color={theme.colors.textSecondary} />
-                <View style={{ flex: 1, marginLeft: 8 }}>
-                  <Text style={styles.docName}>{doc.name}</Text>
-                  <Text style={styles.docDate}>{doc.uploadedDate}</Text>
-                </View>
-                <StatusBadge status={doc.status} />
-              </View>
-            ))}
-          </View>
-        )}
+        {selected && <InstructorDetailContent instructor={selected} />}
       </DetailDrawer>
     </View>
   );
 };
 
-const DetailRow = ({
-  label,
-  value,
-  theme,
-}: {
-  label: string;
-  value: string;
-  theme: AppTheme;
-}) => (
-  <View
-    style={{
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      paddingVertical: theme.spacing.xs,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.divider,
-    }}>
-    <Text style={{ ...theme.typography.bodySmall, color: theme.colors.textSecondary }}>
-      {label}
-    </Text>
-    <Text
-      style={{
-        ...theme.typography.bodySmall,
-        color: theme.colors.textPrimary,
-        fontWeight: '600',
-        maxWidth: '55%',
-        textAlign: 'right',
-      }}>
-      {value}
-    </Text>
-  </View>
-);
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
@@ -450,33 +377,6 @@ const createStyles = (theme: AppTheme) =>
       ...theme.typography.buttonSmall,
       color: '#fff',
       fontWeight: '600',
-    },
-    drawerContent: {
-      paddingBottom: theme.spacing['2xl'],
-    },
-    drawerAvatar: {
-      alignItems: 'center',
-      gap: theme.spacing.sm,
-      marginBottom: theme.spacing.lg,
-    },
-    drawerName: {
-      ...theme.typography.h3,
-      color: theme.colors.textPrimary,
-    },
-    docItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: theme.spacing.xs,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.divider,
-    },
-    docName: {
-      ...theme.typography.bodySmall,
-      color: theme.colors.textPrimary,
-    },
-    docDate: {
-      ...theme.typography.caption,
-      color: theme.colors.textTertiary,
     },
   });
 

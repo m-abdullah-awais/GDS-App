@@ -17,6 +17,7 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { ThemeProvider, useTheme } from './src/theme';
 import { useAuthStateListener } from './src/hooks';
 import { useOffersSubscription } from './src/hooks/useOffersSubscription';
+import { useStripeDeepLinks } from './src/hooks/useStripeDeepLinks';
 import { linkingConfig } from './src/navigation/linking';
 
 function App() {
@@ -51,6 +52,9 @@ function AppContent() {
 
   // Subscribe to exclusive offers (ads collection) in real-time
   useOffersSubscription();
+
+  // Handle Stripe Connect deep-link callbacks (return/refresh)
+  useStripeDeepLinks();
 
   const navigationTheme = {
     ...(theme.dark ? DarkTheme : DefaultTheme),

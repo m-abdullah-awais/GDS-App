@@ -34,7 +34,7 @@ import {
   ConfirmModal,
   DetailDrawer,
   EmptyState,
-  SectionHeader,
+  InstructorDetailContent,
   useToast,
 } from '../../components/admin';
 
@@ -311,58 +311,12 @@ const AdminInstructorManagementScreen = () => {
           setSelected(null);
         }}
         title="Instructor Profile">
-        {selected && (
-          <View style={styles.drawerBody}>
-            <View style={styles.drawerAvatar}>
-              <Avatar initials={selected.avatar} name={selected.name} size={64} theme={theme} />
-              <Text style={styles.drawerName}>{selected.name}</Text>
-              <StatusBadge status={selected.accountStatus} />
-            </View>
-
-            <SectionHeader title="Contact" />
-            <DetailRow label="Email" value={selected.email} theme={theme} />
-            <DetailRow label="Phone" value={selected.phone} theme={theme} />
-            <DetailRow label="City" value={selected.city} theme={theme} />
-
-            <SectionHeader title="Professional" />
-            <DetailRow label="Experience" value={selected.experience} theme={theme} />
-            <DetailRow label="License" value={selected.licenseNumber} theme={theme} />
-            <DetailRow label="Lessons" value={String(selected.completedLessons)} theme={theme} />
-            <DetailRow label="Rating" value={`${selected.rating}/5`} theme={theme} />
-
-            <SectionHeader title="Financial" />
-            <DetailRow label="Earnings" value={`\u00A3${selected.earningsTotal}`} theme={theme} />
-            <DetailRow label="Pending" value={`\u00A3${selected.pendingPayment}`} theme={theme} />
-            <DetailRow label="Stripe" value={selected.stripeConnectionStatus.replace('_', ' ')} theme={theme} />
-            <DetailRow label="Stripe ID" value={selected.stripeAccountId || 'N/A'} theme={theme} />
-
-            <SectionHeader title="Documents" />
-            {selected.documentsUploaded.map(doc => (
-              <View key={doc.id} style={styles.docRow}>
-                <Ionicons name="document-outline" size={16} color={theme.colors.textSecondary} />
-                <Text style={styles.docText}>{doc.name}</Text>
-                <StatusBadge status={doc.status} />
-              </View>
-            ))}
-          </View>
-        )}
+        {selected && <InstructorDetailContent instructor={selected} />}
       </DetailDrawer>
     </View>
   );
 };
 
-const DetailRow = ({ label, value, theme }: { label: string; value: string; theme: AppTheme }) => (
-  <View style={{
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: theme.spacing.xs,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.divider,
-  }}>
-    <Text style={{ ...theme.typography.bodySmall, color: theme.colors.textSecondary }}>{label}</Text>
-    <Text style={{ ...theme.typography.bodySmall, color: theme.colors.textPrimary, fontWeight: '600' }}>{value}</Text>
-  </View>
-);
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
@@ -447,18 +401,6 @@ const createStyles = (theme: AppTheme) =>
       color: '#fff',
       fontWeight: '600',
     },
-    drawerBody: { paddingBottom: theme.spacing['2xl'] },
-    drawerAvatar: { alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.lg },
-    drawerName: { ...theme.typography.h3, color: theme.colors.textPrimary },
-    docRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      paddingVertical: theme.spacing.xs,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.divider,
-    },
-    docText: { ...theme.typography.bodySmall, color: theme.colors.textPrimary, flex: 1 },
   });
 
 export default AdminInstructorManagementScreen;

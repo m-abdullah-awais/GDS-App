@@ -63,6 +63,7 @@ export interface DocumentItem {
   type: string;
   uploadedDate: string;
   status: 'verified' | 'pending' | 'rejected';
+  url?: string;
 }
 
 export interface Transaction {

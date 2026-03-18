@@ -5,7 +5,7 @@
  * Pill-style filter tabs + premium card styling (matches student side).
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   FlatList,
   Pressable,
@@ -21,6 +21,7 @@ import type { DrawerScreenProps } from '@react-navigation/drawer';
 import type { InstructorTabsParamList } from '../../navigation/instructor/InstructorTabs';
 import type { TransactionView, EarningsSummary } from '../../types/instructor-views';
 import { useSelector } from 'react-redux';
+import { getAccountStatus, type AccountStatusResponse } from '../../services/stripeConnectService';
 
 type Props = DrawerScreenProps<InstructorTabsParamList, 'Earnings'>;
 
@@ -39,6 +40,21 @@ const InstructorEarningsScreen = ({ navigation }: Props) => {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const summaryColors = ['#2F6BFF', '#0EA5E9', '#7141F4', '#F97316', '#1FBF5B', '#EF4444'];
+
+  // Stripe account status for banner
+  const [stripeStatus, setStripeStatus] = useState<AccountStatusResponse | null>(null);
+
+  useEffect(() => {
+    const checkStripe = async () => {
+      try {
+        const result = await getAccountStatus();
+        setStripeStatus(result);
+      } catch {
+        // Non-critical
+      }
+    };
+    checkStripe();
+  }, []);
 
   const instructorPayments = useSelector((state: any) => state.instructor.instructorPayments) || [];
   const weeklyPayment = useSelector((state: any) => state.instructor.weeklyPayment);
@@ -91,6 +107,73 @@ const InstructorEarningsScreen = ({ navigation }: Props) => {
       default:
         return { bg: theme.colors.neutral200, text: theme.colors.textTertiary, label: status, icon: '' };
     }
+  };
+
+  const renderStripeBanner = () => {
+    if (!stripeStatus) return null;
+    const status = stripeStatus.status;
+
+    if (status === 'complete') {
+      return (
+        <Pressable
+          style={[styles.stripeBanner, { backgroundColor: theme.colors.successLight }]}
+          onPress={() => navigation.navigate('Stripe Setup')}
+        >
+          <Ionicons name="checkmark-circle" size={20} color={theme.colors.success} />
+          <View style={styles.stripeBannerContent}>
+            <Text style={[styles.stripeBannerTitle, { color: theme.colors.success }]}>
+              Stripe Connected
+            </Text>
+            <Text style={styles.stripeBannerDesc}>
+              Your payout account is active and verified
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={theme.colors.success} />
+        </Pressable>
+      );
+    }
+
+    if (status === 'pending') {
+      return (
+        <Pressable
+          style={[styles.stripeBanner, { backgroundColor: theme.colors.warningLight }]}
+          onPress={() => navigation.navigate('Stripe Setup')}
+        >
+          <Ionicons name="time-outline" size={20} color={theme.colors.warning} />
+          <View style={styles.stripeBannerContent}>
+            <Text style={[styles.stripeBannerTitle, { color: theme.colors.warning }]}>
+              Stripe Verification Pending
+            </Text>
+            <Text style={styles.stripeBannerDesc}>
+              Tap to complete your Stripe setup
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={theme.colors.warning} />
+        </Pressable>
+      );
+    }
+
+    if (status === 'restricted' || status === 'not_created') {
+      return (
+        <Pressable
+          style={[styles.stripeBanner, { backgroundColor: theme.colors.errorLight }]}
+          onPress={() => navigation.navigate('Stripe Setup')}
+        >
+          <Ionicons name="alert-circle" size={20} color={theme.colors.error} />
+          <View style={styles.stripeBannerContent}>
+            <Text style={[styles.stripeBannerTitle, { color: theme.colors.error }]}>
+              {status === 'not_created' ? 'Stripe Not Connected' : 'Stripe Account Restricted'}
+            </Text>
+            <Text style={styles.stripeBannerDesc}>
+              Tap to set up your payout account
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={theme.colors.error} />
+        </Pressable>
+      );
+    }
+
+    return null;
   };
 
   const renderSummary = () => (
@@ -210,6 +293,7 @@ const InstructorEarningsScreen = ({ navigation }: Props) => {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>
+            {renderStripeBanner()}
             {renderSummary()}
             {renderFilters()}
           </>
@@ -235,6 +319,28 @@ const createStyles = (theme: AppTheme) =>
     listContent: {
       padding: theme.spacing.md,
       paddingBottom: theme.spacing['3xl'],
+    },
+
+    // ── Stripe Banner ─────────────────────────────────────
+    stripeBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      padding: theme.spacing.md,
+      borderRadius: theme.borderRadius.lg,
+      marginBottom: theme.spacing.md,
+    },
+    stripeBannerContent: {
+      flex: 1,
+    },
+    stripeBannerTitle: {
+      ...theme.typography.label,
+      fontWeight: '600',
+    },
+    stripeBannerDesc: {
+      ...theme.typography.caption,
+      color: theme.colors.textSecondary,
+      marginTop: 2,
     },
 
     // ── Summary ─────────────────────────────────────────

@@ -13,6 +13,8 @@ import InstructorPackageScreen from "../../screens/instructor/InstructorPackageS
 import InstructorAreasScreen from "../../screens/instructor/InstructorAreasScreen";
 import InstructorOffersScreen from "../../screens/instructor/InstructorOffersScreen";
 import InstructorBookingRequestsScreen from "../../screens/instructor/InstructorBookingRequestsScreen";
+import InstructorStripeSetupScreen from "../../screens/instructor/InstructorStripeSetupScreen";
+import InstructorPayoutSettingsScreen from "../../screens/instructor/InstructorPayoutSettingsScreen";
 import { useTheme } from "../../theme";
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AppTopHeader from '../../components/AppTopHeader';
@@ -31,6 +33,8 @@ export type InstructorTabsParamList = {
     Packages: undefined;
     'Exclusive Offers': undefined;
     Earnings: undefined;
+    'Stripe Setup': undefined;
+    'Payout Settings': undefined;
     'Booking Requests': undefined;
     Requests: undefined;
     'Pending Reviews': undefined;
@@ -175,6 +179,26 @@ const InstructorTabs = () => {
                     headerShown: false,
                     drawerIcon: ({ color, size }) => (
                         <Ionicons name="cash-outline" size={size} color={color} style={{ marginRight: 6 }} />
+                    ),
+                }}
+            />
+            <Drawer.Screen
+                name="Stripe Setup"
+                component={InstructorStripeSetupScreen}
+                options={{
+                    headerShown: false,
+                    drawerIcon: ({ color, size }) => (
+                        <Ionicons name="card-outline" size={size} color={color} style={{ marginRight: 6 }} />
+                    ),
+                }}
+            />
+            <Drawer.Screen
+                name="Payout Settings"
+                component={InstructorPayoutSettingsScreen}
+                options={{
+                    headerShown: false,
+                    drawerIcon: ({ color, size }) => (
+                        <Ionicons name="wallet-outline" size={size} color={color} style={{ marginRight: 6 }} />
                     ),
                 }}
             />

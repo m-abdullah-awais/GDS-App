@@ -94,7 +94,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
           {children}
-          <View style={styles.actions}>
+          <View style={[styles.actions, !showCancel && styles.actionsCentered]}>
             {showCancel && (
               <Pressable
                 style={[styles.button, styles.cancelButton]}
@@ -172,6 +172,9 @@ const createStyles = (theme: AppTheme) =>
       flexDirection: 'row',
       gap: theme.spacing.sm,
       width: '100%',
+    },
+    actionsCentered: {
+      justifyContent: 'center',
     },
     button: {
       flex: 1,

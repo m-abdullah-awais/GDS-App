@@ -20,10 +20,13 @@ import {
   FlatList,
   ActivityIndicator,
   Platform,
+  Image,
+  Pressable,
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { launchImageLibrary } from 'react-native-image-picker';
 
 import { useTheme } from '../../theme';
 import type { RootState } from '../../store';
@@ -110,8 +113,40 @@ const AdminAddOfferScreen = () => {
   const [amountPaid, setAmountPaid] = useState('');
   const [amountOutstanding, setAmountOutstanding] = useState('');
 
+  // Image picker state
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   // Saving state
   const [saving, setSaving] = useState(false);
+
+  // ─── Image Picker ───────────────────────────────────────────────────────
+  const handlePickImage = useCallback(() => {
+    setUploadingImage(true);
+    launchImageLibrary(
+      {
+        mediaType: 'photo',
+        quality: 0.8,
+        maxWidth: 1200,
+        maxHeight: 800,
+        includeBase64: true,
+      },
+      (response) => {
+        setUploadingImage(false);
+        if (response.didCancel || response.errorCode) return;
+
+        const asset = response.assets?.[0];
+        if (!asset?.base64) return;
+
+        const mime = asset.type || 'image/jpeg';
+        const dataUrl = `data:${mime};base64,${asset.base64}`;
+        setImageUrl(dataUrl);
+      },
+    );
+  }, []);
+
+  const handleRemoveImage = useCallback(() => {
+    setImageUrl('');
+  }, []);
 
   // ─── Populate form when editing ─────────────────────────────────────────
 
@@ -212,7 +247,7 @@ const AdminAddOfferScreen = () => {
   const validate = (): string | null => {
     if (!title.trim()) return 'Title is required.';
     if (!description.trim()) return 'Description is required.';
-    if (!imageUrl.trim()) return 'Image URL is required.';
+    if (!imageUrl.trim()) return 'Please upload an offer image.';
     if (useCustomCategory && !customCategory.trim()) return 'Please enter a custom category name.';
     if (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate))
       return 'Start date must be in YYYY-MM-DD format.';
@@ -555,6 +590,76 @@ const AdminAddOfferScreen = () => {
           color: theme.colors.primaryDark,
           fontWeight: '600',
         },
+        // Image picker
+        imagePickerBox: {
+          borderWidth: 2,
+          borderColor: theme.colors.border,
+          borderStyle: 'dashed',
+          borderRadius: 14,
+          paddingVertical: 32,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: theme.colors.surface,
+        },
+        imagePickerIconCircle: {
+          width: 64,
+          height: 64,
+          borderRadius: 32,
+          backgroundColor: theme.colors.primaryLight,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 12,
+        },
+        imagePickerTitle: {
+          fontSize: 16,
+          fontWeight: '600',
+          color: theme.colors.textPrimary,
+          marginBottom: 4,
+        },
+        imagePickerHint: {
+          fontSize: 13,
+          color: theme.colors.textSecondary,
+        },
+        imagePreviewContainer: {
+          borderRadius: 14,
+          overflow: 'hidden',
+          borderWidth: 1,
+          borderColor: theme.colors.border,
+          backgroundColor: theme.colors.surface,
+        },
+        imagePreview: {
+          width: '100%',
+          height: 200,
+          borderTopLeftRadius: 13,
+          borderTopRightRadius: 13,
+        },
+        imageActions: {
+          flexDirection: 'row',
+          borderTopWidth: 1,
+          borderTopColor: theme.colors.border,
+        },
+        imageChangeBtn: {
+          flex: 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: 12,
+          gap: 6,
+          borderRightWidth: StyleSheet.hairlineWidth,
+          borderRightColor: theme.colors.border,
+        },
+        imageRemoveBtn: {
+          flex: 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: 12,
+          gap: 6,
+        },
+        imageActionText: {
+          fontSize: 14,
+          fontWeight: '600',
+        },
         // Save button
         saveButton: {
           backgroundColor: theme.colors.primary,
@@ -811,16 +916,40 @@ const AdminAddOfferScreen = () => {
             multiline
           />
 
-          <Text style={styles.label}>Image URL</Text>
-          <TextInput
-            style={styles.input}
-            value={imageUrl}
-            onChangeText={setImageUrl}
-            placeholder="https://example.com/image.jpg"
-            placeholderTextColor={theme.colors.textSecondary}
-            autoCapitalize="none"
-            keyboardType="url"
-          />
+          <Text style={styles.label}>Offer Image</Text>
+          {imageUrl ? (
+            <View style={styles.imagePreviewContainer}>
+              <Image
+                source={{ uri: imageUrl }}
+                style={styles.imagePreview}
+                resizeMode="cover"
+              />
+              <View style={styles.imageActions}>
+                <TouchableOpacity style={styles.imageChangeBtn} onPress={handlePickImage} activeOpacity={0.7}>
+                  <Icon name="camera-outline" size={18} color={theme.colors.primary} />
+                  <Text style={[styles.imageActionText, { color: theme.colors.primary }]}>Change</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.imageRemoveBtn} onPress={handleRemoveImage} activeOpacity={0.7}>
+                  <Icon name="trash-outline" size={18} color={theme.colors.error} />
+                  <Text style={[styles.imageActionText, { color: theme.colors.error }]}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <Pressable style={styles.imagePickerBox} onPress={handlePickImage} disabled={uploadingImage}>
+              {uploadingImage ? (
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+              ) : (
+                <>
+                  <View style={styles.imagePickerIconCircle}>
+                    <Icon name="cloud-upload-outline" size={32} color={theme.colors.primary} />
+                  </View>
+                  <Text style={styles.imagePickerTitle}>Upload Offer Image</Text>
+                  <Text style={styles.imagePickerHint}>Tap to select an image from your device</Text>
+                </>
+              )}
+            </Pressable>
+          )}
 
           <Text style={styles.label}>Offer Code</Text>
           <TextInput

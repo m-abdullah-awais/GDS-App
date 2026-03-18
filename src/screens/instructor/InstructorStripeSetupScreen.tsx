@@ -341,7 +341,7 @@ const InstructorStripeSetupScreen = ({ navigation }: Props) => {
               </View>
               <View style={styles.featureItem}>
                 <Ionicons name="checkmark-circle" size={18} color={theme.colors.success} />
-                <Text style={styles.featureText}>No bank details stored on our servers</Text>
+                <Text style={styles.featureText}>Your payout details are handled securely by Stripe</Text>
               </View>
               <View style={styles.featureItem}>
                 <Ionicons name="checkmark-circle" size={18} color={theme.colors.success} />

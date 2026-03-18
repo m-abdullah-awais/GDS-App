@@ -460,7 +460,7 @@ const InstructorPendingApprovalScreen = ({ navigation }: Props) => {
               </View>
               <View style={styles.stripeFeatureRow}>
                 <Ionicons name="checkmark-circle" size={18} color={theme.colors.success} />
-                <Text style={styles.stripeFeatureText}>Direct bank transfers</Text>
+                <Text style={styles.stripeFeatureText}>Automatic payouts via Stripe</Text>
               </View>
               <View style={styles.stripeFeatureRow}>
                 <Ionicons name="checkmark-circle" size={18} color={theme.colors.success} />

@@ -38,13 +38,14 @@ export const signUpStudent = async (
   const credential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
   const { uid } = credential.user;
 
-  // Create Firestore user profile
+  // Create Firestore user profile (pending until admin approves)
   await setDoc(doc(collection(db, 'users'), uid), {
     uid,
     email,
     full_name: fullName,
     role: 'student' as UserRole,
-    status: 'active',
+    status: 'pending',
+    approved: false,
     termsAccepted: false,
     profileComplete: false,
     profile_completed: false,

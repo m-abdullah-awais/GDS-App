@@ -5,12 +5,13 @@ import AdminStack from './admin/AdminStack';
 import InstructorStack from './instructor/InstructorStack';
 import StudentStack from './student/StudentStack';
 import AuthStack from './AuthStack';
+import PendingApprovalScreen from '../screens/auth/PendingApprovalScreen';
 import type { RootState } from '../store';
 import { useTheme } from '../theme';
 
 const RootNavigator = () => {
   const { theme } = useTheme();
-  const { user, role, initialized } = useSelector((state: RootState) => state.auth);
+  const { user, role, profile, initialized } = useSelector((state: RootState) => state.auth);
 
   // Show splash / loading indicator until Firebase auth state resolves
   if (!initialized) {
@@ -24,6 +25,11 @@ const RootNavigator = () => {
   // Not authenticated → show auth screens
   if (!user) {
     return <AuthStack />;
+  }
+
+  // Student must be approved by admin before accessing the app
+  if (role === 'student' && profile && profile.status !== 'active') {
+    return <PendingApprovalScreen />;
   }
 
   // Authenticated → route by Firestore role

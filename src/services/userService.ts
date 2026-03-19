@@ -152,16 +152,23 @@ export const completeInstructorProfile = async (
 
 
 /**
- * Search students by name (client-side filter after role query).
+ * Search discoverable students by postcode.
+ * Only returns students who have enabled discovery (isDiscoverable === true).
  */
-export const searchStudentsByQuery = async (query: string): Promise<UserDoc[]> => {
-  const allStudents = await getUsersByRole('student');
-  if (!query.trim()) {return allStudents;}
-  const lowerQuery = query.toLowerCase();
-  return allStudents.filter(s =>
-    (s.full_name || '').toLowerCase().includes(lowerQuery) ||
-    (s.email || '').toLowerCase().includes(lowerQuery) ||
-    (s.postcode || '').toLowerCase().includes(lowerQuery),
+export const searchStudentsByQuery = async (postcode: string): Promise<UserDoc[]> => {
+  if (!postcode.trim()) {return [];}
+  const lowerPostcode = postcode.trim().toLowerCase();
+
+  const q = query(
+    collection(db, Collections.USERS),
+    where('role', '==', 'student'),
+    where('isDiscoverable', '==', true),
+  );
+  const snapshot = await getDocs(q);
+  const students = fromQuerySnapshot<UserDoc>(snapshot).map(stripHeavyFields);
+
+  return students.filter(s =>
+    (s.postcode || '').toLowerCase().includes(lowerPostcode),
   );
 };
 

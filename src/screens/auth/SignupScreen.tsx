@@ -77,7 +77,7 @@ const SignupScreen = ({ navigation }: SignupScreenProps) => {
         title: 'Account created',
         message: role === 'instructor'
           ? 'Your account has been created successfully. Please complete your profile to submit your instructor application.'
-          : 'Welcome to GDS! You can now browse instructors.',
+          : 'Your account has been created successfully. An admin will review and approve your registration shortly.',
         variant: 'success',
       })
     } catch (error: any) {

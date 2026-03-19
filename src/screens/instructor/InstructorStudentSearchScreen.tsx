@@ -109,22 +109,25 @@ const InstructorStudentSearchScreen = ({ navigation }: Props) => {
       {/* Search Bar */}
       <View style={styles.searchSection}>
         <View style={styles.searchContainer}>
-          <Ionicons name="search-outline" size={18} color={theme.colors.textTertiary} style={{ marginRight: theme.spacing.xs }} />
+          <Ionicons name="location-outline" size={18} color={theme.colors.textTertiary} style={{ marginRight: theme.spacing.xs }} />
           <TextInput
             value={searchQuery}
             onChangeText={handleSearch}
-            placeholder="Search by name or postcode..."
+            placeholder="Search students by postcode..."
             placeholderTextColor={theme.colors.placeholder}
             style={styles.searchInput}
-            autoCapitalize="none"
+            autoCapitalize="characters"
             autoCorrect={false}
           />
           {searchQuery.length > 0 && (
-            <Pressable onPress={() => setSearchQuery('')}>
+            <Pressable onPress={() => { setSearchQuery(''); setResults([]); }}>
               <Ionicons name="close-circle" size={20} color={theme.colors.textTertiary} />
             </Pressable>
           )}
         </View>
+        <Text style={styles.searchHint}>
+          Only students who have enabled discovery mode will appear in results
+        </Text>
       </View>
 
       <FlatList
@@ -135,8 +138,12 @@ const InstructorStudentSearchScreen = ({ navigation }: Props) => {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="search-outline" size={48} color={theme.colors.textTertiary} />
-            <Text style={styles.emptyText}>No students found</Text>
+            <Ionicons name={searchQuery ? 'people-outline' : 'location-outline'} size={48} color={theme.colors.textTertiary} />
+            <Text style={styles.emptyText}>
+              {searchQuery
+                ? 'No discoverable students found for this postcode'
+                : 'Enter a postcode to find students'}
+            </Text>
           </View>
         }
       />
@@ -170,6 +177,12 @@ const createStyles = (theme: AppTheme) =>
       ...theme.typography.input,
       color: theme.colors.textPrimary,
       paddingVertical: 12,
+    },
+    searchHint: {
+      ...theme.typography.caption,
+      color: theme.colors.textTertiary,
+      marginTop: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.xxs,
     },
     clearButton: {
       ...theme.typography.bodyMedium,

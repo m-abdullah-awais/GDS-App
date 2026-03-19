@@ -17,6 +17,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -98,6 +99,8 @@ const StudentProfileScreen = () => {
   const [profile, setProfile] = useState<ProfileData>(INITIAL_PROFILE);
   const [draft, setDraft] = useState<ProfileData>(INITIAL_PROFILE);
   const [editing, setEditing] = useState(false);
+  const [isDiscoverable, setIsDiscoverable] = useState(false);
+  const [discoverySaving, setDiscoverySaving] = useState(false);
   const { profileImage, imageOptionsVisible, setImageOptionsVisible, uploading, openPicker, chooseFromGallery, removePhoto } = useProfileImage(authProfile?.uid, (authProfile as any)?.photoURL || authProfile?.profile_picture_url || null);
 
   // Load profile from auth state
@@ -112,7 +115,7 @@ const StudentProfileScreen = () => {
       };
       setProfile(loaded);
       setDraft(loaded);
-
+      setIsDiscoverable((authProfile as any).isDiscoverable ?? false);
     }
   }, [authProfile]);
 
@@ -204,6 +207,29 @@ const StudentProfileScreen = () => {
         await authService.signOut();
       } catch {}
       showToast('info', 'Signed out successfully.');
+    }
+  };
+
+  const handleToggleDiscovery = async () => {
+    if (!authProfile?.uid || discoverySaving) return;
+    setDiscoverySaving(true);
+    try {
+      const newValue = !isDiscoverable;
+      await userService.updateUserProfile(authProfile.uid, {
+        isDiscoverable: newValue,
+      } as any);
+      setIsDiscoverable(newValue);
+      showToast(
+        'success',
+        newValue
+          ? 'You are now discoverable by instructors in your area.'
+          : 'You are now hidden from instructor search.',
+      );
+    } catch (err) {
+      console.error('Failed to update discoverability:', err);
+      showToast('error', 'Failed to update discoverability. Please try again.');
+    } finally {
+      setDiscoverySaving(false);
     }
   };
 
@@ -379,6 +405,45 @@ const StudentProfileScreen = () => {
                 );
               })}
             </View>
+          </View>
+        </View>
+
+        {/* ── Instructor Discovery ─────────────── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Instructor Discovery</Text>
+          <View style={styles.discoveryRow}>
+            <View style={styles.discoveryInfo}>
+              <Ionicons
+                name={isDiscoverable ? 'eye-outline' : 'eye-off-outline'}
+                size={20}
+                color={isDiscoverable ? theme.colors.primary : theme.colors.textTertiary}
+              />
+              <View style={styles.discoveryTextWrap}>
+                <Text style={styles.discoveryLabel}>
+                  {isDiscoverable ? 'Discoverable' : 'Hidden'}
+                </Text>
+                <Text style={styles.discoveryHint}>
+                  {isDiscoverable
+                    ? 'Instructors in your postcode area can find you'
+                    : 'You won\'t appear in instructor searches'}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={isDiscoverable}
+              onValueChange={handleToggleDiscovery}
+              disabled={discoverySaving}
+              trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+              thumbColor="#FFF"
+            />
+          </View>
+          <View style={styles.discoveryNote}>
+            <Ionicons name="information-circle-outline" size={14} color={theme.colors.textTertiary} />
+            <Text style={styles.discoveryNoteText}>
+              {isDiscoverable
+                ? 'Instructors covering your postcode can see your profile and send you join requests.'
+                : 'Only your current instructors can see your profile. Turn this on to be found by new instructors.'}
+            </Text>
           </View>
         </View>
 
@@ -679,6 +744,47 @@ const createStyles = (theme: AppTheme) =>
     segTextActive: {
       color: '#FFF',
       fontWeight: '700',
+    },
+
+    // Discovery
+    discoveryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    discoveryInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      gap: 10,
+    },
+    discoveryTextWrap: {
+      flex: 1,
+    },
+    discoveryLabel: {
+      ...theme.typography.bodyMedium,
+      color: theme.colors.textPrimary,
+      fontWeight: '600',
+    },
+    discoveryHint: {
+      ...theme.typography.caption,
+      color: theme.colors.textSecondary,
+      marginTop: 2,
+    },
+    discoveryNote: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 6,
+      marginTop: 12,
+      paddingTop: 12,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.border,
+    },
+    discoveryNoteText: {
+      ...theme.typography.caption,
+      color: theme.colors.textTertiary,
+      flex: 1,
+      lineHeight: 18,
     },
 
     // Sign Out

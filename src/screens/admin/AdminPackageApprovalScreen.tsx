@@ -310,9 +310,12 @@ const AdminPackageApprovalScreen = () => {
                   </TouchableOpacity>
                 </>
               )}
-              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: theme.colors.surfaceSecondary }]} onPress={() => openAction(pkg, 'delete')}>
-                <Ionicons name="trash-outline" size={14} color={theme.colors.error} />
-                <Text style={[styles.actionLabel, { color: theme.colors.error }]}>Delete</Text>
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: pkg.status === 'pending' ? theme.colors.surfaceTertiary ?? theme.colors.border : theme.colors.surfaceSecondary }]}
+                disabled={pkg.status === 'pending'}
+                onPress={() => openAction(pkg, 'delete')}>
+                <Ionicons name="trash-outline" size={14} color={pkg.status === 'pending' ? theme.colors.textTertiary : theme.colors.error} />
+                <Text style={[styles.actionLabel, { color: pkg.status === 'pending' ? theme.colors.textTertiary : theme.colors.error }]}>Delete</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
